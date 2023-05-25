@@ -28,6 +28,7 @@ jobs:
       - name: Plot svg from csv for Intel GPU.
         run: |
             gnuplot -e "set term svg; \
+                      set datafile commentschars "#" \
                       set datafile separator ','; \
                       set key autotitle columnhead; \
                       set title 'Intel GPU profile'; \
@@ -40,6 +41,7 @@ jobs:
       - name: Plot svg from csv for NVIDIA GPU.
         run: |
             gnuplot -e "set term svg; \
+                      set datafile commentschars "#" \
                       set datafile separator ','; \
                       set key autotitle column; \
                       set title 'Intel GPU profile'; \
@@ -62,17 +64,17 @@ jobs:
           path: profile/nvidia.svg
 
       - name: Check repo for modified files.
-        id: git-check
+        id: git-status
         run: |
-          echo ::set-output name=modified::$(            \
+          echo git_status_modified=$(                    \
              if [ -n "$(git status --porcelain)" ]; then \
                  echo "true";                            \
              else                                        \
                  echo "false";                           \
-             fi)
+             fi) >> "$GITHUB_ENV"
 
       - name: Update svg graphs inside repository.
-        if: steps.git-check.outputs.modified == 'true'
+        if: ${{ env.git_status_modified }} == 'true'
         run: |
           git config --global user.name  "gnuplot"
           git config --global user.email "gnuplot@gnuplot.gnuplot"
