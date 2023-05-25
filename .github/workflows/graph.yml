@@ -65,7 +65,7 @@ jobs:
 
       - name: Update svg graphs inside repository.
         run: |
-          if [ -n "$(git status --porcelain)" ]; then
+          if [ -z "$(git status --porcelain)" ]; then
               git config --global user.name  "gnuplot"
               git config --global user.email "gnuplot@gnuplot.gnuplot"
               git add .
