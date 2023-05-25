@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  generate-graph:
+  graph:
     runs-on: ubuntu-latest
 
     steps:
@@ -30,7 +30,7 @@ jobs:
             ls -l profile/intel.svg
             rm    profile/intel.svg
             gnuplot -e "set term svg; \
-                      set datafile commentschars "#" \
+                      set datafile commentschars "#"; \
                       set datafile separator ','; \
                       set key autotitle columnhead; \
                       set title 'Intel GPU profile'; \
@@ -45,7 +45,7 @@ jobs:
             ls -l profile/nvidia.svg
             rm    profile/nvidia.svg
             gnuplot -e "set term svg; \
-                      set datafile commentschars "#" \
+                      set datafile commentschars "#"; \
                       set datafile separator ','; \
                       set key autotitle column; \
                       set title 'Intel GPU profile'; \
