@@ -1,0 +1,8 @@
+﻿#ifdef RC_INVOKED
+#ifndef _INC_WINDOWS
+#define _INC_WINDOWS
+#include "winres.h"
+#endif
+#endif
+
+blast_cl RCDATA "blast.cl"

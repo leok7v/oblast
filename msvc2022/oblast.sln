@@ -1,0 +1,61 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32804.467
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "add", "add.vcxproj", "{42A1BE1F-678C-4733-A9F0-A7BFFFCF3DD2}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "generate", "generate.vcxproj", "{4A21BE1F-678C-4733-A9F0-A7BFFFCF3FF2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "misc", "misc", "{FA83895A-1CED-4FC5-9F11-6AFA109CFC7D}"
+	ProjectSection(SolutionItems) = preProject
+		..\README.md = ..\README.md
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "blast", "blast.vcxproj", "{42F1BE1F-678C-4733-A9F0-A7BFFFCF3DD2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{7CAD6E7B-F323-4628-AE4C-E52DB9741F0D}"
+	ProjectSection(SolutionItems) = preProject
+		..\.github\workflows\build-on-push.yml = ..\.github\workflows\build-on-push.yml
+		..\.github\workflows\graph.yml = ..\.github\workflows\graph.yml
+		..\.github\workflows\release.yml = ..\.github\workflows\release.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "profile", "profile", "{2D64C5C8-AB27-49BE-9C6B-AAF9DECFCE5F}"
+	ProjectSection(SolutionItems) = preProject
+		..\profile\intel.csv = ..\profile\intel.csv
+		..\profile\nvidia.csv = ..\profile\nvidia.csv
+		..\profile\PROFILE.md = ..\profile\PROFILE.md
+		..\profile\updated.txt = ..\profile\updated.txt
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{42A1BE1F-678C-4733-A9F0-A7BFFFCF3DD2}.Debug|x64.ActiveCfg = Debug|x64
+		{42A1BE1F-678C-4733-A9F0-A7BFFFCF3DD2}.Debug|x64.Build.0 = Debug|x64
+		{42A1BE1F-678C-4733-A9F0-A7BFFFCF3DD2}.Release|x64.ActiveCfg = Release|x64
+		{42A1BE1F-678C-4733-A9F0-A7BFFFCF3DD2}.Release|x64.Build.0 = Release|x64
+		{4A21BE1F-678C-4733-A9F0-A7BFFFCF3FF2}.Debug|x64.ActiveCfg = Debug|x64
+		{4A21BE1F-678C-4733-A9F0-A7BFFFCF3FF2}.Debug|x64.Build.0 = Debug|x64
+		{4A21BE1F-678C-4733-A9F0-A7BFFFCF3FF2}.Release|x64.ActiveCfg = Release|x64
+		{4A21BE1F-678C-4733-A9F0-A7BFFFCF3FF2}.Release|x64.Build.0 = Release|x64
+		{42F1BE1F-678C-4733-A9F0-A7BFFFCF3DD2}.Debug|x64.ActiveCfg = Debug|x64
+		{42F1BE1F-678C-4733-A9F0-A7BFFFCF3DD2}.Debug|x64.Build.0 = Debug|x64
+		{42F1BE1F-678C-4733-A9F0-A7BFFFCF3DD2}.Release|x64.ActiveCfg = Release|x64
+		{42F1BE1F-678C-4733-A9F0-A7BFFFCF3DD2}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{7CAD6E7B-F323-4628-AE4C-E52DB9741F0D} = {FA83895A-1CED-4FC5-9F11-6AFA109CFC7D}
+		{2D64C5C8-AB27-49BE-9C6B-AAF9DECFCE5F} = {FA83895A-1CED-4FC5-9F11-6AFA109CFC7D}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4903FF9C-ADBE-4753-BB20-C4EEE5D83493}
+	EndGlobalSection
+EndGlobal

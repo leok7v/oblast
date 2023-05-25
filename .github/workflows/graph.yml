@@ -1,0 +1,96 @@
+name: graph
+
+on:
+  push:
+  release:
+    types: [published]
+  workflow_dispatch:
+permissions:
+  contents: write
+
+jobs:
+  generate-graph:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout.
+        uses: actions/checkout@v3
+        env:
+          GIT_TRACE: 0
+          GIT_CURL_VERBOSE: 0
+
+      - name: Update gnuplot prerequisites.
+        run: sudo apt-get update -y --quiet=1 > /dev/null
+
+      - name: Install gnuplot.
+        run: sudo apt-get install gnuplot -y --fix-missing --quiet=1 > /dev/null
+
+      - name: Plot svg from csv for Intel GPU.
+        run: |
+            echo on;
+            ls -l profile/intel.svg;
+            rm profile/intel.svg;
+            gnuplot -e "set term svg; \
+                      set datafile separator ','; \
+                      set key autotitle columnhead; \
+                      set title 'Intel GPU profile'; \
+                      set xlabel 'Nx1000'; \
+                      set ylabel 'Time(ms)'; \
+                      set output 'profile/intel.svg'; \
+                      plot 'profile/intel.csv' u 1:2 w lines, '' u 1:3 w lines";
+            pwd;
+            ls -l profile/intel.svg
+
+      - name: Plot svg from csv for NVIDIA GPU.
+        run: |
+            echo on;
+            ls -l profile/nvidia.svg;
+            rm profile/nvidia.svg;
+            gnuplot -e "set term svg; \
+                      set datafile separator ','; \
+                      set key autotitle column; \
+                      set title 'Intel GPU profile'; \
+                      set xlabel 'Nx1000'; \
+                      set ylabel 'Time(ms)'; \
+                      set output 'profile/nvidia.svg'; \
+                      plot 'profile/nvidia.csv' u 1:2 w lines title 'AVX', '' u 1:3 w lines title 'GPU'"
+            pwd;
+            ls -l profile/nvidia.svg
+
+      - name: Upload Intel Graph Artifact.
+        uses: actions/upload-artifact@v3
+        with:
+          name: intel.svg
+          path: profile/intel.svg
+
+      - name: Upload NVIDIA Graph Artifact.
+        uses: actions/upload-artifact@v3
+        with:
+          name: nvidia.svg
+          path: profile/nvidia.svg
+
+      - name: Update timestamp.
+        run: |
+            echo $(date +"%Y-%m-%d-T%H.%M.%SZ") >> profile/updated.txt
+
+      - name: Update svg graphs inside repository.
+        run: |
+          git config --global user.name  "gnuplot"
+          git config --global user.email "gnuplot@gnuplot.gnuplot"
+          git add .
+          git commit -am "updated on - $(date)"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+
+# notes:
+# "u 1:2" is shorthand for "using 1:2"
+# "w lines" is shorthand for "with lines"
+# references:
+# https://gnuplot.sourceforge.net/demo/layout.html
+# https://gnuplot.sourceforge.net/demo/
+# https://stackoverflow.com/questions/51687096/gnuplot-autotitle-coloumnhead-key-and-datafile-with
+# https://raymii.org/s/tutorials/GNUplot_tips_for_nice_looking_charts_from_a_CSV_file.html
+# https://stackoverflow.com/questions/12818797/how-to-plot-several-datasets-with-titles-from-one-file-in-gnuplot
+#
+# set key fixed left top vertical Right noreverse enhanced autotitle box lt black linewidth 1.000 dashtype solid
