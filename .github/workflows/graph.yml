@@ -66,12 +66,7 @@ jobs:
       - name: Check repo for modified files.
         id: git-status
         run: |
-          echo git_status_modified=$(                    \
-             if [ -n "$(git status --porcelain)" ]; then \
-                 echo "true";                            \
-             else                                        \
-                 echo "false";                           \
-             fi) >> "$GITHUB_ENV"
+          echo git_status_modified=$(if [ -n "$(git status --porcelain)" ]; then echo "true"; else echo "false"; fi) >> "$GITHUB_ENV"
 
       - name: Update svg graphs inside repository.
         if: ${{ env.git_status_modified }} == 'true'
