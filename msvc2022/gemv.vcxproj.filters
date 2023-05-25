@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\gemv.c" />
+    <ClCompile Include="..\CL\ocl.c">
+      <Filter>CL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\rt.c">
+      <Filter>rt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dot.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\cl\cl.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cl\cl_platform.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cl\cl_version.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cl\opencl.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\ocl.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\rt.h">
+      <Filter>rt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dot.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CL">
+      <UniqueIdentifier>{8e000bf1-1819-4a1c-89d2-5db40bf0f26a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="rt">
+      <UniqueIdentifier>{521503a6-7c68-44e3-8741-f7973e26a1a5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\CL\cl_bind.inc">
+      <Filter>CL</Filter>
+    </None>
+    <None Include="..\gemv.cl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\gemv.rc" />
+  </ItemGroup>
+</Project>

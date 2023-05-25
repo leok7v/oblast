@@ -6,6 +6,12 @@
 extern "C" {
 #endif
 
+// float point precision index
+enum { ocl_fpp16 = 0, ocl_fpp32 = 1, ocl_fpp64 = 2 };
+
+extern const char* ocl_fpp_names[3];
+extern const int   ocl_fpp_bytes[3]; // { 2, 4, 8 }
+
 typedef struct ocl_device_id_s* ocl_device_id_t;
 typedef struct ocl_memory_s*    ocl_memory_t;
 typedef struct ocl_program_s*   ocl_program_t;
@@ -18,8 +24,8 @@ enum { // flavor (bitset because of collaboration and mixed solutions)
     ocl_intel     = (1 << 2),
     ocl_apple     = (1 << 3),
     ocl_adreno    = (1 << 4), // Qualcomm
-    ocl_videoCore = (1 << 5), // Broadcom
-    ocl_powerVR   = (1 << 6), // IBM
+    ocl_videocore = (1 << 5), // Broadcom
+    ocl_powervr   = (1 << 6), // IBM
     ocl_vivante   = (1 << 7), // Imagination
     ocl_mali      = (1 << 8)  // ARM
     // to be continued...

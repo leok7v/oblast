@@ -28,6 +28,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "profile", "profile", "{2D64
 		..\profile\PROFILE.md = ..\profile\PROFILE.md
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gemv", "gemv.vcxproj", "{42A1BE1F-768C-4744-A9F0-A7BFFFCF3DD2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -46,6 +48,10 @@ Global
 		{42F1BE1F-678C-4733-A9F0-A7BFFFCF3DD2}.Debug|x64.Build.0 = Debug|x64
 		{42F1BE1F-678C-4733-A9F0-A7BFFFCF3DD2}.Release|x64.ActiveCfg = Release|x64
 		{42F1BE1F-678C-4733-A9F0-A7BFFFCF3DD2}.Release|x64.Build.0 = Release|x64
+		{42A1BE1F-768C-4744-A9F0-A7BFFFCF3DD2}.Debug|x64.ActiveCfg = Debug|x64
+		{42A1BE1F-768C-4744-A9F0-A7BFFFCF3DD2}.Debug|x64.Build.0 = Debug|x64
+		{42A1BE1F-768C-4744-A9F0-A7BFFFCF3DD2}.Release|x64.ActiveCfg = Release|x64
+		{42A1BE1F-768C-4744-A9F0-A7BFFFCF3DD2}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

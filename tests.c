@@ -63,13 +63,13 @@ static void test_first_n(blast_t* b, int64_t n, int fpp,
     }
     td.expected = 0;
     for (int i = 0; i < n; i++) {
-        if (fpp == blast_fpp16) {
+        if (fpp == ocl_fpp16) {
             *at0(fp16_t, i) = fp32to16((fp32_t)(i + 1));
             *at1(fp16_t, i) = fp32to16((fp32_t)(n - i));
-        } else if (fpp == blast_fpp32) {
+        } else if (fpp == ocl_fpp32) {
             *at0(fp32_t, i) = (fp32_t)(i + 1);
             *at1(fp32_t, i) = (fp32_t)(n - i);
-        } else if (fpp == blast_fpp64) {
+        } else if (fpp == ocl_fpp64) {
             *at0(fp64_t, i) = (fp64_t)(i + 1);
             *at1(fp64_t, i) = (fp64_t)(n - i);
         } else {
@@ -88,7 +88,7 @@ static void test_first_n(blast_t* b, int64_t n, int fpp,
     if (verbose || td.rse > FLT_EPSILON) {
         traceln("%s[%2d] [o:%2d s:%2d] [o:%2d s:%2d] "
                 "%25.17f expected: %25.17f rse: %.17f",
-                blast_fpp_names[fpp], n, o0, s0, o1, s1,
+                ocl_fpp_names[fpp], n, o0, s0, o1, s1,
                 td.dot, td.expected, td.rse);
     }
     fatal_if(td.rse > FLT_EPSILON);
@@ -96,7 +96,7 @@ static void test_first_n(blast_t* b, int64_t n, int fpp,
 
 static void test_permutations(blast_t* b) {
     for (int n = 1; n < 7; n++) {
-        for (int fpp = blast_fpp16; fpp <= blast_fpp64; fpp++) {
+        for (int fpp = ocl_fpp16; fpp <= ocl_fpp64; fpp++) {
             if (b->dot[fpp] != null) {
                 for (int o0 = 0; o0 < 4; o0++) {
                     for (int o1 = 0; o1 < 4; o1++) {
@@ -111,7 +111,7 @@ static void test_permutations(blast_t* b) {
         }
     }
     for (int n = 1; n < 11; n++) {
-        for (int fpp = blast_fpp16; fpp <= blast_fpp64; fpp++) {
+        for (int fpp = ocl_fpp16; fpp <= ocl_fpp64; fpp++) {
             if (b->dot[fpp] != null) {
                 for (int o0 = 0; o0 < 4; o0++) {
                     for (int o1 = 0; o1 < 4; o1++) {
@@ -144,7 +144,7 @@ static void test_performance(blast_t* b, const int32_t n) {
     }
     blast.unmap(&m1);
     blast.unmap(&m0);
-    fp64_t dot = b->dot[blast_fpp32](&m0, 0, 1, &m1, 0, 1, n);
+    fp64_t dot = b->dot[ocl_fpp32](&m0, 0, 1, &m1, 0, 1, n);
     blast.deallocate(&m0);
     blast.deallocate(&m1);
     double rse = sqrt(pow(dot - sum, 2));
@@ -157,7 +157,7 @@ static void test_performance(blast_t* b, const int32_t n) {
 
 static void test_dot_compare_gpu_avx(blast_t* b) {
     enum { n = 16 * 1024 * 1024 };
-    test_dot_t td = test_dot_alloc(b, blast_fpp32, n, n);
+    test_dot_t td = test_dot_alloc(b, ocl_fpp32, n, n);
     test_dot_map(&td);
     fp32_t* x = (fp32_t*)td.a0;
     fp32_t* y = (fp32_t*)td.a1;
@@ -175,7 +175,7 @@ static void test_dot_compare_gpu_avx(blast_t* b) {
         avx = seconds() - avx;
         test_dot_unmap(&td);
         double gpu = seconds();
-        fp64_t sum1 = b->dot[blast_fpp32](&td.v0, 0, 1, &td.v1, 0, 1, i * 1024);
+        fp64_t sum1 = b->dot[ocl_fpp32](&td.v0, 0, 1, &td.v1, 0, 1, i * 1024);
         gpu = seconds() - gpu;
         test_dot_map(&td);
         x = (fp32_t*)td.a0;

@@ -9,6 +9,14 @@
 #include <CL/cl_bind.inc> // dynamically bind everything
 #endif
 
+static_assert(ocl_fpp16 == 0 && ocl_fpp32 == 1 && ocl_fpp64 == 2, "order");
+
+const char* ocl_fpp_names[3] = {"fp16", "fp32", "fp64"};
+
+const int ocl_fpp_bytes[3] = {
+    (int)sizeof(fp16_t), (int)sizeof(fp32_t), (int)sizeof(fp64_t)
+};
+
 static ocl_device_t ocl_devices[32]; // up to 32 GPUs supported
 
 enum { KB = 1024, MB = 1024 * KB, GB = 1024 * MB };
@@ -335,6 +343,13 @@ static const char* ocl_error(int r) {
     error[countof(error) - 1] = 0;
     return error;
 }
+
+// TODO: need two test kernels: one for half (including half4 and half16) another for double
+//       because both features are completely misreported by AMD, Intel and NVIDIA
+//       or at least there is no accurate way to report them that is found
+//       in OpenCL specification (I did not find it, ChatGPT didn't find it,
+//       GPU f/w engineers who implemented OpenCL bindings clearly didn't find it too).
+//       Take sample kernel from add.c
 
 static void ocl_init(void) {
     #pragma push_macro("get_str")

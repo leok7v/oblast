@@ -6,11 +6,6 @@
 extern "C"
 #endif
 
-// float point precision index
-enum { blast_fpp16 = 0, blast_fpp32 = 1, blast_fpp64 = 2 };
-
-extern const char* blast_fpp_names[3];
-extern const int   blast_fpp_bytes[3]; // { 2, 4, 8 }
 
 enum { // .allocate()/.map() flags
     blast_access_read  = 0, // not a bitset!
