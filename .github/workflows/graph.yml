@@ -51,27 +51,35 @@ jobs:
                       plot 'profile/nvidia.csv' u 1:2 w lines title 'AVX', \
                       '' u 1:3 w lines title 'GPU'"
 
-      - name: Upload Intel Graph Artifact.
-        uses: actions/upload-artifact@v3
-        with:
-          name: intel.svg
-          path: profile/intel.svg
-
-      - name: Upload NVIDIA Graph Artifact.
-        uses: actions/upload-artifact@v3
-        with:
-          name: nvidia.svg
-          path: profile/nvidia.svg
+#     - name: Upload Intel Graph Artifact.
+#       uses: actions/upload-artifact@v3
+#       with:
+#         name: intel.svg
+#         path: profile/intel.svg
+#
+#     - name: Upload NVIDIA Graph Artifact.
+#       uses: actions/upload-artifact@v3
+#       with:
+#         name: nvidia.svg
+#         path: profile/nvidia.svg
 
       - name: Update svg graphs inside repository.
         run: |
-          if [ -z "$(git status --porcelain)" ]; then
-              git config --global user.name  "gnuplot"
-              git config --global user.email "gnuplot@gnuplot.gnuplot"
-              git add .
-              git commit -am "updated on - $(date)"
-              git push ;
-          fi
+            git add .
+            set +e  # Grep succeeds with nonzero exit codes to show results.
+            git status | grep modified
+            if [ $? -eq 0 ]
+            then
+                set -e
+                echo "git commit and push generated .svg files."
+                git config --global user.name  "gnuplot"
+                git config --global user.email "gnuplot@gnuplot.gnuplot"
+                git commit -am "updated on - $(date)"
+                git push
+            else
+                set -e
+                echo "no changes since last run."
+            fi
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
 
