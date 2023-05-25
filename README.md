@@ -1,5 +1,7 @@
 # o`blast - Oh Basic Linear Algebra Subrotines/Subprograms/Functions TINY
 
+![Build](https://github.com/leok7v/oblast/workflows/build-on-push/badge.svg)
+
 ### goal
 
 - [ ] implement gemv(matrix[m][n], vector[n]) in a most effecient manner on OpenCL for fp32_t
