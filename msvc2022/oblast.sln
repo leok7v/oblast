@@ -26,7 +26,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "profile", "profile", "{2D64
 		..\profile\intel.csv = ..\profile\intel.csv
 		..\profile\nvidia.csv = ..\profile\nvidia.csv
 		..\profile\PROFILE.md = ..\profile\PROFILE.md
-		..\profile\updated.txt = ..\profile\updated.txt
 	EndProjectSection
 EndProject
 Global

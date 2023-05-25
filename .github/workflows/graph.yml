@@ -27,9 +27,6 @@ jobs:
 
       - name: Plot svg from csv for Intel GPU.
         run: |
-            echo on;
-            ls -l profile/intel.svg;
-            rm profile/intel.svg;
             gnuplot -e "set term svg; \
                       set datafile separator ','; \
                       set key autotitle columnhead; \
@@ -37,15 +34,11 @@ jobs:
                       set xlabel 'Nx1000'; \
                       set ylabel 'Time(ms)'; \
                       set output 'profile/intel.svg'; \
-                      plot 'profile/intel.csv' u 1:2 w lines, '' u 1:3 w lines";
-            pwd;
-            ls -l profile/intel.svg
+                      plot 'profile/intel.csv' u 1:2 w lines title 'AVX', \
+                           '' u 1:3 w lines title 'GPU'";
 
       - name: Plot svg from csv for NVIDIA GPU.
         run: |
-            echo on;
-            ls -l profile/nvidia.svg;
-            rm profile/nvidia.svg;
             gnuplot -e "set term svg; \
                       set datafile separator ','; \
                       set key autotitle column; \
@@ -53,9 +46,8 @@ jobs:
                       set xlabel 'Nx1000'; \
                       set ylabel 'Time(ms)'; \
                       set output 'profile/nvidia.svg'; \
-                      plot 'profile/nvidia.csv' u 1:2 w lines title 'AVX', '' u 1:3 w lines title 'GPU'"
-            pwd;
-            ls -l profile/nvidia.svg
+                      plot 'profile/nvidia.csv' u 1:2 w lines title 'AVX', \
+                      '' u 1:3 w lines title 'GPU'"
 
       - name: Upload Intel Graph Artifact.
         uses: actions/upload-artifact@v3
@@ -69,14 +61,10 @@ jobs:
           name: nvidia.svg
           path: profile/nvidia.svg
 
-#     - name: Update timestamp.
-#       run: |
-#           echo $(date +"%Y-%m-%d-T%H.%M.%SZ") >> profile/updated.txt
-
-      - name: Check for modified files.
+      - name: Check repo for modified files.
         id: git-check
-        run: echo ::set-output                           \
-             name=modified::$(                           \
+        run: |
+          echo ::set-output name=modified::$(            \
              if [ -n "$(git status --porcelain)" ]; then \
                  echo "true";                            \
              else                                        \
