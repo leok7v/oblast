@@ -16,7 +16,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "blast", "blast.vcxproj", "{
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{7CAD6E7B-F323-4628-AE4C-E52DB9741F0D}"
 	ProjectSection(SolutionItems) = preProject
-		..\.github\workflows\build-on-push.yml = ..\.github\workflows\build-on-push.yml
+		..\.github\workflows\build.yml = ..\.github\workflows\build.yml
 		..\.github\workflows\graph.yml = ..\.github\workflows\graph.yml
 		..\.github\workflows\release.yml = ..\.github\workflows\release.yml
 	EndProjectSection
