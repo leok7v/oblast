@@ -63,21 +63,15 @@ jobs:
           name: nvidia.svg
           path: profile/nvidia.svg
 
-      - name: Check repo for modified files.
-        id: git-status
-        run: |
-          set -e
-          echo git_status_modified=$(if [ -z "$(git status --porcelain)" ]; then echo "true"; else echo "false"; fi) >> "$GITHUB_ENV"
-          set +e
-
       - name: Update svg graphs inside repository.
-        if: ${{ env.git_status_modified }} == 'true'
         run: |
-          git config --global user.name  "gnuplot"
-          git config --global user.email "gnuplot@gnuplot.gnuplot"
-          git add .
-          git commit -am "updated on - $(date)"
-          git push
+          if [ -n "$(git status --porcelain)" ]; then
+              git config --global user.name  "gnuplot"
+              git config --global user.email "gnuplot@gnuplot.gnuplot"
+              git add .
+              git commit -am "updated on - $(date)"
+              git push ;
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
 
