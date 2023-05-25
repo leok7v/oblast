@@ -57,18 +57,6 @@ jobs:
             ls -l profile/nvidia.svg
             git status .
 
-#     - name: Upload Intel Graph Artifact.
-#       uses: actions/upload-artifact@v3
-#       with:
-#         name: intel.svg
-#         path: profile/intel.svg
-#
-#     - name: Upload NVIDIA Graph Artifact.
-#       uses: actions/upload-artifact@v3
-#       with:
-#         name: nvidia.svg
-#         path: profile/nvidia.svg
-
       - name: Update svg graphs inside repository.
         run: |
             git add .
