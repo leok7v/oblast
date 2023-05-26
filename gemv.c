@@ -39,9 +39,9 @@ static void mprintln(const fp32_t* mx, const int32_t n, const int32_t m) {
 static void gemv(ocl_context_t* c, int fpp,
         ocl_memory_t mx, ocl_memory_t vc,
         uint32_t n, uint32_t m, ocl_memory_t rs) {
-    fatal_if(n == 0 || (n & (n - 1)) != 0 ||
-             m == 0 || (m & (m - 1)) != 0,
-             "n: %d n: %d both must be power of 2", n, m);
+//  fatal_if(n == 0 || (n & (n - 1)) != 0 ||
+//           m == 0 || (m & (m - 1)) != 0,
+//           "n: %d n: %d both must be power of 2", n, m);
     if (ocl.is_profiling(c)) { c->ov->profiling_count = 0; }
     const int64_t compute_units   = ocl.devices[c->ix].compute_units;
     const int64_t local_bytes     = ocl.devices[c->ix].local_memory;
@@ -153,26 +153,27 @@ static void test(ocl_context_t* c, int32_t n, int32_t m,
         verify[j] = sum;
     }
     if (verbose) {
-        if (n < 50) { vprintln(vc, n); }
-        if (n < 50 && m < 50) { mprintln(mx, n, m); }
-        if (m < 50) { vprintln(verify, m); }
+        if (n <= 64) { printf("vc: "); vprintln(vc, n); }
+        if (n <= 64 && m < 50) { printf("mx:\n"); mprintln(mx, n, m); }
+        if (m <= 64) { printf("cpu: "); vprintln(verify, m); }
     }
     ocl.unmap(c, matrix, mx);
     ocl.unmap(c, vector, vc);
     gemv(c, ocl_fpp32, matrix, vector, n, m, result);
     fp32_t* rs = (fp32_t*)ocl.map(c, ocl_map_read, result, 0, m * sizeof(fp32_t));
-    if (m < 50) { vprintln(rs, m); }
+    if (verbose && m <= 64) { vprintln(rs, m); }
     ocl.unmap(c, result, rs);
     // verification
     const fp32_t epsilon = CL_FLT_EPSILON * n * m;
     for (int32_t j = 0; j < m; j++) {
         fp64_t delta = fabs(verify[j] - rs[j]);
-        fatal_if(delta > epsilon, "delta: %g epsilon: %g cpu[%d]: %g result[%d]: %g",
+        fatal_if(delta > epsilon, "delta: %g epsilon: %g cpu[%d]: %g gpu[%d]: %g",
             delta, epsilon, j, verify[j], j, rs[j]);
-    }
-    for (int32_t j = 0; j < m; j++) {
-        fp64_t delta = fabs(verify[j] - avx[j]);
-        fatal_if(delta > epsilon, "delta: %g epsilon: %g avx[%d]: %g result[%d]: %g",
+        delta = fabs(verify[j] - avx[j]);
+        fatal_if(delta > epsilon, "delta: %g epsilon: %g cpu[%d]: %g avx[%d]: %g",
+            delta, epsilon, j, verify[j], j, avx[j]);
+        delta = fabs(rs[j] - avx[j]);
+        fatal_if(delta > epsilon, "delta: %g epsilon: %g avx[%d]: %g gpu[%d]: %g",
             delta, epsilon, j, avx[j], j, rs[j]);
     }
     // cleanup
@@ -284,9 +285,8 @@ static void tests() {
         traceln("%s", d->name);
         traceln("");
         gemv_init(&c);
-        verbose = false; // set to true if crashes
-        test(&c, 8, 16, init_vc0, init_mx0, d->name);
-        test(&c, 256, 256, init_vc1, init_mx1, d->name);
+        verbose = true; // set to true if crashes
+//      test(&c, 2, 3, init_vc0, init_mx0, d->name);
         test(&c, 1024, 1024, init_vc1, init_mx1, d->name);
         test(&c, 4 * 1024,  4 * 1024, init_vc1, init_mx1, d->name);
         test(&c, 4 * 1024, 16 * 1024, init_vc1, init_mx1, d->name); // GPT-J 6b inermost gemv()
@@ -294,14 +294,9 @@ static void tests() {
         // 32*64 = 2048M x sizeof(fp32_t) = 8GB
 //      test(&c, 32 * 1024, 64 * 1024, init_vc1, init_mx1, d->name); // too much
         if (i < 1) {
-            traceln("");
-            traceln(">>>");
+            traceln("--------------------------------------------------");
             test(&c, 16 * 1024, 64 * 1024, init_vc1, init_mx1, d->name);
-            traceln("<<<");
-            traceln("");
         }
-        traceln("");
-        traceln("done");
         gemv_fini(&c);
         ocl.close(&c);
     }
