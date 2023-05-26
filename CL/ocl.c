@@ -1,4 +1,3 @@
-#include <CL/opencl.h>
 #include "rt.h"
 #include "ocl.h"
 
@@ -393,6 +392,7 @@ static void ocl_init(void) {
                 get_val(CL_DEVICE_MAX_CLOCK_FREQUENCY,      d->clock_frequency);
                 get_val(CL_DEVICE_GLOBAL_MEM_SIZE,          d->global_memory);
                 get_val(CL_DEVICE_LOCAL_MEM_SIZE,           d->local_memory);
+                get_val(CL_DEVICE_MAX_CONSTANT_ARGS,        d->max_const_args);
                 get_val(CL_DEVICE_MAX_COMPUTE_UNITS,        d->compute_units);
                 get_val(CL_DEVICE_MAX_WORK_GROUP_SIZE,      d->max_groups);
                 get_val(CL_DEVICE_DOUBLE_FP_CONFIG,         d->double_fp_config);
@@ -470,7 +470,8 @@ static void ocl_dump(int ix) {
         d->version_major, d->version_minor, d->c_version_major, d->c_version_minor);
     traceln("compute_units:    %lld @ %lldMHz", d->compute_units, d->clock_frequency);
     traceln("global_memory:    %lldMB", d->global_memory / MB);
-    traceln("local_memory:     %lldMB", d->local_memory / MB);
+    traceln("local_memory:     %lld bytes", d->local_memory);
+    traceln("max_const_args:   %lld", d->max_const_args);
     traceln("max_groups:       %lld", d->max_groups);
     traceln("dimensions:       %lld", d->dimensions);
     const int64_t* wi = d->max_items;

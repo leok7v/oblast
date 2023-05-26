@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
+#include <CL/opencl.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -65,6 +66,7 @@ typedef struct ocl_device_s {
     int64_t clock_frequency;  // MHz
     int64_t global_memory;    // size in bytes
     int64_t local_memory;     // size in bytes
+    int64_t max_const_args;   // maximum number of constant args
     int64_t compute_units;    // max compute units, see: *** below
     int64_t max_groups;       // max number of work groups, see: ** below
     int64_t dimensions;       // dimensionality of work items
