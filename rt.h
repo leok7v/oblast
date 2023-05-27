@@ -1,5 +1,7 @@
 #pragma once
 #include <assert.h>
+#include <stdio.h>
+#include <ctype.h>
 #include <float.h>
 #include <malloc.h>
 #include <math.h>

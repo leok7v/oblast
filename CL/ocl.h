@@ -13,6 +13,8 @@ enum { ocl_fpp16 = 0, ocl_fpp32 = 1, ocl_fpp64 = 2 };
 extern const char* ocl_fpp_names[3];
 extern const int   ocl_fpp_bytes[3]; // { 2, 4, 8 }
 
+// TODO: since ocl.h exposes opencl.h no need to warp
+//                                    types to exra layer of abstraction
 typedef struct ocl_device_id_s* ocl_device_id_t;
 typedef struct ocl_memory_s*    ocl_memory_t;
 typedef struct ocl_program_s*   ocl_program_t;
@@ -168,18 +170,21 @@ typedef struct ocl_if {
     ocl_context_t (*open)(int32_t ix, ocl_override_t* ocl_override);
     bool (*is_profiling)(ocl_context_t* c);
     // pinned memory with CL_MEM_ALLOC_HOST_PTR
+    ocl_memory_t (*alloc)(ocl_context_t* c, int access, size_t bytes);
     ocl_memory_t (*allocate)(ocl_context_t* c, int access, size_t bytes);
-    void (*flush)(ocl_context_t* c); // all queued command to GPU
-    void (*finish)(ocl_context_t* c); // waits for all commands to finish
+    // alloc() may return null, allocate() fatal if null
     void (*deallocate)(ocl_memory_t m);
+    // TODO: alloc() that returns null instead of being fatal
     // ocl_map_read  - host will read data written by GPU
     // ocl_map_write - host will write data that GPU will read
     void* (*map)(ocl_context_t* c, int mapping, ocl_memory_t m,
         size_t offset, size_t bytes);
     // memory must be unmapped before the kernel is executed
     void (*unmap)(ocl_context_t* c, ocl_memory_t m, const void* address);
-    ocl_program_t (*compile_program)(ocl_context_t* c, const char* code,
-        size_t bytes, const char* options);
+    // compile() with log != null may return null, with log == null
+    // any error is fatal.
+    ocl_program_t (*compile)(ocl_context_t* c, const char* code,
+        size_t bytes, const char* options, char log[], int64_t log_capacity);
     ocl_kernel_t (*create_kernel)(ocl_program_t p, const char* name);
     void (*kernel_info)(ocl_context_t* c, ocl_kernel_t kernel,
         ocl_kernel_info_t* info);
@@ -187,9 +192,11 @@ typedef struct ocl_if {
     ocl_event_t (*enqueue_range_kernel)(ocl_context_t* c, ocl_kernel_t k,
         size_t groups, size_t items,
         int argc, ocl_arg_t argv[]);
-    void (*wait)(ocl_event_t* events, int count);
     // appends queued event to array of profiling events;
     ocl_profiling_t* (*profile_add)(ocl_context_t* c, ocl_event_t e);
+    void (*wait)(ocl_event_t* events, int count);
+    void (*flush)(ocl_context_t* c); // all queued command to GPU
+    void (*finish)(ocl_context_t* c); // waits for all commands to finish
     // must wait(&p->e, 1) or call .finish() before calling profile(p)
     void (*profile)(ocl_profiling_t* p);
     void (*retain_event)(ocl_event_t e);  // reference counter++

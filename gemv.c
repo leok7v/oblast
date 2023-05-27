@@ -229,6 +229,10 @@ static const char* gemv_program_options(ocl_context_t* c, int fpp) {
     static const char* type_t[] = {"half", "float", "double"};
     append("-D fp_t=%s -D vec4=%s4 -D fpp=%d ", type_t[fpp], type_t[fpp],
         ocl_fpp_bytes[fpp] * 8);
+    append("-D dot4=dot%dx4 ", fpp);
+    // for fp16_t dot(half4, half4) is not availabe.
+    // TODO: This needs to be dynamic check in ocl.create() context.
+    if (fpp != ocl_fpp16) { append("-D dot%dx4=dot ", fpp); }
     #pragma pop_macro("append")
     *p = 0;
 //  traceln("%s", options);
@@ -236,9 +240,9 @@ static const char* gemv_program_options(ocl_context_t* c, int fpp) {
 }
 
 static ocl_program_t gemv_compile(ocl_context_t* c, int fpp,
-        const void* code, int bytes) {
+        const void* code, int64_t bytes) {
     const char* opts = gemv_program_options(c, fpp);
-    return ocl.compile_program(c, code, bytes, opts);
+    return ocl.compile(c, code, bytes, opts, null, 0);
 }
 
 static void gemv_init(ocl_context_t* c) {
@@ -260,6 +264,13 @@ static void gemv_init(ocl_context_t* c) {
     for (int fpp = ocl_fpp16; fpp <= ocl_fpp64; fpp++) {
         if (p[fpp] != null) {
             gemv_kernel[fpp] = ocl.create_kernel(p[fpp], gemv_kernel_name[fpp]);
+#if XXX
+            int64_t max_sub_group_size_for_ndrange = 0;
+            r = clGetKernelSubGroupInfo((cl_kernel)gemv_kernel[fpp],
+                (cl_device_id)ocl.devices[c->ix].id,
+                CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE,
+                sizeof(int64_t), &max_sub_group_size_for_ndrange, 0, null, null);
+#endif // TODO
             ocl.release_program(p[fpp]);
         }
     }
@@ -293,7 +304,6 @@ static fp32_t init_mx1(int32_t j, int32_t i) {
 }
 
 static void tests() {
-    ocl.init();
     static ocl_profiling_t p[4096];
     // profiling measurement:
     for (int i = 0; i < ocl.count; i++) {
@@ -333,27 +343,119 @@ static void tests() {
     }
 }
 
+// run with args: compile ..\gemv.cl ..\gemv
+
+static void compile(int32_t argc, const char* argv[]) {
+    fatal_if(argc != 4);
+    enum { source_max = 256 * 1024 };
+    char* source = malloc(source_max);
+    fatal_if(source == null);
+    FILE* f = fopen(argv[2], "r");
+    fatal_if(f == null, "failed to open file: %s", argv[2]);
+    int64_t source_bytes = (int64_t)fread(source, 1, source_max, f);
+    if (f != null) { fclose(f); }
+    int64_t binary_sizes[16] = {0};
+    for (int i = 0; i < ocl.count && source_bytes > 0; i++) {
+//      ocl.dump(i);
+        const ocl_device_t* d = &ocl.devices[i];
+        ocl_context_t c = ocl.open(i, null);
+        // fp32_t supported on most of GPU of interest
+        // Intel UHD Grphics GPU does not support doubles at all and reports
+        // double_fp_config == 0.
+        // fp16_t (half) is much trickier... because
+        // NVIDIA GeForce RTX 3080 Laptop GPU supports "half" w/o reporting cl_khr_fp16
+        // Intel UHD Grphics GPU supports "half" and reports cl_khr_fp16
+        // PS: Intel also supports and reports cl_khr_subgroup_extended_types,
+        //     NVIDIA is silent about its support if any TODO: investigate
+        int from = ocl_fpp16;
+        int to = d->double_fp_config == 0 ? ocl_fpp32 : ocl_fpp64;
+        for (int fpp = from; fpp <= to; fpp++) {
+            traceln("compile: %s for %s @ %s", argv[2], ocl_fpp_names[fpp], d->name);
+            traceln("");
+            ocl_program_t p = gemv_compile(&c, fpp, source, source_bytes);
+            if (p == null) {
+                traceln("failed to compile for %s: %s", ocl_fpp_names[fpp], argv[2]);
+            } else {
+                int64_t n = 0; // number of devices
+                fatal_if(clGetProgramInfo((cl_program)p, CL_PROGRAM_NUM_DEVICES,
+                    sizeof(n), &n, null) != 0);
+                fatal_if(n != 1, "should be compiled for single device");
+                int r = clGetProgramInfo((cl_program)p, CL_PROGRAM_BINARY_SIZES,
+                    sizeof(binary_sizes), binary_sizes, null);
+                if (r == 0 && n == 1 && binary_sizes[0] > 0) {
+                    byte_t* binary = (byte_t*)malloc(binary_sizes[0]);
+                    fatal_if(binary == null);
+                    fatal_if(clGetProgramInfo((cl_program)p, CL_PROGRAM_BINARIES,
+                            binary_sizes[0], &binary, null) != 0);
+                    fatal_if(binary_sizes[0] <= 0);
+                    char dn[256]; // device name
+                    strncpy(dn, d->name, countof(dn)); // first work only:
+                    if (strchr(dn, 0x20) != 0) { *strchr(dn, 0x20) = 0; }
+                    char* s = dn;
+                    while (*s != 0) { *s = (char)tolower(*s); s++; }
+                    char fn[256]; // file name
+                    snprintf(fn, countof(fn), "%s%d.%s.bin", argv[3],
+                        ocl_fpp_bytes[fpp] * 8, dn);
+                    f = fopen(fn, "wb");
+                    fatal_if(f == null, "failed to create file: %s", fn);
+                    int64_t written = (int64_t)fwrite(binary, 1, binary_sizes[0], f);
+                    fatal_if(written != binary_sizes[0]);
+                    fclose(f);
+                    // .bin suitable for clCreateProgramWithBinary() which is a bit
+                    // useless because it is device specific.
+                    // https://www.khronos.org/blog/offline-compilation-of-opencl-kernels-into-spir-v-using-open-source-tooling
+                    // can be used to create portable .spv SPIR-V binaries and load them
+                    // with clCreateProgramWithIL() call.
+                }
+            }
+        }
+        ocl.close(&c);
+    }
+    if (source_bytes <= 0) {
+        traceln("failed to read: %s", argv[2]);
+    }
+    free(source);
+}
+
 int32_t main(int32_t argc, const char* argv[]) {
     (void)argc; (void)argv;
-    tests();
+    ocl.init();
+    if (argc > 1 && strcmp(argv[1], "compile") == 0) {
+        if (argc == 4) {
+            compile(argc, argv);
+        } else {
+            traceln("compile source binary\nNot enough arguments.");
+        }
+    } else {
+        tests();
+    }
 }
 
 #if 0
  groups x items NVIDIA GeForce RTX 3080 Laptop GPU
 
- No significant differences detected of groups/items configurations
+ No significant differences detected of groups/items configurat gions
 
- 64x256
+  g64xi256 (groups x items)
     n: 16384 m: 65536 groups: 64 items: 256 compute units: 48
     16384x65536 gpu: 24.454ms GFlops: 87.817
-    16384x65536 gpu: 384.664 avx: 189.613 ms
-  128x128
+    16384xg6553i6 gpu: 384.664 avx: 189.613 ms
+  g128xi128
     n: 16384 m: 65536 groups: 128 items: 128 compute units: 48
     16384x65536 gpu: 23.764ms GFlops: 90.367
-    16384x65536 gpu: 385.562 avx: 185.405 ms
-  256x64
+    16384xg6553i6 gpu: 385.562 avx: 185.405 ms
+  g256xi64
     n: 16384 m: 65536 groups: 256 items: 64 compute units: 48
     16384x65536 gpu: 23.496ms GFlops: 91.399
     16384x65536 gpu: 386.828 avx: 187.998 ms NVIDIA GeForce RT
+
+  - GFlops for now:
+
+  30720x61440 NVIDIA GeForce RTX 3080 Laptop GPU
+     groups: 64 items: 480 compute units: 48
+     gpu: 26.023ms GFlops: 145.060
+     gpu: 790.689 avx: 343.893 ms
+     // inaccurate rounding errors:
+     delta: 14546 epsilon: 225 cpu[0]: 31170 gpu[0]: 16624
 
 #endif

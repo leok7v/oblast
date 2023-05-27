@@ -101,6 +101,12 @@ static void ocl_dispose_queue(ocl_context_t* c) {
 // https://streamhpc.com/blog/2013-02-03/opencl-basics-flags-for-the-creating-memory-objects/
 // https://man.opencl.org/clCreateBuffer.html
 
+static ocl_memory_t ocl_alloc(ocl_context_t* c, int access, size_t bytes) {
+    cl_int r = 0;
+    cl_mem m = clCreateBuffer(c->c, access|CL_MEM_ALLOC_HOST_PTR, bytes, null, &r);
+    return (ocl_memory_t)m;
+}
+
 static ocl_memory_t ocl_allocate(ocl_context_t* c, int access, size_t bytes) {
     cl_int r = 0;
     cl_mem m = clCreateBuffer(c->c, access|CL_MEM_ALLOC_HOST_PTR, bytes, null, &r);
@@ -127,8 +133,9 @@ static void  ocl_unmap(ocl_context_t* c, ocl_memory_t m, const void* a) {
         0, null, null));
 }
 
-static ocl_program_t ocl_compile_program(ocl_context_t* c,
-        const char* code, size_t bytes, const char* options) {
+static ocl_program_t ocl_compile(ocl_context_t* c,
+        const char* code, size_t bytes, const char* options,
+        char log[], int64_t log_capacity) {
     cl_int r = 0;
     cl_program p = clCreateProgramWithSource(c->c, 1, &code, &bytes, &r);
     not_null(p, r);
@@ -137,14 +144,40 @@ static ocl_program_t ocl_compile_program(ocl_context_t* c,
     r = clBuildProgram(p, 1, &device_id, options, /*notify:*/ null, // sync
         /* user_data: */null);
     if (r != 0) {
-        static char log[16 * 1024];
+        char log_on_stack[16 * 1024];
+        if (log == null || log_capacity <= 0) {
+            log_capacity = countof(log_on_stack);
+            log = log_on_stack;
+        }
         log[0] = 0;
-        // clGetProgramBuildInfo() returns invalid param if compiler crash
-        (void)clGetProgramBuildInfo(p, device_id, CL_PROGRAM_BUILD_LOG,
-            countof(log), log, null); // ignore errors
-        traceln("%s", log);
+        int e = 0; // result of clGetProgramBuildInfo()
+        if (log_capacity > 1024) {
+            char* s = log;
+            int64_t k = snprintf(s, log_capacity,
+                "clBuildProgram() failed %s\n", ocl.error(r));
+            s += k; log_capacity -= k;
+            e = clGetProgramBuildInfo(p, device_id, CL_PROGRAM_BUILD_LOG,
+                log_capacity, s, null);
+            k = strlen(s);
+            s += k; log_capacity -= k;
+            if (e != 0 && log_capacity > 128) {
+                k = strlen(log);
+                snprintf(s, log_capacity - k,
+                    "clGetProgramBuildInfo(CL_PROGRAM_BUILD_LOG) "
+                    "failed %s\n", ocl.error(e));
+            }
+        }
+        if (log == log_on_stack) {
+            traceln("%s", log);
+            if (e != 0) {
+                traceln("WARNING: clGetProgramBuildInfo(CL_PROGRAM_BUILD_LOG) "
+                        "failed %s", ocl.error(e));
+            }
+            fatal_if(clBuildProgram, "clBuildProgram() failed %s", ocl.error(r));
+        }
+        call(clReleaseProgram((cl_program)p));
+        p = null; // no reason to hold on to the program that did not build
     }
-    fatal_if(r != 0, "clBuildProgram() failed %s", ocl.error(r));
     return (ocl_program_t)p;
 }
 
@@ -343,6 +376,43 @@ static const char* ocl_error(int r) {
     return error;
 }
 
+#if 0
+static const char* ocl_test_half       = ocl_enable_half   ocl_kernel_copy(half);
+static const char* ocl_test_half4      = ocl_enable_half   ocl_kernel_copy(half4);
+static const char* ocl_test_half16     = ocl_enable_half   ocl_kernel_copy(half16);
+static const char* ocl_test_dot_half4  = ocl_enable_half   ocl_kernel_dot(half4);
+static const char* ocl_test_dot_half16 = ocl_enable_half   ocl_kernel_dot(half16);
+static const char* ocl_test_double     = ocl_enable_double ocl_kernel_copy(double);
+static const char* ocl_test_double4    = ocl_enable_double ocl_kernel_dot(double4);
+
+static bool ocl_is_supported(ocl_context_t* c, const char* sc, const char* opt) {
+    char log[16 * 1024];
+    ocl_program_t p = ocl.compile(c, sc, strlen(sc), opt, log, countof(log));
+    bool b = p != null;
+    if (b) {
+        ocl.release_program(p);
+    } else {
+        traceln("%s\n%s\n", sc, log);
+    }
+    return b;
+}
+
+static void ocl_features(int dix) {
+//  ocl.dump(dix);
+    ocl_context_t c = ocl.open(dix, null);
+    traceln("%s", ocl.devices[dix].name);
+    ocl_is_supported(&c, code, "-D fpp=16");
+
+//  ocl_is_supported(&c, ocl_test_half,       "-D fpp=16");
+//  ocl_is_supported(&c, ocl_test_half4,      "-D fpp=16");
+//  ocl_is_supported(&c, ocl_test_half16,     "-D fpp=16");
+//  ocl_is_supported(&c, ocl_test_dot_half4,  "-D fpp=16");
+//  ocl_is_supported(&c, ocl_test_dot_half16, "-D fpp=16");
+//  ocl_is_supported(&c, ocl_test_double,     "-D fpp=64");
+//  ocl_is_supported(&c, ocl_test_double4,    "-D fpp=64");
+    ocl.close(&c);
+}
+#endif
 // TODO: need two test kernels: one for half (including half4 and half16) another for double
 //       because both features are completely misreported by AMD, Intel and NVIDIA
 //       or at least there is no accurate way to report them that is found
@@ -415,6 +485,7 @@ static void ocl_init(void) {
 //                  d->fp_config &= ~ocl_fp64;
 //              }
                 ocl.count++;
+//              ocl_features(ocl.count - 1);
             }
         }
     }
@@ -487,11 +558,12 @@ ocl_if ocl = {
     .open = ocl_open,
     .is_profiling = ocl_is_profiling,
     .error = ocl_error,
+    .alloc = ocl_alloc,
     .allocate = ocl_allocate,
     .deallocate = ocl_deallocate,
     .map = ocl_map,
     .unmap = ocl_unmap,
-    .compile_program = ocl_compile_program,
+    .compile = ocl_compile,
     .create_kernel = ocl_create_kernel,
     .kernel_info = ocl_kernel_info,
     .enqueue_range_kernel = ocl_enqueue_range_kernel,

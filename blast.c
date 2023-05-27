@@ -294,7 +294,7 @@ static ocl_program_t blast_compile(blast_t* b, int fpp,
         const void* code, int bytes) {
 //  traceln("\nfpp: %s\n%*.*s\n\n", ocl_fpp_names[fpp], bytes, bytes, code);
     const char* opts = blast_program_options(b, fpp);
-    return ocl.compile_program(b->c, code, bytes, opts);
+    return ocl.compile(b->c, code, bytes, opts, null, 0);
 }
 
 static void blast_init(blast_t* b, ocl_context_t* c) {

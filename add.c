@@ -90,22 +90,79 @@ static void x_add_y(ocl_context_t* c, ocl_kernel_t k,
     }
 }
 
+
+
+#define ocl_stringize(p) #p
+
+#define ocl_enable_half                                        \
+    "#if __OPENCL_VERSION__ <= CL_VERSION_1_1 && fpp == 16 \n" \
+    "#pragma OPENCL EXTENSION cl_khr_fp64: enable          \n" \
+    "#endif                                                \n"
+
+#define ocl_enable_double                                       \
+    "#if __OPENCL_VERSION__ <= CL_VERSION_1_1 && fpp == 64  \n" \
+    "#pragma OPENCL EXTENSION cl_khr_fp64: enable           \n" \
+    "#endif                                                 \n"
+
+#define ocl_code(headers, p) headers #p
+
+// 1. preprocessor tokenizer will eat out whitespaces except \n
+// this will make it a bit easier to locate error when CL compiler reports
+// them. But otherwise \n are not necessary and it is easier to write code
+// free hand like this without stringizing every line.
+// 2. halfs are really tricky on OpenCL. half h = 1.0h; h += 1.0h; is no go
+// bit dot(half4, half4) works which is important because it might be SIMD
+// on some GPU devices.
+
+static const char* sc = ocl_code( ocl_enable_half ocl_enable_double,
+\n
+void test_half(const half* p, const half* q, const half* r) {                 \n
+    float fp = vload_half(0, p);                                              \n
+    float fq = vload_half(0, q);                                              \n
+    vstore_half(fp + fq, 0, r);                                               \n
+}                                                                             \n
+                                                                              \n
+void test_half4(const half4* p, const half4* q, const half4* r) {             \n
+    float4 fp = vload_half4(0, p);                                            \n
+    float4 fq = vload_half4(0, q);                                            \n
+    vstore_half(dot(fp, fq), 0, r);                                           \n
+}                                                                             \n
+                                                                              \n
+void test_half16(const half16* p, const half16* q, const half16* r) {         \n
+    float16 fp = vload_half16(0, p);                                          \n
+    float16 fq = vload_half16(0, q);                                          \n
+    (void)fp;                                                                 \n
+    (void)fq;                                                                 \n
+    vstore_half16(fma(fp, fq, (float16)0), 0, r);                             \n
+}                                                                             \n
+                                                                              \n
+__kernel void x_add_y(__global const float* x,                                \n
+                      __global const float* y,                                \n
+                      __global float* z) {                                    \n
+    int i = get_global_id(0);                                                 \n
+    z[i] = x[i] + y[i];                                                       \n
+}                                                                             \n
+
+);
+
 #define kernel_name "x_add_y"
 
 static int test(ocl_context_t* c, int64_t n) {
     int result = 0;
-    static const char* code =
-    "__kernel void " kernel_name "(__global const float* x, "
-    "                              __global const float* y, "
-    "                              __global float* z) {\n"
-    "    int i = get_global_id(0);\n"
-    "    z[i] = x[i] + y[i];\n"
-    "}\n";
-    ocl_program_t p = ocl.compile_program(c, code, strlen(code), null);
+//  static const char* sc = // source code
+//  "__kernel void " kernel_name "(__global const float* x, "
+//  "                              __global const float* y, "
+//  "                              __global float* z) {\n"
+//  "    int i = get_global_id(0);\n"
+//  "    z[i] = x[i] + y[i];\n"
+//  "}\n";
+    traceln("%s\n", sc);
+    ocl_program_t p = ocl.compile(c, sc, strlen(sc), null, null, 0);
     ocl_kernel_t k = ocl.create_kernel(p, kernel_name);
-    ocl_memory_t mx = ocl.allocate(c, ocl_allocate_write, n * sizeof(float));
-    ocl_memory_t my = ocl.allocate(c, ocl_allocate_write, n * sizeof(float));
-    ocl_memory_t mz = ocl.allocate(c, ocl_allocate_read,  n * sizeof(float));
+    const int64_t bytes = n * sizeof(fp32_t);
+    ocl_memory_t mx = ocl.allocate(c, ocl_allocate_write, bytes);
+    ocl_memory_t my = ocl.allocate(c, ocl_allocate_write, bytes);
+    ocl_memory_t mz = ocl.allocate(c, ocl_allocate_read,  bytes);
     x_add_y(c, k, mx, my, mz, n, true);
     enum { M = 128 }; // measurements
     for (int i = 0; i < M; i++) {
