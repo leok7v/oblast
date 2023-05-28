@@ -44,9 +44,10 @@ static void gemv(ocl_context_t* c, int fpp,
 //           m == 0 || (m & (m - 1)) != 0,
 //           "n: %d n: %d both must be power of 2", n, m);
     if (ocl.is_profiling(c)) { c->ov->profiling_count = 0; }
-    const int64_t compute_units   = ocl.devices[c->ix].compute_units;
-    const int64_t local_bytes     = ocl.devices[c->ix].local_memory;
-    const int64_t max_groups      = ocl.devices[c->ix].max_groups;
+    ocl_device_t* d = &ocl.devices[c->ix];
+    const int64_t compute_units   = d->compute_units;
+    const int64_t local_bytes     = d->local_memory;
+    const int64_t max_groups      = d->max_groups;
     const int64_t max_local_items = local_bytes / ocl_fpp_bytes[fpp];
     const int64_t max_items       =
         min(ocl.devices[c->ix].max_items[0], max_local_items);
@@ -70,12 +71,13 @@ static void gemv(ocl_context_t* c, int fpp,
     traceln("n: %d m: %d groups: %lld items: %lld compute units: %lld",
         n, m, groups, items, compute_units);
     assert(groups <= max_groups && items <= max_items && groups * items == n);
+    int64_t local_items = items * (d->max_subgroups == 0 ? 1 : d->max_subgroups);
     ocl_kernel_t k = gemv_kernel[fpp];
     ocl_arg_t a[] =
         {{&mx,  sizeof(ocl_memory_t)},
          {&vc,  sizeof(ocl_memory_t)},
          {&rs,  sizeof(ocl_memory_t)},
-         {null, items * sizeof(fp32_t)}, // wc
+         {null, local_items * sizeof(fp32_t)}, // wc
          {&n,   sizeof(int32_t)},
          {&m,   sizeof(int32_t)}
     };
@@ -306,10 +308,12 @@ static fp32_t init_mx1(int32_t j, int32_t i) {
 static void tests() {
     static ocl_profiling_t p[4096];
     // profiling measurement:
-    for (int i = 0; i < ocl.count; i++) {
+    for (int i = 1; i < ocl.count; i++) {
 //      ocl.dump(i);
         const ocl_device_t* d = &ocl.devices[i];
         ocl_override_t ov = {
+//.max_groups = 2,
+//.max_items = 8,
             .profiling = p,
             .max_profiling_count = countof(p),
             .profiling_count = 0
@@ -320,9 +324,9 @@ static void tests() {
         traceln("");
         gemv_init(&c);
         verbose = true; // set to true if crashes
-//      test(&c, 2, 3, init_vc0, init_mx0, d->name);
-        test(&c, 16, 32, init_vc0, init_mx0, d->name);
-#if 0
+        test(&c, 2, 3, init_vc0, init_mx0, d->name);
+        test(&c, 8, 16, init_vc0, init_mx0, d->name);
+        test(&c, 1024, 1024, init_vc1, init_mx1, d->name);
         test(&c, 1024, 1024, init_vc1, init_mx1, d->name);
         test(&c, 4 * 1024,  4 * 1024, init_vc1, init_mx1, d->name);
         test(&c, 4 * 1024, 16 * 1024, init_vc1, init_mx1, d->name); // GPT-J 6b inermost gemv()
@@ -339,8 +343,9 @@ static void tests() {
             test(&c, 30 * 1024, 60 * 1024, init_vc1, init_mx1, d->name);
             unchecked--;
             traceln("==================================================");
+        } else {
+            test(&c, 32 * 1024, 2 * 1024, init_vc1, init_mx1, d->name); // GPT-J 6b inermost gemv()
         }
-#endif
         gemv_fini(&c);
         ocl.close(&c);
     }
