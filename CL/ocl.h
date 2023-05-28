@@ -71,12 +71,14 @@ typedef struct ocl_device_s {
     int64_t max_const_args;   // maximum number of constant args
     int64_t compute_units;    // max compute units, see: *** below
     int64_t max_groups;       // max number of work groups, see: ** below
+    int64_t max_subgroups;    // max number of subgroups
     int64_t dimensions;       // dimensionality of work items
     int64_t max_items[3];     // max work items in a group per dimension
     int32_t flavor;           // GPU manufacturer - tricky, could be a mix
     int32_t fp_config;
     int64_t double_fp_config;
     int64_t float_fp_config;
+    int64_t subgroup_ifp;     // bool: independent forward progress
     char    extensions[4096]; // use strstr(extensions, "cl_khr_fp16")
 } ocl_device_t;
 

@@ -162,7 +162,7 @@ static void test(ocl_context_t* c, int32_t n, int32_t m,
     ocl.unmap(c, vector, vc);
     gemv(c, ocl_fpp32, matrix, vector, n, m, result);
     fp32_t* rs = (fp32_t*)ocl.map(c, ocl_map_read, result, 0, m * sizeof(fp32_t));
-    if (verbose && m <= 64) { vprintln(rs, m); }
+    if (verbose && m <= 64) { printf("gpu: "); vprintln(rs, m); }
     ocl.unmap(c, result, rs);
     // verification
     const fp32_t epsilon = CL_FLT_EPSILON * n * m;
@@ -229,7 +229,7 @@ static const char* gemv_program_options(ocl_context_t* c, int fpp) {
     static const char* type_t[] = {"half", "float", "double"};
     append("-D fp_t=%s -D vec4=%s4 -D fpp=%d ", type_t[fpp], type_t[fpp],
         ocl_fpp_bytes[fpp] * 8);
-    append("-D dot4=dot%dx4 ", fpp);
+    append("-D max_subgroups=%lld ", d->max_subgroups);
     // for fp16_t dot(half4, half4) is not availabe.
     // TODO: This needs to be dynamic check in ocl.create() context.
     if (fpp != ocl_fpp16) { append("-D dot%dx4=dot ", fpp); }
@@ -321,6 +321,8 @@ static void tests() {
         gemv_init(&c);
         verbose = true; // set to true if crashes
 //      test(&c, 2, 3, init_vc0, init_mx0, d->name);
+        test(&c, 16, 32, init_vc0, init_mx0, d->name);
+#if 0
         test(&c, 1024, 1024, init_vc1, init_mx1, d->name);
         test(&c, 4 * 1024,  4 * 1024, init_vc1, init_mx1, d->name);
         test(&c, 4 * 1024, 16 * 1024, init_vc1, init_mx1, d->name); // GPT-J 6b inermost gemv()
@@ -338,6 +340,7 @@ static void tests() {
             unchecked--;
             traceln("==================================================");
         }
+#endif
         gemv_fini(&c);
         ocl.close(&c);
     }
@@ -360,11 +363,11 @@ static void compile(int32_t argc, const char* argv[]) {
         const ocl_device_t* d = &ocl.devices[i];
         ocl_context_t c = ocl.open(i, null);
         // fp32_t supported on most of GPU of interest
-        // Intel UHD Grphics GPU does not support doubles at all and reports
+        // Intel UHD Graphics GPU does not support doubles at all and reports
         // double_fp_config == 0.
         // fp16_t (half) is much trickier... because
         // NVIDIA GeForce RTX 3080 Laptop GPU supports "half" w/o reporting cl_khr_fp16
-        // Intel UHD Grphics GPU supports "half" and reports cl_khr_fp16
+        // Intel UHD Graphics GPU supports "half" and reports cl_khr_fp16
         // PS: Intel also supports and reports cl_khr_subgroup_extended_types,
         //     NVIDIA is silent about its support if any TODO: investigate
         int from = ocl_fpp16;

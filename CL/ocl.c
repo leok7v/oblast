@@ -465,9 +465,12 @@ static void ocl_init(void) {
                 get_val(CL_DEVICE_MAX_CONSTANT_ARGS,        d->max_const_args);
                 get_val(CL_DEVICE_MAX_COMPUTE_UNITS,        d->compute_units);
                 get_val(CL_DEVICE_MAX_WORK_GROUP_SIZE,      d->max_groups);
+                get_val(CL_DEVICE_MAX_NUM_SUB_GROUPS,       d->max_subgroups);
                 get_val(CL_DEVICE_DOUBLE_FP_CONFIG,         d->double_fp_config);
                 get_val(CL_DEVICE_SINGLE_FP_CONFIG,         d->float_fp_config);
                 get_val(CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, d->dimensions);
+                get_val(CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS,
+                                                            d->subgroup_ifp);
                 call(d->dimensions > countof(d->max_items));
                 get_val(CL_DEVICE_MAX_WORK_ITEM_SIZES, d->max_items);
                 d->fp_config = 0;
@@ -544,6 +547,9 @@ static void ocl_dump(int ix) {
     traceln("local_memory:     %lld bytes", d->local_memory);
     traceln("max_const_args:   %lld", d->max_const_args);
     traceln("max_groups:       %lld", d->max_groups);
+    traceln("max_subgroups:    %lld", d->max_subgroups);
+    
+    traceln("subgroup_ifp:     %lld", d->subgroup_ifp);
     traceln("dimensions:       %lld", d->dimensions);
     const int64_t* wi = d->max_items;
     traceln("max_items[]:     {%lld %lld %lld}", wi[0], wi[1], wi[2]);
