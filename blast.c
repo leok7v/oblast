@@ -80,8 +80,8 @@ static void blast_dot_compact(int64_t groups, int64_t items,
         {&r->h,  sizeof(ocl_memory_t)}
     };
     double user = ocl.is_profiling(c) ? seconds() : 0;
-    ocl_event_t e = ocl.enqueue_range_kernel(c,
-        b->dot_c[fpp], groups, items, countof(args), args);
+    ocl_event_t e = ocl.enqueue_kernel(c,
+        b->dot_c[fpp], groups * items, countof(args), args);
     user = ocl.is_profiling(c) ? (seconds() - user) : 0;
     if (ocl.is_profiling(c)) {
         ocl_profiling_t* p = ocl.profile_add(c, e);
@@ -108,8 +108,8 @@ static void blast_dot_strided(int64_t groups, int64_t items,
         {&r->h,  sizeof(ocl_memory_t)}
     };
     double user = ocl.is_profiling(c) ? seconds() : 0;
-    ocl_event_t e = ocl.enqueue_range_kernel(c, b->dot_os[fpp],
-        groups, items, countof(args), args);
+    ocl_event_t e = ocl.enqueue_kernel(c, b->dot_os[fpp],
+        groups * items, countof(args), args);
     user = ocl.is_profiling(c) ? (seconds() - user) : 0;
     if (ocl.is_profiling(c)) {
         ocl_profiling_t* p = ocl.profile_add(c, e);
@@ -167,7 +167,7 @@ static fp64_t sum_and_finish(blast_memory_t* v, int64_t items, int64_t groups, i
             };
             ocl_kernel_t k = n % 2 == 0 ? b->sum_even[fpp] : b->sum_odd[fpp];
             double user = ocl.is_profiling(c) ? seconds() : 0;
-            ocl_event_t e = ocl.enqueue_range_kernel(c, k, groups, items,
+            ocl_event_t e = ocl.enqueue_kernel(c, k, groups * items,
                 countof(args), args);
             user = ocl.is_profiling(c) ? (seconds() - user) : 0;
             if (ocl.is_profiling(c)) {

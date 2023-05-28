@@ -191,9 +191,8 @@ typedef struct ocl_if {
     void (*kernel_info)(ocl_context_t* c, ocl_kernel_t kernel,
         ocl_kernel_info_t* info);
     // 1-dimensional range kernel: if items_in_work_group is 0 max is used
-    ocl_event_t (*enqueue_range_kernel)(ocl_context_t* c, ocl_kernel_t k,
-        size_t groups, size_t items,
-        int argc, ocl_arg_t argv[]);
+    ocl_event_t (*enqueue_kernel)(ocl_context_t* c, ocl_kernel_t k,
+        size_t elements, int argc, ocl_arg_t argv[]);
     // appends queued event to array of profiling events;
     ocl_profiling_t* (*profile_add)(ocl_context_t* c, ocl_event_t e);
     void (*wait)(ocl_event_t* events, int count);

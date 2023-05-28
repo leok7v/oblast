@@ -192,19 +192,14 @@ static ocl_kernel_t ocl_create_kernel(ocl_program_t p, const char* name) {
     return (ocl_kernel_t)k;
 }
 
-static ocl_event_t ocl_enqueue_range_kernel(ocl_context_t* c,
-        ocl_kernel_t k, size_t groups, size_t items_per_group,
-        int argc, ocl_arg_t argv[]) {
+static ocl_event_t ocl_enqueue_kernel(ocl_context_t* c,
+        ocl_kernel_t k, size_t elements, int argc, ocl_arg_t argv[]) {
     for (int i = 0; i < argc; i++) {
         call(clSetKernelArg((cl_kernel)k, i, argv[i].bytes, argv[i].p));
     }
     cl_event completion = null;
-    size_t total = groups * items_per_group;
-    ocl_device_t* d = &ocl.devices[c->ix]; (void)d;
-    assert((int64_t)groups <= d->max_groups);
-    assert((int64_t)items_per_group <= d->max_items[0]);
     call(clEnqueueNDRangeKernel((cl_command_queue)c->q, (cl_kernel)k,
-            1, null, &total, &items_per_group, 0, null, &completion));
+            1, null, &elements, null, 0, null, &completion));
     return (ocl_event_t)completion;
 }
 
@@ -548,7 +543,7 @@ static void ocl_dump(int ix) {
     traceln("max_const_args:   %lld", d->max_const_args);
     traceln("max_groups:       %lld", d->max_groups);
     traceln("max_subgroups:    %lld", d->max_subgroups);
-    
+
     traceln("subgroup_ifp:     %lld", d->subgroup_ifp);
     traceln("dimensions:       %lld", d->dimensions);
     const int64_t* wi = d->max_items;
@@ -572,7 +567,7 @@ ocl_if ocl = {
     .compile = ocl_compile,
     .create_kernel = ocl_create_kernel,
     .kernel_info = ocl_kernel_info,
-    .enqueue_range_kernel = ocl_enqueue_range_kernel,
+    .enqueue_kernel = ocl_enqueue_kernel,
     .wait = ocl_wait,
     .profile_add = ocl_profile_add,
     .profile = ocl_profile,

@@ -39,7 +39,7 @@ static void x_add_y(ocl_context_t* c, ocl_kernel_t k,
     assert(groups * items == n);
     if (ocl.is_profiling(c)) { c->ov->profiling_count = 0; }
     double time = seconds();
-    ocl_event_t done = ocl.enqueue_range_kernel(c, k, groups, items,
+    ocl_event_t done = ocl.enqueue_kernel(c, k, groups * items,
         countof(args), args);
     ocl_profiling_t* p = ocl.is_profiling(c) ? ocl.profile_add(c, done) : null;
     // flush() and finish() are unnecessary because ocl.wait(done)
