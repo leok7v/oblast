@@ -42,7 +42,9 @@ static void gemv(ocl_context_t* c, int fpp,
         uint32_t n, uint32_t m, ocl_memory_t rs) {
     if (ocl.is_profiling(c)) { c->ov->profiling_count = 0; }
     ocl_device_t* d = &ocl.devices[c->ix];
-    int64_t local_bytes = sizeof(fp32_t) * n *
+    // if n > max items per group GPU will run multiple groups:
+    int64_t items_per_group = min(d->max_items[0], n);
+    int64_t local_bytes = sizeof(fp32_t) * items_per_group *
         (d->max_subgroups == 0 ? 1 : d->max_subgroups);
     ocl_kernel_t k = gemv_kernel[fpp];
     fp64_t user = seconds();
@@ -280,7 +282,7 @@ static fp32_t init_mx1(int32_t j, int32_t i) {
 static void tests() {
     static ocl_profiling_t p[4096];
     // profiling measurement:
-    for (int i = 1; i < ocl.count; i++) {
+    for (int i = 0; i < ocl.count; i++) {
 //      ocl.dump(i);
         const ocl_device_t* d = &ocl.devices[i];
         ocl_override_t ov = {
@@ -297,7 +299,7 @@ static void tests() {
 //      test(&c, 2, 3, init_vc0, init_mx0, d->name);
 //      test(&c, 8, 16, init_vc0, init_mx0, d->name);
         test(&c, 1024, 1024, init_vc1, init_mx1, d->name);
-#if 0
+#if 1
         test(&c, 1024, 1024, init_vc1, init_mx1, d->name);
         test(&c, 1024, 1024, init_vc1, init_mx1, d->name);
         test(&c, 4 * 1024,  4 * 1024, init_vc1, init_mx1, d->name);

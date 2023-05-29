@@ -40,9 +40,9 @@
     <ClCompile Include="..\CL\ocl.c">
       <Filter>CL</Filter>
     </ClCompile>
-    <ClCompile Include="..\tests.c" />
     <ClCompile Include="..\blast.c" />
     <ClCompile Include="..\dot.c" />
+    <ClCompile Include="..\blast_tests.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\CL\cl_bind.inc">

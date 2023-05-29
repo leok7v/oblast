@@ -153,10 +153,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\blast.c" />
+    <ClCompile Include="..\blast_tests.c" />
     <ClCompile Include="..\CL\ocl.c" />
     <ClCompile Include="..\dot.c" />
     <ClCompile Include="..\rt.c" />
-    <ClCompile Include="..\tests.c" />
     <ClInclude Include="..\blast.h" />
     <ClInclude Include="..\cl\cl.h" />
     <ClInclude Include="..\cl\cl_platform.h" />
