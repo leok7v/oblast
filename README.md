@@ -44,11 +44,13 @@ https://chromium.googlesource.com/external/llvm.org/clang/+/google/stable/test/S
 
 
 https://registry.khronos.org/OpenCL/sdk/3.0/docs/man/html/mathFunctions.html
+
 We use the generic type name gentype to indicate that the function can take 
-    float, float2, float3, float4, float8, float16, 
-    double [1], double2, double3, double4, double8 or double16 
+    ```float, float2, float3, float4, float8, float16,``` 
+    ```double [1], double2, double3, double4, double8 or double16``` 
 as the type for the arguments:
 
+```
 gentype fma(gentype a, gentype b, gentype c)
 c + a * b
 gentype mad(gentype a, gentype b, gentype c)
@@ -56,9 +58,12 @@ a * b + c
 gentype half_divide(gentype x, gentype y)
 gentype native_divide(gentype x, gentype y)
 gentype half_recip(gentype x) 1 / x
+```
 
 https://registry.khronos.org/OpenCL/specs/3.0-unified/html/OpenCL_Ext.html
+
 5.2.4 Geometric Functions
+```
 half and half{2|3|4}
 half dot (gentype p0, gentype p1)
 
@@ -81,7 +86,7 @@ mad() (Multiply-Add):
 * Supports only floating-point data types.
 * Provides a basic multiply-add operation without additional features like handling special cases or precise rounding.
 * Suitable for general-purpose arithmetic calculations.
-
+```
 
 In summary, fma() is more powerful and versatile, supporting both 
 floating-point and integer types with better accuracy and rounding control. 
