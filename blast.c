@@ -281,7 +281,7 @@ static void blast_init(blast_t* b, ocl_context_t* c) {
     fatal_if(r != 0 || code == null || bytes64 == 0, "blast.cl in blast.rc?");
     fatal_if(bytes64 > INT_MAX, "blast.cl %lld bytes", bytes64);
     int bytes = (int)bytes64;
-    const bool has_fp16 = (d->fp_config & ocl_fp16) != 0;
+    const bool has_fp16 = (d->float_fp_config & ocl_fp_half) != 0;
     const bool has_fp64 =  d->double_fp_config != 0;
     ocl_program_t p[3] = {
         has_fp16 ? blast_compile(b, ocl_fpp16, code, bytes) : null,
@@ -321,7 +321,7 @@ static void blast_fini(blast_t* b) {
     ocl_device_t* d = &ocl.devices[b->c->ix];
     // all known GPU support at least fp32_t but many do not support
     // fp16_t and/or fp64_t
-    int from = (d->fp_config & ocl_fp16) != 0 ? ocl_fpp16 : ocl_fpp32;
+    int from = (d->float_fp_config & ocl_fp_half) != 0 ? ocl_fpp16 : ocl_fpp32;
     int to   =  d->double_fp_config != 0 ? ocl_fpp64 : ocl_fpp32;
     for (int fp = from; fp <= to; fp++) {
         ocl.release_kernel(b->sum_odd[fp]);

@@ -9,6 +9,7 @@
       <Filter>rt</Filter>
     </ClCompile>
     <ClCompile Include="..\dot.c" />
+    <ClCompile Include="..\gemv_tests.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\cl\cl.h">
@@ -30,6 +31,7 @@
       <Filter>rt</Filter>
     </ClInclude>
     <ClInclude Include="..\dot.h" />
+    <ClInclude Include="..\gemv.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CL">

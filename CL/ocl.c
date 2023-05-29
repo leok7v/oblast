@@ -381,49 +381,31 @@ static const char* ocl_error(int r) {
     return error;
 }
 
-#if 0
-static const char* ocl_test_half       = ocl_enable_half   ocl_kernel_copy(half);
-static const char* ocl_test_half4      = ocl_enable_half   ocl_kernel_copy(half4);
-static const char* ocl_test_half16     = ocl_enable_half   ocl_kernel_copy(half16);
-static const char* ocl_test_dot_half4  = ocl_enable_half   ocl_kernel_dot(half4);
-static const char* ocl_test_dot_half16 = ocl_enable_half   ocl_kernel_dot(half16);
-static const char* ocl_test_double     = ocl_enable_double ocl_kernel_copy(double);
-static const char* ocl_test_double4    = ocl_enable_double ocl_kernel_dot(double4);
-
-static bool ocl_is_supported(ocl_context_t* c, const char* sc, const char* opt) {
+static void ocl_check_fp16_support(int dix) {
+    ocl_context_t c = ocl.open(dix, null);
+    static const char* sc = // .cl source code
+    "#pragma OPENCL EXTENSION cl_khr_fp16: enable                                        "
+    "                                                                                    "
+    "__kernel                                                                            "
+    "void mul16(__global const half* x, __global const half* y, __global float* r) {     "
+    "    *r = vload_half(0, x) + vload_half(0, y);                                       "
+    "}                                                                                   "
+    "                                                                                    "
+    "__kernel                                                                            "
+    "void dot16(__global const half4* x, __global const half4* y, __global float* r) {   "
+    "    *r = dot(vload_half4(0, x), vload_half4(0, y));                                   "
+    "}";
     char log[16 * 1024];
-    ocl_program_t p = ocl.compile(c, sc, strlen(sc), opt, log, countof(log));
+    ocl_program_t p = ocl.compile(&c, sc, strlen(sc), null, log, countof(log));
     bool b = p != null;
     if (b) {
+        ocl.devices[dix].float_fp_config |= ocl_fp_half;
         ocl.release_program(p);
     } else {
         traceln("%s\n%s\n", sc, log);
     }
-    return b;
-}
-
-static void ocl_features(int dix) {
-//  ocl.dump(dix);
-    ocl_context_t c = ocl.open(dix, null);
-    traceln("%s", ocl.devices[dix].name);
-    ocl_is_supported(&c, code, "-D fpp=16");
-
-//  ocl_is_supported(&c, ocl_test_half,       "-D fpp=16");
-//  ocl_is_supported(&c, ocl_test_half4,      "-D fpp=16");
-//  ocl_is_supported(&c, ocl_test_half16,     "-D fpp=16");
-//  ocl_is_supported(&c, ocl_test_dot_half4,  "-D fpp=16");
-//  ocl_is_supported(&c, ocl_test_dot_half16, "-D fpp=16");
-//  ocl_is_supported(&c, ocl_test_double,     "-D fpp=64");
-//  ocl_is_supported(&c, ocl_test_double4,    "-D fpp=64");
     ocl.close(&c);
 }
-#endif
-// TODO: need two test kernels: one for half (including half4 and half16) another for double
-//       because both features are completely misreported by AMD, Intel and NVIDIA
-//       or at least there is no accurate way to report them that is found
-//       in OpenCL specification (I did not find it, ChatGPT didn't find it,
-//       GPU f/w engineers who implemented OpenCL bindings clearly didn't find it too).
-//       Take sample kernel from add.c
 
 static void ocl_init(void) {
     #pragma push_macro("get_str")
@@ -478,22 +460,12 @@ static void ocl_init(void) {
                                                             d->subgroup_ifp);
                 call(d->dimensions > countof(d->max_items));
                 get_val(CL_DEVICE_MAX_WORK_ITEM_SIZES, d->max_items);
-                d->fp_config = 0;
-                d->fp_config |= ext("cl_khr_fp64") ? ocl_fp64 : 0;
-                d->fp_config |= ext("cl_khr_fp16") ? ocl_fp16 : 0;
                 d->flavor = 0;
                 d->flavor |= ext("_intel_") ? ocl_intel  : 0;
                 d->flavor |= ext("_nv_")    ? ocl_nvidia : 0;
                 d->flavor |= ext("_amd_")   ? ocl_amd    : 0;
-                if ((d->fp_config & ocl_fp16) == 0) {
-                    // NVIDIA does not report cl_khr_fp16 extension
-                    d->fp_config |= ocl_fp16; // but supports it
-                }
-//              if (ext("cl_intel_accelerator")) { // see note: ***
-//                  d->fp_config &= ~ocl_fp64;
-//              }
                 ocl.count++;
-//              ocl_features(ocl.count - 1);
+                ocl_check_fp16_support(ocl.count - 1);
             }
         }
     }
@@ -563,6 +535,100 @@ static void ocl_dump(int ix) {
     traceln("extensions:       %s", d->extensions);
 }
 
+// run with args: compile kernel.cl options...
+
+static void ocl_compiler(int argc, const char* argv[]) {
+    fatal_if(argc < 3);
+    enum { source_max = 256 * 1024 };
+    char* source = malloc(source_max);
+    fatal_if(source == null);
+    FILE* f = fopen(argv[2], "r");
+    fatal_if(f == null, "failed to open file: %s", argv[2]);
+    int64_t source_bytes = (int64_t)fread(source, 1, source_max, f);
+    if (f != null) { fclose(f); }
+    int optc = 0; // characters in options
+    for (int i = 3; i < argc; i++) { optc += (int)strlen(argv[i]) + 1; }
+    char* opt = optc > 0 ? alloca(optc + 1) : null;
+    if (opt != null) {
+        opt[0] = 0;
+        for (int i = 3; i < argc; i++) {
+            strcat(opt, argv[i]);
+            strcat(opt, "\x20"); // space
+        }
+    }
+    int64_t binary_sizes[16] = {0};
+    for (int i = 0; i < ocl.count && source_bytes > 0; i++) {
+//      ocl.dump(i);
+        const ocl_device_t* d = &ocl.devices[i];
+        ocl_context_t c = ocl.open(i, null);
+        // fp32_t supported on most of GPU of interest
+        // Intel UHD Graphics GPU does not support doubles at all and reports
+        // double_fp_config == 0.
+        // fp16_t (half) is much trickier... because
+        // NVIDIA GeForce RTX 3080 Laptop GPU supports "half" w/o reporting cl_khr_fp16
+        // Intel UHD Graphics GPU supports "half" and reports cl_khr_fp16
+        // PS: Intel also supports and reports cl_khr_subgroup_extended_types,
+        //     NVIDIA is silent about its support if any TODO: investigate
+        int from = ocl_fpp16;
+        int to = d->double_fp_config == 0 ? ocl_fpp32 : ocl_fpp64;
+        for (int fpp = from; fpp <= to; fpp++) {
+            traceln("compile: %s for %s @ %s", argv[2], ocl_fpp_names[fpp], d->name);
+            traceln("");
+            ocl_program_t p = ocl.compile(&c, source, source_bytes, opt, null, 0);
+            if (p == null) {
+                traceln("failed to compile for %s: %s", ocl_fpp_names[fpp], argv[2]);
+            } else {
+                int64_t n = 0; // number of devices
+                fatal_if(clGetProgramInfo((cl_program)p, CL_PROGRAM_NUM_DEVICES,
+                    sizeof(n), &n, null) != 0);
+                fatal_if(n != 1, "should be compiled for single device");
+                int r = clGetProgramInfo((cl_program)p, CL_PROGRAM_BINARY_SIZES,
+                    sizeof(binary_sizes), binary_sizes, null);
+                if (r == 0 && n == 1 && binary_sizes[0] > 0) {
+                    byte_t* binary = (byte_t*)malloc(binary_sizes[0]);
+                    fatal_if(binary == null);
+                    fatal_if(clGetProgramInfo((cl_program)p, CL_PROGRAM_BINARIES,
+                            binary_sizes[0], &binary, null) != 0);
+                    fatal_if(binary_sizes[0] <= 0);
+                    char dn[256]; // device name
+                    strncpy(dn, d->name, countof(dn)); // first work only:
+                    if (strchr(dn, 0x20) != 0) { *strchr(dn, 0x20) = 0; }
+                    char* s = dn;
+                    while (*s != 0) { *s = (char)tolower(*s); s++; }
+                    const char* fns = strrchr(argv[2], '\\'); // file name start
+                    if (fns == null) { fns = strrchr(argv[2], '/'); }
+                    if (fns == null) { fns = argv[2]; } else { fns++; }
+                    // argv[2]="foo/bar/kernel.cl" fns == "kernel.cl"
+                    const char* fne = strrchr(fns, '.');
+                    if (fne == null) { fne = fns + strlen(fns); }
+                    // fne == ".cl"
+                    int fnc = (int)(fne - fns); // number of characters in filename
+                    char fn[256]; // file name
+                    snprintf(fn, countof(fn), "%.*s%d.%s.bin", fnc, fns,
+                        ocl_fpp_bytes[fpp] * 8, dn);
+                    f = fopen(fn, "wb");
+                    fatal_if(f == null, "failed to create file: %s", fn);
+                    int64_t written = (int64_t)fwrite(binary, 1, binary_sizes[0], f);
+                    fatal_if(written != binary_sizes[0]);
+                    fclose(f);
+                    free(binary);
+                    // .bin suitable for clCreateProgramWithBinary() which is a bit
+                    // useless because it is device specific.
+                    // https://www.khronos.org/blog/offline-compilation-of-opencl-kernels-into-spir-v-using-open-source-tooling
+                    // can be used to create portable .spv SPIR-V binaries and load them
+                    // with clCreateProgramWithIL() call.
+                }
+            }
+        }
+        ocl.close(&c);
+    }
+    if (source_bytes <= 0) {
+        traceln("failed to read: %s", argv[2]);
+    }
+    free(source);
+}
+
+
 ocl_if ocl = {
     .init = ocl_init,
     .dump = ocl_dump,
@@ -589,6 +655,7 @@ ocl_if ocl = {
     .flush = ocl_flush,
     .finish = ocl_finish,
     .close = ocl_close,
+    .compiler = ocl_compiler,
     .devices = ocl_devices
 };
 

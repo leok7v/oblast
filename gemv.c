@@ -1,12 +1,4 @@
-#include "rt.h"
-#include "ocl.h"
-#include "dot.h"
-
-static ocl_kernel_t gemv_kernel[3]; // TODO: move to gemv_context_t
-static bool verbose = true;
-static bool unchecked;
-
-enum { KB = 1024, MB = 1024 * KB, GB = 1024 * MB };
+#include "gemv.h"
 
 static fp64_t avg_time;
 static fp64_t avg_user;
@@ -37,158 +29,51 @@ static void mprintln(const fp32_t* mx, const int32_t n, const int32_t m) {
     }
 }
 
-static void gemv(ocl_context_t* c, int fpp,
+static void ocl_gemv(gemv_t* g, int fpp, int64_t offset,
         ocl_memory_t mx, ocl_memory_t vc,
-        uint32_t n, uint32_t m, ocl_memory_t rs) {
-    if (ocl.is_profiling(c)) { c->ov->profiling_count = 0; }
-    ocl_device_t* d = &ocl.devices[c->ix];
+        ocl_memory_t rs, int64_t n, int64_t m) {
+    (void) offset; // TODO: use it
+    if (ocl.is_profiling(g->c)) { g->c->ov->profiling_count = 0; }
+    ocl_device_t* d = &ocl.devices[g->c->ix];
     // if n > max items per group GPU will run multiple groups:
     int64_t items_per_group = min(d->max_items[0], n);
     int64_t local_bytes = sizeof(fp32_t) * items_per_group *
         (d->max_subgroups == 0 ? 1 : d->max_subgroups);
-    ocl_kernel_t k = gemv_kernel[fpp];
+    // row width in fp_t or vec4 of fpXX_t elements
+    const int64_t width = n % 4 == 0 ? n / 4 : n;
+    ocl_kernel_t k = width != n ? g->kernel4x[fpp] : g->kernel[fpp];
     fp64_t user = seconds();
-    ocl_event_t done = ocl.enqueue(c, k, n,
-        &mx,  sizeof(ocl_memory_t),
-        &vc,  sizeof(ocl_memory_t),
-        &rs,  sizeof(ocl_memory_t),
-        null, local_bytes, // shared memory for all work-items inside group
-        &n,   sizeof(int32_t),
-        &m,   sizeof(int32_t),
+    ocl_event_t done = ocl.enqueue(g->c, k, width,
+        &mx,    sizeof(ocl_memory_t),
+        &vc,    sizeof(ocl_memory_t),
+        &rs,    sizeof(ocl_memory_t),
+        null,   local_bytes, // shared memory for all work-items inside group
+        &width, sizeof(int32_t),
+        &m,     sizeof(int32_t),
         null, 0
     );
-    if (ocl.is_profiling(c)) { ocl.profile_add(c, done); }
-    ocl.finish(c);
+    if (ocl.is_profiling(g->c)) { ocl.profile_add(g->c, done); }
+    ocl.finish(g->c);
+    ocl.release_event(done);
     user = seconds() - user;
     gpu_time = min(gpu_time, user);
-    if (ocl.is_profiling(c)) {
-        ocl_profiling_t* p = &c->ov->profiling[0];
+    if (ocl.is_profiling(g->c)) {
+        ocl_profiling_t* p = &g->c->ov->profiling[0];
         p[0].count  = m;      // kernel invocations
         p[0].fops   = n * 2U; // + and * fp32_t operation each
         p[0].i32ops = n * 2U; // + and * int32_t operation each
-        ocl.release_event(p[0].e);
         ocl.profile(&p[0]);
-        for (int i = 1; i < c->ov->profiling_count; i++) {
-            p[i].count  = m;     // kernel invocations
-            p[i].fops   = n * 2; // + and * fp32_t operation each
-            p[i].i32ops = n * 2; // + and * int32_t operation each
-            ocl.release_event(p[i].e);
-            ocl.profile(&p[i]);
-            p[0].time   += p[i].time;
-            p[0].user   += p[i].user;
-            p[0].gflops += p[i].gflops;
-            p[0].i32ops += p[i].i64ops;
-            p[0].i64ops += p[i].i64ops;
-        }
-        p->gflops /= c->ov->profiling_count;
-        p->i32ops /= c->ov->profiling_count;
-        p->i64ops /= c->ov->profiling_count;
         if (n > 64 && m > 64) {
             traceln("%dx%d gpu: %6.3fms GFlops: %6.3f",
-                    n, m, p->time * MSEC_IN_SEC, p->gflops);
+                    n, m, p[0].time * MSEC_IN_SEC, p[0].gflops);
         }
         avg_time += p->time;
         avg_gflops += p->gflops;
     }
 }
 
-// (*) note: https://github.com/sschaetz/nvidia-opencl-examples/blob/master/OpenCL/src/oclMatVecMul/oclMatVecMul.cpp#L223
-
-static void test(ocl_context_t* c, int32_t n, int32_t m,
-                 fp32_t (*init_vc)(int32_t i),
-                 fp32_t (*init_mx)(int32_t j, int32_t i),
-                 const char* name) {
-    gpu_time = DBL_MAX;
-    avx_time = DBL_MAX;
-    ocl_memory_t matrix = ocl.allocate(c, ocl_allocate_write, m * n * sizeof(fp32_t));
-    ocl_memory_t vector = ocl.allocate(c, ocl_allocate_write,     n * sizeof(fp32_t));
-    ocl_memory_t result = ocl.allocate(c, ocl_allocate_read,      m * sizeof(fp32_t));
-    fp32_t* mx = (fp32_t*)ocl.map(c, ocl_map_write, matrix, 0, m * n * sizeof(fp32_t));
-    fp32_t* vc = (fp32_t*)ocl.map(c, ocl_map_write, vector, 0,     n * sizeof(fp32_t));
-    fp32_t* p = mx;
-    for (int32_t i = 0; i < n; i++) {
-        vc[i] = init_vc(i);
-    }
-    for (int32_t j = 0; j < m; j++) {
-        for (int32_t i = 0; i < n; i++) {
-            *p++ = init_mx(j, i);
-        }
-    }
-    fp32_t* avx = (fp32_t*)alloca(m * sizeof(fp32_t));
-    fatal_if(avx == null);
-    fp64_t user = seconds();
-    for (int32_t j = 0; j < m; j++) {
-        avx[j] = (fp32_t)dot32(vc, 1, &mx[j * n], 1, n);
-    }
-    user = seconds() - user;
-    avx_time = min(avx_time, user);
-    fp32_t* verify = (fp32_t*)alloca(m * sizeof(fp32_t));
-    fatal_if(verify == null);
-    for (int32_t j = 0; j < m; j++) {
-        fp32_t sum = 0;
-        for (int32_t i = 0; i < n; i++) { sum += vc[i] * mx[j * n + i]; }
-        verify[j] = sum;
-    }
-    if (verbose) {
-        if (n <= 64) { printf("vc: "); vprintln(vc, n); }
-        if (n <= 64 && m < 50) { printf("mx:\n"); mprintln(mx, n, m); }
-        if (m <= 64) { printf("cpu: "); vprintln(verify, m); }
-    }
-    ocl.unmap(c, matrix, mx);
-    ocl.unmap(c, vector, vc);
-    gemv(c, ocl_fpp32, matrix, vector, n, m, result);
-    fp32_t* rs = (fp32_t*)ocl.map(c, ocl_map_read, result, 0, m * sizeof(fp32_t));
-    if (verbose && m <= 64) { printf("gpu: "); vprintln(rs, m); }
-    ocl.unmap(c, result, rs);
-    // verification
-    const fp32_t epsilon = CL_FLT_EPSILON * n * m;
-    if (!unchecked) {
-        for (int32_t j = 0; j < m; j++) {
-            fp64_t delta = fabs(verify[j] - rs[j]);
-            fatal_if(delta > epsilon, "delta: %g epsilon: %g cpu[%d]: %g gpu[%d]: %g",
-                delta, epsilon, j, verify[j], j, rs[j]);
-            delta = fabs(verify[j] - avx[j]);
-            fatal_if(delta > epsilon, "delta: %g epsilon: %g cpu[%d]: %g avx[%d]: %g",
-                delta, epsilon, j, verify[j], j, avx[j]);
-            delta = fabs(rs[j] - avx[j]);
-            fatal_if(delta > epsilon, "delta: %g epsilon: %g avx[%d]: %g gpu[%d]: %g",
-                delta, epsilon, j, avx[j], j, rs[j]);
-        }
-    } else {
-        for (int32_t j = 0; j < m; j++) {
-            fp64_t delta = fabs(verify[j] - rs[j]);
-            if (delta > epsilon) {
-                traceln("delta: %g epsilon: %g cpu[%d]: %g gpu[%d]: %g",
-                         delta, epsilon, j, verify[j], j, rs[j]);
-                break;
-            }
-            delta = fabs(verify[j] - avx[j]);
-            if (delta > epsilon)  {
-                traceln("delta: %g epsilon: %g cpu[%d]: %g avx[%d]: %g",
-                         delta, epsilon, j, verify[j], j, avx[j]);
-                break;
-            }
-            delta = fabs(rs[j] - avx[j]);
-            if (delta > epsilon) {
-                traceln("delta: %g epsilon: %g avx[%d]: %g gpu[%d]: %g",
-                         delta, epsilon, j, avx[j], j, rs[j]);
-                break;
-            }
-        }
-    }
-    // cleanup
-    ocl.deallocate(result);
-    ocl.deallocate(vector);
-    ocl.deallocate(matrix);
-    if (n > 64 && m > 64) {
-        traceln("%dx%d gpu: %6.3f avx: %6.3f ms %s", n, m,
-            gpu_time * MSEC_IN_SEC, avx_time * MSEC_IN_SEC,
-            name);
-    }
-}
-
-static const char* gemv_program_options(ocl_context_t* c, int fpp) {
-    const ocl_device_t* d = &ocl.devices[c->ix];
+static const char* gemv_program_options(gemv_t* g, int fpp) {
+    const ocl_device_t* d = &ocl.devices[g->c->ix];
     static char options[4096];
     char* p = options;
     #pragma push_macro("append")
@@ -199,29 +84,32 @@ static const char* gemv_program_options(ocl_context_t* c, int fpp) {
     } while (0)
     append("-D int16_t=short -D uint16_t=ushort ");
     append("-D int32_t=int   -D uint32_t=uint ");
-    append("-D int64_t=long  -D uint64_t=ilong ");
+    append("-D int64_t=long  -D uint64_t=ulong ");
     append("-D fp16_t=half -D fp32_t=float -D fp64_t=double ");
     append("-cl-std=CL%d.%d ", d->c_version_major, d->c_version_minor);
-    static const char* type_t[] = {"half", "float", "double"};
-    append("-D fp_t=%s -D vec4=%s4 -D fpp=%d ", type_t[fpp], type_t[fpp],
-        ocl_fpp_bytes[fpp] * 8);
+    static const char* type_t[] = {"half",  "float", "double"};
+    static const char* fpmx_t[] = {"float", "float", "double"}; // fpmx_t sum += ...
+    append("-D fp_t=%s -D fpmx_t=%s -D fpmx4_t=%s4 -D fpp=%d ",
+        type_t[fpp], fpmx_t[fpp], fpmx_t[fpp], ocl_fpp_bytes[fpp] * 8);
+    append("-D fp16x4_t=half4 -D fp32x4_t=float4 -D fp64x4_t=double4 ");
+    append("-D vec4_t=%s4 ", type_t[fpp]);
     append("-D max_subgroups=%lld ", d->max_subgroups);
-    // for fp16_t dot(half4, half4) is not availabe.
-    // TODO: This needs to be dynamic check in ocl.create() context.
-    if (fpp != ocl_fpp16) { append("-D dot%dx4=dot ", fpp); }
     #pragma pop_macro("append")
     *p = 0;
 //  traceln("%s", options);
     return options;
 }
 
-static ocl_program_t gemv_compile(ocl_context_t* c, int fpp,
+static ocl_program_t gemv_compile(gemv_t* g, int fpp,
         const void* code, int64_t bytes) {
-    const char* opts = gemv_program_options(c, fpp);
-    return ocl.compile(c, code, bytes, opts, null, 0);
+    const char* opts = gemv_program_options(g, fpp);
+    return ocl.compile(g->c, code, bytes, opts, null, 0);
 }
 
-static void gemv_init(ocl_context_t* c) {
+
+static void gemv_init(gemv_t* g, ocl_context_t* c) {
+    memset(g, 0, sizeof(*g));
+    g->c = c;
     ocl_device_t* d = &ocl.devices[c->ix];
     void* code = null;
     int64_t bytes64 = 0;
@@ -229,216 +117,76 @@ static void gemv_init(ocl_context_t* c) {
     fatal_if(r != 0 || code == null || bytes64 == 0, "is gemv.cl in gemv.rc?");
     fatal_if(bytes64 > INT_MAX, "blast.cl %lld bytes", bytes64);
     int bytes = (int)bytes64;
-    const bool has_fp16 = (d->fp_config & ocl_fp16) != 0 && false; // xxx
-    const bool has_fp64 =  d->double_fp_config != 0 && false; // xxx
+    const bool has_fp16 = true; // TODO: ? strstr(d->ext, "cl_khr_fp16") != null;
+    const bool has_fp32 = d->float_fp_config  != 0;
+    const bool has_fp64 = d->double_fp_config != 0;
     ocl_program_t p[3] = {
-        has_fp16 ? gemv_compile(c, ocl_fpp16, code, bytes) : null,
-                   gemv_compile(c, ocl_fpp32, code, bytes),
-        has_fp64 ? gemv_compile(c, ocl_fpp64, code, bytes) : null
+        has_fp16 ? gemv_compile(g, ocl_fpp16, code, bytes) : null,
+        has_fp32 ? gemv_compile(g, ocl_fpp32, code, bytes) : null,
+        has_fp64 ? gemv_compile(g, ocl_fpp64, code, bytes) : null
     };
     static const char* gemv_kernel_name[] = {"gemv16", "gemv32", "gemv64"};
+    static const char* gemv_kernel4x_name[] = {"gemv16x4", "gemv32x4", "gemv64x4"};
     for (int fpp = ocl_fpp16; fpp <= ocl_fpp64; fpp++) {
         if (p[fpp] != null) {
-            gemv_kernel[fpp] = ocl.create_kernel(p[fpp], gemv_kernel_name[fpp]);
-#if XXX
-            int64_t max_sub_group_size_for_ndrange = 0;
-            r = clGetKernelSubGroupInfo((cl_kernel)gemv_kernel[fpp],
-                (cl_device_id)ocl.devices[c->ix].id,
-                CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE,
-                sizeof(int64_t), &max_sub_group_size_for_ndrange, 0, null, null);
-#endif // TODO
+            g->kernel[fpp] = ocl.create_kernel(p[fpp], gemv_kernel_name[fpp]);
+            g->kernel4x[fpp] = ocl.create_kernel(p[fpp], gemv_kernel4x_name[fpp]);
+            // TODO: x16
             ocl.release_program(p[fpp]);
         }
     }
 }
 
-static void gemv_fini() {
+static void gemv_fini(gemv_t* g) {
     for (int fpp = ocl_fpp16; fpp <= ocl_fpp64; fpp++) {
-        if (gemv_kernel[fpp] != null) {
-            ocl.release_kernel(gemv_kernel[fpp]);
-            gemv_kernel[fpp] = null;
+        if (g->kernel[fpp] != null) {
+            ocl.release_kernel(g->kernel[fpp]);
+            ocl.release_kernel(g->kernel4x[fpp]);
+            // TODO: x16
+            g->kernel[fpp] = null;
+            g->kernel4x[fpp] = null;
         }
     }
+    g->c = null;
 }
 
-static fp32_t init_vc0(int32_t i) {
-    return (fp32_t)(i + 1);
+#pragma warning(disable: 4100) // TODO: remove me
+
+void ocl_gemv16(gemv_t* g, int64_t offset, ocl_memory_t mx,
+    ocl_memory_t vc, ocl_memory_t rs, int64_t n, int64_t m) {
+    ocl_gemv(g, ocl_fpp16, offset, mx, vc, rs, n, m);
 }
 
-static fp32_t init_mx0(int32_t j, int32_t i) {
-    return (fp32_t)((j + 1) * 10 + (i + 1));
+void ocl_gemv32(gemv_t* g, int64_t offset, ocl_memory_t mx,
+    ocl_memory_t vc, ocl_memory_t rs, int64_t n, int64_t m) {
+    ocl_gemv(g, ocl_fpp32, offset, mx, vc, rs, n, m);
 }
 
-static fp32_t init_vc1(int32_t i) {
-    fp32_t v = (fp32_t)(i + 1);
-    return 1.0f + v / (fp32_t)(1U << 20);
+void ocl_gemv64(gemv_t* g, int64_t offset, ocl_memory_t mx,
+    ocl_memory_t vc, ocl_memory_t rs, int64_t n, int64_t m) {
+    ocl_gemv(g, ocl_fpp64, offset, mx, vc, rs, n, m);
 }
 
-static fp32_t init_mx1(int32_t j, int32_t i) {
-    fp32_t v = (fp32_t)((j + 1) * 10 + (i + 1));
-    return 1.0f + v / (fp32_t)(1ULL << 60);
+// testing convenience (slow performs copy to/from GPU memory):
+void gemv16(gemv_t* g, fp16_t mx[/*m][n*/], fp32_t vc[/*n*/], fp32_t rs[/*n*/],
+    int64_t n, int64_t m) {
 }
 
-static void tests() {
-    static ocl_profiling_t p[4096];
-    // profiling measurement:
-    for (int i = 0; i < ocl.count; i++) {
-//      ocl.dump(i);
-        const ocl_device_t* d = &ocl.devices[i];
-        ocl_override_t ov = {
-            .profiling = p,
-            .max_profiling_count = countof(p),
-            .profiling_count = 0
-        };
-        ocl_context_t c = ocl.open(i, &ov);
-        traceln("");
-        traceln("%s", d->name);
-        traceln("");
-        gemv_init(&c);
-        verbose = true; // set to true if crashes
-//      test(&c, 2, 3, init_vc0, init_mx0, d->name);
-//      test(&c, 8, 16, init_vc0, init_mx0, d->name);
-        test(&c, 1024, 1024, init_vc1, init_mx1, d->name);
-#if 1
-        test(&c, 1024, 1024, init_vc1, init_mx1, d->name);
-        test(&c, 1024, 1024, init_vc1, init_mx1, d->name);
-        test(&c, 4 * 1024,  4 * 1024, init_vc1, init_mx1, d->name);
-        test(&c, 4 * 1024, 16 * 1024, init_vc1, init_mx1, d->name); // GPT-J 6b inermost gemv()
-        // only run on NVIDIA GPU. Intel UHD Graphics GPU reports 16GB as global memory
-        // but cannot allocate any of this huge memory chunks
-        if (strstr(d->vendor, "NVIDIA") != null) {
-            test(&c, 16 * 1024, 64 * 1024, init_vc1, init_mx1, d->name);
-            traceln("--------------------------------------------------");
-            // GPT-J 6b [16K, 4K, 7] * [4K, 7] 7 is probably dimension of word embedding?
-            // 32*64 = 2048M x sizeof(fp32_t) = 8GB
-            // use 30x60 instead to fit into 8GB of GPU memory
-            // the accumulated error is too big to check:
-            unchecked++;
-            test(&c, 30 * 1024, 60 * 1024, init_vc1, init_mx1, d->name);
-            unchecked--;
-            traceln("==================================================");
-        } else {
-            test(&c, 32 * 1024, 2 * 1024, init_vc1, init_mx1, d->name); // GPT-J 6b inermost gemv()
-        }
-#endif
-        gemv_fini(&c);
-        ocl.close(&c);
-    }
+void gemv32(gemv_t* g, fp32_t mx[/*m][n*/], fp32_t vc[/*n*/], fp32_t rs[/*n*/],
+    int64_t n, int64_t m) {
 }
 
-// run with args: compile ..\gemv.cl ..\gemv
-
-static void compile(int32_t argc, const char* argv[]) {
-    fatal_if(argc != 4);
-    enum { source_max = 256 * 1024 };
-    char* source = malloc(source_max);
-    fatal_if(source == null);
-    FILE* f = fopen(argv[2], "r");
-    fatal_if(f == null, "failed to open file: %s", argv[2]);
-    int64_t source_bytes = (int64_t)fread(source, 1, source_max, f);
-    if (f != null) { fclose(f); }
-    int64_t binary_sizes[16] = {0};
-    for (int i = 0; i < ocl.count && source_bytes > 0; i++) {
-//      ocl.dump(i);
-        const ocl_device_t* d = &ocl.devices[i];
-        ocl_context_t c = ocl.open(i, null);
-        // fp32_t supported on most of GPU of interest
-        // Intel UHD Graphics GPU does not support doubles at all and reports
-        // double_fp_config == 0.
-        // fp16_t (half) is much trickier... because
-        // NVIDIA GeForce RTX 3080 Laptop GPU supports "half" w/o reporting cl_khr_fp16
-        // Intel UHD Graphics GPU supports "half" and reports cl_khr_fp16
-        // PS: Intel also supports and reports cl_khr_subgroup_extended_types,
-        //     NVIDIA is silent about its support if any TODO: investigate
-        int from = ocl_fpp16;
-        int to = d->double_fp_config == 0 ? ocl_fpp32 : ocl_fpp64;
-        for (int fpp = from; fpp <= to; fpp++) {
-            traceln("compile: %s for %s @ %s", argv[2], ocl_fpp_names[fpp], d->name);
-            traceln("");
-            ocl_program_t p = gemv_compile(&c, fpp, source, source_bytes);
-            if (p == null) {
-                traceln("failed to compile for %s: %s", ocl_fpp_names[fpp], argv[2]);
-            } else {
-                int64_t n = 0; // number of devices
-                fatal_if(clGetProgramInfo((cl_program)p, CL_PROGRAM_NUM_DEVICES,
-                    sizeof(n), &n, null) != 0);
-                fatal_if(n != 1, "should be compiled for single device");
-                int r = clGetProgramInfo((cl_program)p, CL_PROGRAM_BINARY_SIZES,
-                    sizeof(binary_sizes), binary_sizes, null);
-                if (r == 0 && n == 1 && binary_sizes[0] > 0) {
-                    byte_t* binary = (byte_t*)malloc(binary_sizes[0]);
-                    fatal_if(binary == null);
-                    fatal_if(clGetProgramInfo((cl_program)p, CL_PROGRAM_BINARIES,
-                            binary_sizes[0], &binary, null) != 0);
-                    fatal_if(binary_sizes[0] <= 0);
-                    char dn[256]; // device name
-                    strncpy(dn, d->name, countof(dn)); // first work only:
-                    if (strchr(dn, 0x20) != 0) { *strchr(dn, 0x20) = 0; }
-                    char* s = dn;
-                    while (*s != 0) { *s = (char)tolower(*s); s++; }
-                    char fn[256]; // file name
-                    snprintf(fn, countof(fn), "%s%d.%s.bin", argv[3],
-                        ocl_fpp_bytes[fpp] * 8, dn);
-                    f = fopen(fn, "wb");
-                    fatal_if(f == null, "failed to create file: %s", fn);
-                    int64_t written = (int64_t)fwrite(binary, 1, binary_sizes[0], f);
-                    fatal_if(written != binary_sizes[0]);
-                    fclose(f);
-                    // .bin suitable for clCreateProgramWithBinary() which is a bit
-                    // useless because it is device specific.
-                    // https://www.khronos.org/blog/offline-compilation-of-opencl-kernels-into-spir-v-using-open-source-tooling
-                    // can be used to create portable .spv SPIR-V binaries and load them
-                    // with clCreateProgramWithIL() call.
-                }
-            }
-        }
-        ocl.close(&c);
-    }
-    if (source_bytes <= 0) {
-        traceln("failed to read: %s", argv[2]);
-    }
-    free(source);
+void gemv64(gemv_t* g, fp64_t mx[/*m][n*/], fp64_t vc[/*n*/], fp64_t rs[/*n*/],
+    int64_t n, int64_t m) {
 }
 
-int32_t main(int32_t argc, const char* argv[]) {
-    (void)argc; (void)argv;
-    ocl.init();
-    if (argc > 1 && strcmp(argv[1], "compile") == 0) {
-        if (argc == 4) {
-            compile(argc, argv);
-        } else {
-            traceln("compile source binary\nNot enough arguments.");
-        }
-    } else {
-        tests();
-    }
-}
-
-#if 0
- groups x items NVIDIA GeForce RTX 3080 Laptop GPU
-
- No significant differences detected of groups/items configurat gions
-
-  g64xi256 (groups x items)
-    n: 16384 m: 65536 groups: 64 items: 256 compute units: 48
-    16384x65536 gpu: 24.454ms GFlops: 87.817
-    16384xg6553i6 gpu: 384.664 avx: 189.613 ms
-  g128xi128
-    n: 16384 m: 65536 groups: 128 items: 128 compute units: 48
-    16384x65536 gpu: 23.764ms GFlops: 90.367
-    16384xg6553i6 gpu: 385.562 avx: 185.405 ms
-  g256xi64
-    n: 16384 m: 65536 groups: 256 items: 64 compute units: 48
-    16384x65536 gpu: 23.496ms GFlops: 91.399
-    16384x65536 gpu: 386.828 avx: 187.998 ms NVIDIA GeForce RT
-
-  - GFlops for now:
-
-  30720x61440 NVIDIA GeForce RTX 3080 Laptop GPU
-     groups: 64 items: 480 compute units: 48
-     gpu: 26.023ms GFlops: 145.060
-     gpu: 790.689 avx: 343.893 ms
-     // inaccurate rounding errors:
-     delta: 14546 epsilon: 225 cpu[0]: 31170 gpu[0]: 16624
-
-#endif
+gemv_if gemv = {
+    .init = gemv_init,
+    .ocl_gemv16 = ocl_gemv16,
+    .ocl_gemv32 = ocl_gemv32,
+    .ocl_gemv64 = ocl_gemv64,
+    .gemv16 = gemv16,
+    .gemv32 = gemv32,
+    .gemv64 = gemv64,
+    .fini = gemv_fini
+};

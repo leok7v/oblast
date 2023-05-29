@@ -34,7 +34,7 @@ enum { // flavor (bitset because of collaboration and mixed solutions)
     // to be continued...
 };
 
-enum { // float_fp_config, doublefp_config bits
+enum { // float_fp_config, double_fp_config bits
     ocl_fp_denorm                        = (1 << 0),
     ocl_fp_inf_nan                       = (1 << 1),
     ocl_fp_round_to_nearest              = (1 << 2),
@@ -43,11 +43,7 @@ enum { // float_fp_config, doublefp_config bits
     ocl_fp_fma                           = (1 << 5),
     ocl_fp_soft_float                    = (1 << 6),
     ocl_fp_correctly_rounded_divide_sqrt = (1 << 7),
-};
-
-enum { // fp_config
-    ocl_fp16                             = (1 << 29),
-    ocl_fp64                             = (1 << 30)
+    ocl_fp_half                          = (1 << 31) // only in float_fp_config
 };
 
 // __kernel can use
@@ -75,7 +71,7 @@ typedef struct ocl_device_s {
     int64_t dimensions;       // dimensionality of work items
     int64_t max_items[3];     // max work items in a group per dimension
     int32_t flavor;           // GPU manufacturer - tricky, could be a mix
-    int32_t fp_config;
+//  int32_t fp_config;
     int64_t double_fp_config;
     int64_t float_fp_config;
     int64_t subgroup_ifp;     // bool: independent forward progress
@@ -202,6 +198,9 @@ typedef struct ocl_if {
     void  (*release_program)(ocl_program_t p);
     void  (*release_kernel)(ocl_kernel_t k);
     void (*close)(ocl_context_t* c);
+    // compiler("filename.cl") produces filename.intel|nvidia.bin file
+    // args: filename.cl -D option=value ....
+    void (*compiler)(int argc, const char* argv[]);
     ocl_device_t* devices;
     int32_t count;
 } ocl_if;

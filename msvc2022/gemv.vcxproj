@@ -157,6 +157,7 @@
     <ClCompile Include="..\dot.c" />
     <ClCompile Include="..\gemv.c" />
     <ClCompile Include="..\CL\ocl.c" />
+    <ClCompile Include="..\gemv_tests.c" />
     <ClCompile Include="..\rt.c" />
     <ClInclude Include="..\cl\cl.h" />
     <ClInclude Include="..\cl\cl_platform.h" />
@@ -164,6 +165,7 @@
     <ClInclude Include="..\CL\ocl.h" />
     <ClInclude Include="..\cl\opencl.h" />
     <ClInclude Include="..\dot.h" />
+    <ClInclude Include="..\gemv.h" />
     <ClInclude Include="..\rt.h" />
   </ItemGroup>
   <ItemGroup>
