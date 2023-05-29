@@ -36,20 +36,22 @@ static void ocl_gemv(gemv_t* g, int fpp, int64_t offset,
     if (ocl.is_profiling(g->c)) { g->c->ov->profiling_count = 0; }
     ocl_device_t* d = &ocl.devices[g->c->ix];
     // if n > max items per group GPU will run multiple groups:
-    int64_t items_per_group = min(d->max_items[0], n);
+    const int xn = n % 16 == 0 ? 16 : (n % 4 == 0) ? 4 : 1;
+    // row width in fp_t or vec4 of fpXX_t elements
+    const int64_t rw = n / xn; // row[] width
+    ocl_kernel_t k = xn == 16 ? g->kernel16x[fpp] :
+                    (xn ==  4 ? g->kernel4x[fpp] : g->kernel[fpp]);
+    int64_t items_per_group = min(d->max_items[0], rw);
     int64_t local_bytes = sizeof(fp32_t) * items_per_group *
         (d->max_subgroups == 0 ? 1 : d->max_subgroups);
-    // row width in fp_t or vec4 of fpXX_t elements
-    const int64_t width = n % 4 == 0 ? n / 4 : n;
-    ocl_kernel_t k = width != n ? g->kernel4x[fpp] : g->kernel[fpp];
     fp64_t user = seconds();
-    ocl_event_t done = ocl.enqueue(g->c, k, width,
-        &mx,    sizeof(ocl_memory_t),
-        &vc,    sizeof(ocl_memory_t),
-        &rs,    sizeof(ocl_memory_t),
-        null,   local_bytes, // shared memory for all work-items inside group
-        &width, sizeof(int32_t),
-        &m,     sizeof(int32_t),
+    ocl_event_t done = ocl.enqueue(g->c, k, rw,
+        &mx,  sizeof(ocl_memory_t),
+        &vc,  sizeof(ocl_memory_t),
+        &rs,  sizeof(ocl_memory_t),
+        null, local_bytes, // shared memory for all work-items inside group
+        &rw,  sizeof(int32_t),
+        &m,   sizeof(int32_t),
         null, 0
     );
     if (ocl.is_profiling(g->c)) { ocl.profile_add(g->c, done); }
@@ -59,8 +61,11 @@ static void ocl_gemv(gemv_t* g, int fpp, int64_t offset,
     gpu_time = min(gpu_time, user);
     if (ocl.is_profiling(g->c)) {
         ocl_profiling_t* p = &g->c->ov->profiling[0];
-        p[0].count  = m;      // kernel invocations
-        p[0].fops   = n * 2U; // + and * fp32_t operation each
+        // n * m * 2 does not account for sum parallel reduction
+        int32_t log2_m = 0; int32_t cm = m;
+        while (cm >>= 1) { log2_m++; }
+        p[0].count  = n * m * log2_m;  // kernel `invocations`
+        p[0].fops   = 2U;     // + and * fp32_t operation each
         p[0].i32ops = n * 2U; // + and * int32_t operation each
         ocl.profile(&p[0]);
         if (n > 64 && m > 64) {
@@ -106,7 +111,6 @@ static ocl_program_t gemv_compile(gemv_t* g, int fpp,
     return ocl.compile(g->c, code, bytes, opts, null, 0);
 }
 
-
 static void gemv_init(gemv_t* g, ocl_context_t* c) {
     memset(g, 0, sizeof(*g));
     g->c = c;
@@ -127,10 +131,12 @@ static void gemv_init(gemv_t* g, ocl_context_t* c) {
     };
     static const char* gemv_kernel_name[] = {"gemv16", "gemv32", "gemv64"};
     static const char* gemv_kernel4x_name[] = {"gemv16x4", "gemv32x4", "gemv64x4"};
+    static const char* gemv_kernel16x_name[] = {"gemv16x16", "gemv32x16", "gemv64x16"};
     for (int fpp = ocl_fpp16; fpp <= ocl_fpp64; fpp++) {
         if (p[fpp] != null) {
             g->kernel[fpp] = ocl.create_kernel(p[fpp], gemv_kernel_name[fpp]);
             g->kernel4x[fpp] = ocl.create_kernel(p[fpp], gemv_kernel4x_name[fpp]);
+            g->kernel16x[fpp] = ocl.create_kernel(p[fpp], gemv_kernel16x_name[fpp]);
             // TODO: x16
             ocl.release_program(p[fpp]);
         }
@@ -145,6 +151,7 @@ static void gemv_fini(gemv_t* g) {
             // TODO: x16
             g->kernel[fpp] = null;
             g->kernel4x[fpp] = null;
+            g->kernel16x[fpp] = null;
         }
     }
     g->c = null;

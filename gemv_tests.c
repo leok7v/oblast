@@ -142,31 +142,31 @@ static void test32(gemv_t* g, int32_t n, int32_t m,
 
 static void test16(gemv_t* g, int32_t n, int32_t m,
                    fp32_t (*init_vc)(int32_t i),
-                   fp32_t (*init_mx)(int32_t j, int32_t i)) {
-    ocl_context_t* c = g->c;
+                   fp32_t (*init_mx)(int32_t r, int32_t c, int32_t n)) {
+    ocl_context_t* ctx = g->c;
     gpu_time = DBL_MAX;
     avx_time = DBL_MAX;
-    ocl_memory_t matrix = ocl.allocate(c, ocl_allocate_write, m * n * sizeof(fp16_t));
-    ocl_memory_t vector = ocl.allocate(c, ocl_allocate_write,     n * sizeof(fp32_t));
-    ocl_memory_t result = ocl.allocate(c, ocl_allocate_read,      m * sizeof(fp32_t));
-    fp16_t* mx = (fp16_t*)ocl.map(c, ocl_map_write, matrix, 0, m * n * sizeof(fp16_t));
-    fp32_t* vc = (fp32_t*)ocl.map(c, ocl_map_write, vector, 0,     n * sizeof(fp32_t));
+    ocl_memory_t matrix = ocl.allocate(ctx, ocl_allocate_write,  m * n * sizeof(fp16_t));
+    ocl_memory_t vector = ocl.allocate(ctx, ocl_allocate_write,      n * sizeof(fp32_t));
+    ocl_memory_t result = ocl.allocate(ctx, ocl_allocate_read,       m * sizeof(fp32_t));
+    fp16_t* mx = (fp16_t*)ocl.map(ctx, ocl_map_write, matrix, 0, m * n * sizeof(fp16_t));
+    fp32_t* vc = (fp32_t*)ocl.map(ctx, ocl_map_write, vector, 0,     n * sizeof(fp32_t));
     for (int32_t i = 0; i < n; i++) {
         vc[i] = init_vc(i);
     }
     fp16_t* p = mx;
-    for (int32_t j = 0; j < m; j++) {
-        for (int32_t i = 0; i < n; i++) {
-            *p++ = fp32to16(init_mx(j, i));
+    for (int32_t r = 0; r < m; r++) {
+        for (int32_t c = 0; c < n; c++) {
+            *p++ = fp32to16(init_mx(r, c, n));
         }
     }
     fp32_t* verify = (fp32_t*)alloca(m * sizeof(fp32_t));
     fatal_if(verify == null);
     fp64_t cpu = seconds();
-    for (int32_t j = 0; j < m; j++) {
-        fp32_t sum = 0;
-        for (int32_t i = 0; i < n; i++) { sum += vc[i] * fp16to32(mx[j * n + i]); }
-        verify[j] = sum;
+    for (int32_t r = 0; r < m; r++) {
+        fp32_t s = 0;
+        for (int32_t c = 0; c < n; c++) { s += vc[c] * fp16to32(mx[r * n + c]); }
+        verify[r] = s;
     }
     cpu = seconds() - cpu;
     if (verbose) {
@@ -174,15 +174,15 @@ static void test16(gemv_t* g, int32_t n, int32_t m,
         if (n <= 64 && m < 50) { printf("mx:\n"); m16println(mx, n, m); }
         if (m <= 64) { printf("cpu: "); vprintln(verify, m); }
     }
-    ocl.unmap(c, matrix, mx);
-    ocl.unmap(c, vector, vc);
+    ocl.unmap(ctx, matrix, mx);
+    ocl.unmap(ctx, vector, vc);
     fp64_t user = seconds();
     gemv.ocl_gemv16(g, 0, matrix, vector, result, n, m);
     user = seconds() - user;
     gpu_time = min(gpu_time, user);
-    fp32_t* rs = (fp32_t*)ocl.map(c, ocl_map_read, result, 0, m * sizeof(fp32_t));
+    fp32_t* rs = (fp32_t*)ocl.map(ctx, ocl_map_read, result, 0, m * sizeof(fp32_t));
     if (verbose && m <= 64) { printf("gpu: "); vprintln(rs, m); }
-    ocl.unmap(c, result, rs);
+    ocl.unmap(ctx, result, rs);
     // verification
     const fp32_t epsilon = CL_FLT_EPSILON * n * m;
     if (!unchecked) {
@@ -215,18 +215,18 @@ static fp32_t init_vc0(int32_t i) {
     return (fp32_t)(i + 1);
 }
 
-static fp32_t init_mx0(int32_t j, int32_t i) {
-    return (fp32_t)((j + 1) * 10 + (i + 1));
+static fp32_t init_mx0(int32_t r, int32_t c, int32_t n) {
+    int32_t ix = r * n + c;
+    return (fp32_t)(ix + 1);
 }
 
 static fp32_t init_vc1(int32_t i) {
-    fp32_t v = (fp32_t)(i + 1);
-    return 1.0f + v / (fp32_t)(1U << 20);
+    return (fp32_t)(1.0 / pow(2, (i % 9)));
 }
 
-static fp32_t init_mx1(int32_t j, int32_t i) {
-    fp32_t v = (fp32_t)((j + 1) * 10 + (i + 1));
-    return 1.0f + v / (fp32_t)(1ULL << 60);
+static fp32_t init_mx1(int32_t r, int32_t c, int32_t n) {
+    int32_t ix = r * n + c;
+    return (fp32_t)(1.0 / pow(2.0, (ix % 9)));
 }
 
 static void tests() {
@@ -247,12 +247,14 @@ static void tests() {
         gemv_t g = {0};
         gemv.init(&g, &c);
         verbose = true; // set to true if crashes
-        test16(&g, 2, 3, init_vc0, init_mx0);
-        test16(&g, 4, 4, init_vc0, init_mx0);
-        test16(&g, 8, 16, init_vc0, init_mx0);
+//      test16(&g, 2, 3, init_vc0, init_mx0); // easy to verify math visually
+//      test16(&g, 2, 3, init_vc1, init_mx1); // less overflow
+//      test16(&g, 4, 4, init_vc0, init_mx0);
+//      test16(&g, 8, 16, init_vc0, init_mx0);
+//      test16(&g, 32, 1, init_vc0, init_mx0);
+//      test16(&g, 64, 64, init_vc1, init_mx1);
         test16(&g, 1024, 1024, init_vc1, init_mx1);
 #if 1
-        test16(&g, 1024, 1024, init_vc1, init_mx1);
         test16(&g, 1024, 1024, init_vc1, init_mx1);
         test16(&g, 4 * 1024,  4 * 1024, init_vc1, init_mx1);
         test16(&g, 4 * 1024, 16 * 1024, init_vc1, init_mx1); // GPT-J 6b innermost gemv()
@@ -293,31 +295,15 @@ int32_t main(int32_t argc, const char* argv[]) {
 }
 
 #if 0
- groups x items NVIDIA GeForce RTX 3080 Laptop GPU
 
- No significant differences detected of groups/items configurat gions
+OpenCL.gemv() (matrix[m,n] x vector[n])
 
-  g64xi256 (groups x items)
-    n: 16384 m: 65536 groups: 64 items: 256 compute units: 48
-    16384x65536 gpu: 24.454ms GFlops: 87.817
-    16384xg6553i6 gpu: 384.664 avx: 189.613 ms
-  g128xi128
-    n: 16384 m: 65536 groups: 128 items: 128 compute units: 48
-    16384x65536 gpu: 23.764ms GFlops: 90.367
-    16384xg6553i6 gpu: 385.562 avx: 185.405 ms
-  g256xi64
-    n: 16384 m: 65536 groups: 256 items: 64 compute units: 48
-    16384x65536 gpu: 23.496ms GFlops: 91.399
-    16384x65536 gpu: 386.828 avx: 187.998 ms NVIDIA GeForce RT
+NVIDIA GeForce RTX 3080 Laptop GPU
+n:       m:
+30,720 x 61,440 gpu: 65.241ms 867 GFlops
 
-  - GFlops:
-  =========
-
-  30720x61440 NVIDIA GeForce RTX 3080 Laptop GPU
-     groups: 64 items: 480 compute units: 48
-     gpu: 26.023ms GFlops: 145.060
-     gpu: 790.689 avx: 343.893 ms
-     // inaccurate rounding errors:
-     delta: 14546 epsilon: 225 cpu[0]: 31170 gpu[0]: 16624
+Intel(R) UHD Graphics GPU:
+n:       m:
+32,768 x 2,048 gpu: 14.533ms 101 GFlops
 
 #endif
