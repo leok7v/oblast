@@ -25,7 +25,9 @@ https://registry.khronos.org/OpenCL/specs/3.0-unified/html/OpenCL_API.html
 https://github.com/leok7v/OpenCL
 
 https://github.com/KhronosGroup/SPIR/issues/54
+
 OpenCL C 2.0 spec, section 6.9 paragraph k.
+
 "k. Arguments to kernel functions in a program cannot be declared with the built-in scalar
 types bool, half, size_t, ptrdiff_t, intptr_t, and uintptr_t or a struct
 and/or union that contain fields declared to be one of these built-in scalar types. The size
@@ -34,7 +36,9 @@ be different for the OpenCL device and the host processor making it difficult to
 buffer objects to be passed as arguments to a kernel declared as pointer to these types.
 half is not supported as half can be used as a storage format47 only and is not a data
 type on which floating-point arithmetic can be performed."
+
 --
+
 half is difficult:
 https://chromium.googlesource.com/external/llvm.org/clang/+/google/stable/test/SemaOpenCL/half.cl
 

@@ -123,6 +123,7 @@
       </DelayLoadDLLs>
       <AdditionalDependencies />
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
       <Command>
