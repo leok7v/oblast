@@ -60,16 +60,6 @@ static ocl_context_t ocl_open(int32_t ix, ocl_override_t* ov) {
     c.c = clCreateContext(properties, 1, &id, ocl_error_notify, null, &r);
     not_null(c.c, r);
     c.q = ocl_create_queue(&c, ocl.is_profiling(&c));
-    if (ov != null) {
-        ov->max_groups_restore = d->max_groups;
-        ov->max_items_restore  = d->max_items[0];
-        if (0 < ov->max_groups && ov->max_groups < d->max_groups) {
-            d->max_groups = ov->max_groups;
-        }
-        if (0 < ov->max_items && ov->max_items < d->max_items[0]) {
-            d->max_items[0] = ov->max_items;
-        }
-    }
     return c;
 }
 
@@ -192,15 +182,40 @@ static ocl_kernel_t ocl_create_kernel(ocl_program_t p, const char* name) {
     return (ocl_kernel_t)k;
 }
 
-static ocl_event_t ocl_enqueue_kernel(ocl_context_t* c,
-        ocl_kernel_t k, size_t elements, int argc, ocl_arg_t argv[]) {
+static ocl_event_t ocl_enqueue_args(ocl_context_t* c,
+        ocl_kernel_t k, int64_t n, int argc, ocl_arg_t argv[]) {
+    assert(n > 0);
     for (int i = 0; i < argc; i++) {
         call(clSetKernelArg((cl_kernel)k, i, argv[i].bytes, argv[i].p));
     }
-    cl_event completion = null;
+    size_t global_work_size = n;
+    cl_event done = null;
     call(clEnqueueNDRangeKernel((cl_command_queue)c->q, (cl_kernel)k,
-            1, null, &elements, null, 0, null, &completion));
-    return (ocl_event_t)completion;
+            1, null, &global_work_size, null, 0, null, &done));
+    return (ocl_event_t)done;
+}
+
+static ocl_event_t ocl_enqueue(ocl_context_t* c, ocl_kernel_t k, int64_t n,
+        ...) {
+    va_list vl;
+    va_start(vl, n);
+    int argc = 0;
+    for (;;) {
+        void* p = va_arg(vl, void*);
+        size_t bytes = va_arg(vl, size_t);
+        if (p == null && bytes == 0) { break; }
+        argc++;
+    }
+    va_end(vl);
+    typedef struct { void* p; size_t bytes; } argv_t;
+    ocl_arg_t* argv = (ocl_arg_t*)alloca(sizeof(argv_t) * argc);
+    va_start(vl, n);
+    for (int i = 0; i < argc; i++) {
+        argv[i].p = va_arg(vl, void*);
+        argv[i].bytes = va_arg(vl, size_t);
+    }
+    va_end(vl);
+    return ocl.enqueue_args(c, k, n, argc, argv);
 }
 
 static ocl_profiling_t* ocl_profile_add(ocl_context_t* c, ocl_event_t e) {
@@ -291,11 +306,6 @@ static void ocl_kernel_info(ocl_context_t* c, ocl_kernel_t kernel,
 static void ocl_close(ocl_context_t* c) {
     ocl_dispose_queue(c);
     call(clReleaseContext((cl_context)c->c));
-    if (c->ov != null) {
-        ocl_device_t* d = &ocl.devices[c->ix];
-        d->max_groups   = c->ov->max_groups_restore;
-        d->max_items[0] = c->ov->max_items_restore;
-    }
     c->c = null;
 }
 
@@ -567,7 +577,8 @@ ocl_if ocl = {
     .compile = ocl_compile,
     .create_kernel = ocl_create_kernel,
     .kernel_info = ocl_kernel_info,
-    .enqueue_kernel = ocl_enqueue_kernel,
+    .enqueue_args = ocl_enqueue_args,
+    .enqueue = ocl_enqueue,
     .wait = ocl_wait,
     .profile_add = ocl_profile_add,
     .profile = ocl_profile,

@@ -70,51 +70,50 @@ static void blast_unmap(blast_memory_t* bm) {
 // and where dot() optimizations may turn to be irrelevant and better
 // handled by AVX2/AVX512.
 
-static void blast_dot_compact(int64_t groups, int64_t items,
+static void blast_dot_compact(int64_t n,
         blast_memory_t* v0, blast_memory_t* v1, blast_memory_t* r, int fpp) {
     blast_t* b = v0->b;
     ocl_context_t* c = b->c;
-    ocl_arg_t args[] = {
-        {&v0->h, sizeof(ocl_memory_t)},
-        {&v1->h, sizeof(ocl_memory_t)},
-        {&r->h,  sizeof(ocl_memory_t)}
-    };
     double user = ocl.is_profiling(c) ? seconds() : 0;
-    ocl_event_t e = ocl.enqueue_kernel(c,
-        b->dot_c[fpp], groups * items, countof(args), args);
+    ocl_event_t e = ocl.enqueue(c,
+        b->dot_c[fpp], n,
+            &v0->h, sizeof(ocl_memory_t),
+            &v1->h, sizeof(ocl_memory_t),
+            &r->h,  sizeof(ocl_memory_t),
+            null, 0
+    );
     user = ocl.is_profiling(c) ? (seconds() - user) : 0;
     if (ocl.is_profiling(c)) {
         ocl_profiling_t* p = ocl.profile_add(c, e);
         p->user = user;
-        p->count = groups * items;
+        p->count = n;
         p->fops = 1;
     }
     ocl.release_event(e);
 }
 
-static void blast_dot_strided(int64_t groups, int64_t items,
+static void blast_dot_strided(int64_t n,
         blast_memory_t* v0, int64_t o0, int64_t s0,
         blast_memory_t* v1, int64_t o1, int64_t s1,
         blast_memory_t* r,  int fpp) {
     blast_t* b = v0->b;
     ocl_context_t* c = b->c;
-    ocl_arg_t args[] = {
-        {&v0->h, sizeof(ocl_memory_t)},
-        {&o0,    sizeof(int32_t)},
-        {&s0,    sizeof(int32_t)},
-        {&v1->h, sizeof(ocl_memory_t)},
-        {&o1,    sizeof(int32_t)},
-        {&s1,    sizeof(int32_t)},
-        {&r->h,  sizeof(ocl_memory_t)}
-    };
     double user = ocl.is_profiling(c) ? seconds() : 0;
-    ocl_event_t e = ocl.enqueue_kernel(c, b->dot_os[fpp],
-        groups * items, countof(args), args);
+    ocl_event_t e = ocl.enqueue(c, b->dot_os[fpp], n,
+        &v0->h, sizeof(ocl_memory_t),
+        &o0,    sizeof(int32_t),
+        &s0,    sizeof(int32_t),
+        &v1->h, sizeof(ocl_memory_t),
+        &o1,    sizeof(int32_t),
+        &s1,    sizeof(int32_t),
+        &r->h,  sizeof(ocl_memory_t),
+        null, 0
+    );
     user = ocl.is_profiling(c) ? (seconds() - user) : 0;
     if (ocl.is_profiling(c)) {
         ocl_profiling_t* p = ocl.profile_add(c, e);
         p->user = user;
-        p->count = groups * items;
+        p->count = n;
         p->fops = 1;
         p->i32ops = 4;
     }
@@ -134,11 +133,10 @@ static fp64_t read_1xfp_from_memory(blast_memory_t* m, int fpp) {
     return v;
 }
 
-static fp64_t sum_and_finish(blast_memory_t* v, int64_t items, int64_t groups, int fpp) {
+static fp64_t sum_and_finish(blast_memory_t* v, int64_t ne, int fpp) {
     blast_t* b = v->b;
     ocl_context_t* c = b->c;
     fp64_t sum = 0;
-    int64_t ne = items * groups; // number of elements
     if (ne == 1) {
         ocl.finish(c);
         sum = read_1xfp_from_memory(v, fpp);
@@ -149,26 +147,14 @@ static fp64_t sum_and_finish(blast_memory_t* v, int64_t items, int64_t groups, i
         blast_memory_t  s = blast.allocate(v->b, blast_access_read, bytes);
         blast_memory_t* v0 = v;
         blast_memory_t* v1 = &s;
-        const int64_t max_items  = ocl.devices[c->ix].max_items[0];
         while (m >= 1) {
-            if (m < max_items) {
-                groups = 1; items = m;
-            } else if (groups > 1 && groups % 2 == 0) {
-                groups >>= 1;
-            } else if (items > 1 && items % 2 == 0) {
-                items  >>= 1;
-            } else {
-                assert(false);
-            }
-            assertion(groups * items == m);
-            ocl_arg_t args[] = {
-                {&v0->h,  sizeof(ocl_memory_t)},
-                {&v1->h,  sizeof(ocl_memory_t)}
-            };
             ocl_kernel_t k = n % 2 == 0 ? b->sum_even[fpp] : b->sum_odd[fpp];
             double user = ocl.is_profiling(c) ? seconds() : 0;
-            ocl_event_t e = ocl.enqueue_kernel(c, k, groups * items,
-                countof(args), args);
+            ocl_event_t e = ocl.enqueue(c, k, m,
+                &v0->h,  sizeof(ocl_memory_t),
+                &v1->h,  sizeof(ocl_memory_t),
+                null, 0
+            );
             user = ocl.is_profiling(c) ? (seconds() - user) : 0;
             if (ocl.is_profiling(c)) {
                 ocl_profiling_t* p = ocl.profile_add(c, e);
@@ -200,29 +186,18 @@ static fp64_t blast_dot(
     fp64_t s = 0;
     const int64_t max_groups = ocl.devices[c->ix].max_groups;
     const int64_t max_items  = ocl.devices[c->ix].max_items[0];
-    // sum relies on max_* being power of 2
-    assert((max_items  & (max_items  - 1)) == 0);
-    assert((max_groups & (max_groups - 1)) == 0);
-    if (ocl.is_profiling(c)) {
-        c->ov->profiling_count = 0;
-    }
+    if (ocl.is_profiling(c)) { c->ov->profiling_count = 0; }
     size_t bytes = ocl_fpp_bytes[fpp];
     while (n > 0) {
-        int64_t groups = min((n + max_items - 1) / max_items, max_groups);
-        assertion(n >= (groups - 1) * max_items);
-        int64_t ne = groups == 1 ? n : groups * max_items;
-        if (groups > 1 && ne > n) { groups--; ne -= max_items; }
-        int64_t items = ne / groups;
-        assertion(items > 0 && groups > 0 && items * groups <= n);
-        assertion(ne == groups * items);
+        int64_t ne = min(max_items * max_groups, n);
         blast_memory_t r = blast.allocate(b, blast_access_read, ne * bytes);
         if (o0 == 0 && s0 == 1 && o1 == 0 && s1 == 1) {
-            blast_dot_compact(groups, items, v0, v1, &r, fpp);
+            blast_dot_compact(ne, v0, v1, &r, fpp);
         } else {
 //          traceln("offsets: %8lld %8lld strides: %lld %lld ne: %8lld", o0, o1, s0, s1, ne);
-            blast_dot_strided(groups, items, v0, o0, s0, v1, o1, s1, &r, fpp);
+            blast_dot_strided(ne, v0, o0, s0, v1, o1, s1, &r, fpp);
         }
-        s += sum_and_finish(&r, items, groups, fpp);
+        s += sum_and_finish(&r, ne, fpp);
         blast.deallocate(&r);
         n  -= ne;
         o0 += ne * s0;

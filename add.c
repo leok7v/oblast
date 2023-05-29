@@ -27,24 +27,12 @@ static void x_add_y(ocl_context_t* c, ocl_kernel_t k,
         ocl.unmap(c, mx, x);
         ocl.unmap(c, my, y);
     }
-    ocl_arg_t args[] =
-        {{&mx, sizeof(ocl_memory_t)},
-         {&my, sizeof(ocl_memory_t)},
-         {&mz, sizeof(ocl_memory_t)}
-    };
-//  int64_t max_groups = ocl.devices[c->ix].max_groups;
-    int64_t max_items  = ocl.devices[c->ix].max_items[0];
-    int64_t groups = (n + max_items - 1) / max_items;
-    int64_t items  = (n + groups - 1) / groups;
-    assert(groups * items == n);
     if (ocl.is_profiling(c)) { c->ov->profiling_count = 0; }
     double time = seconds();
-    ocl_event_t done = ocl.enqueue_kernel(c, k, groups * items,
-        countof(args), args);
+    ocl_event_t done = ocl.enqueue(c, k, n,
+        &mx, sizeof(ocl_memory_t), &my, sizeof(ocl_memory_t),
+        &mz, sizeof(ocl_memory_t), null, 0);
     ocl_profiling_t* p = ocl.is_profiling(c) ? ocl.profile_add(c, done) : null;
-    // flush() and finish() are unnecessary because ocl.wait(done)
-//  ocl.flush(c);
-//  ocl.finish(c);
     ocl.wait(&done, 1);
     time = seconds() - time;
     if (p != null) {
@@ -59,7 +47,7 @@ static void x_add_y(ocl_context_t* c, ocl_kernel_t k,
     if (p != null) {
         // measure the same addition of N numbers on CPU
         // L1: 640KB L2: 10MB L3: 24MB guessing L3 may be 4 associative
-        int64_t bytes = 24 * 4 * MB;
+        int64_t bytes = 24LL * 4 * MB;
         byte_t* flush_caches = (byte_t*)malloc(bytes);
         for (int i = 0; i < bytes; i++) { flush_caches[i] = (byte_t)i; }
         host = seconds();
@@ -149,14 +137,7 @@ __kernel void x_add_y(__global const float* x,                                \n
 
 static int test(ocl_context_t* c, int64_t n) {
     int result = 0;
-//  static const char* sc = // source code
-//  "__kernel void " kernel_name "(__global const float* x, "
-//  "                              __global const float* y, "
-//  "                              __global float* z) {\n"
-//  "    int i = get_global_id(0);\n"
-//  "    z[i] = x[i] + y[i];\n"
-//  "}\n";
-    traceln("%s\n", sc);
+//  traceln("%s\n", sc);
     ocl_program_t p = ocl.compile(c, sc, strlen(sc), null, null, 0);
     ocl_kernel_t k = ocl.create_kernel(p, kernel_name);
     const int64_t bytes = n * sizeof(fp32_t);
@@ -174,7 +155,7 @@ static int test(ocl_context_t* c, int64_t n) {
         avg_host /= M;
         avg_gflops /= M;
         traceln("average of %d runs for n: %d", M, n);
-        traceln("kernel: %6.3f user: %8.3f host: %7.3f (microsec) GFlops: %6.3f",
+        traceln("gpu: %6.3f user: %8.3f host: %7.3f (microsec) GFlops: %6.3f",
                 avg_time * USEC_IN_SEC, avg_user * USEC_IN_SEC, avg_host * USEC_IN_SEC,
                 avg_gflops);
     }
@@ -210,8 +191,6 @@ int32_t main(int32_t argc, const char* argv[]) {
     }
     ocl_profiling_t p[4096];
     ocl_override_t ov = {
-        .max_groups = 0,
-        .max_items = 0,
         .profiling = p,
         .max_profiling_count = countof(p),
         .profiling_count = 0

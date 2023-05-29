@@ -130,14 +130,8 @@ typedef struct ocl_profiling_s {
 
 typedef struct ocl_override_s {
     ocl_profiling_t* profiling;  // null - no profiling
-    int64_t max_profiling_count; // number of elemnts in profiling[] array
+    int64_t max_profiling_count; // number of elements in profiling[] array
     int64_t profiling_count;     // number of profiled kernel invocation
-    // To test and debug multi * groups * items logic max_groups and max_items
-    // can be overriden by client to much smaller values (see tests)
-    int64_t max_groups; // == 0 use GPU reported value
-    int64_t max_items;  // == 0 use GPU reported value
-    int64_t max_groups_restore; // if max_groups was overriden it will be restored
-    int64_t max_items_restore;  // if max_items  was overriden it will be restored
 } ocl_override_t;
 
 typedef struct ocl_context_s {
@@ -191,8 +185,10 @@ typedef struct ocl_if {
     void (*kernel_info)(ocl_context_t* c, ocl_kernel_t kernel,
         ocl_kernel_info_t* info);
     // 1-dimensional range kernel: if items_in_work_group is 0 max is used
-    ocl_event_t (*enqueue_kernel)(ocl_context_t* c, ocl_kernel_t k,
-        size_t elements, int argc, ocl_arg_t argv[]);
+    ocl_event_t (*enqueue)(ocl_context_t* c, ocl_kernel_t k,
+        int64_t n, ...); // void*, size_t bytes, ... terminate with null, 0
+    ocl_event_t (*enqueue_args)(ocl_context_t* c, ocl_kernel_t k,
+        int64_t n, int argc, ocl_arg_t argv[]);
     // appends queued event to array of profiling events;
     ocl_profiling_t* (*profile_add)(ocl_context_t* c, ocl_event_t e);
     void (*wait)(ocl_event_t* events, int count);

@@ -40,44 +40,21 @@ static void mprintln(const fp32_t* mx, const int32_t n, const int32_t m) {
 static void gemv(ocl_context_t* c, int fpp,
         ocl_memory_t mx, ocl_memory_t vc,
         uint32_t n, uint32_t m, ocl_memory_t rs) {
-//  fatal_if(n == 0 || (n & (n - 1)) != 0 ||
-//           m == 0 || (m & (m - 1)) != 0,
-//           "n: %d n: %d both must be power of 2", n, m);
     if (ocl.is_profiling(c)) { c->ov->profiling_count = 0; }
     ocl_device_t* d = &ocl.devices[c->ix];
-//  const int64_t compute_units   = d->compute_units;
-//  const int64_t local_bytes     = d->local_memory;
-//  const int64_t max_groups      = d->max_groups;
-//  const int64_t max_local_items = local_bytes / ocl_fpp_bytes[fpp];
-//  const int64_t max_items       =
-//      min(ocl.devices[c->ix].max_items[0], max_local_items);
-//  // ancient NVIDIA sample link below (*) assumed 2 work-groups
-//  // per compute unit
-//  int64_t cu_x_2 = compute_units * 2;
-//  int64_t items = m;
-//  int64_t groups = 1;
-//  while (items > 64 && groups <= cu_x_2 / 2 && (groups < items / 2 || items > max_items)) {
-//      items /= 2; groups *= 2;
-//  }
-//  if (items > max_items) { // same but more groups per compute unit
-//      while (items > 64 && groups <= max_groups / 2 && (groups < items / 2 || items > max_items)) {
-//          items /= 2; groups *= 2;
-//      }
-//  }
-//  traceln("n: %d m: %d groups: %lld items: %lld compute units: %lld",
-//      n, m, groups, items, compute_units);
-//  assert(groups <= max_groups && items <= max_items && groups * items == n);
-//  int64_t local_items = items * (d->max_subgroups == 0 ? 1 : d->max_subgroups);
+    int64_t local_bytes = sizeof(fp32_t) * n *
+        (d->max_subgroups == 0 ? 1 : d->max_subgroups);
     ocl_kernel_t k = gemv_kernel[fpp];
-    ocl_arg_t a[] =
-        {{&mx,  sizeof(ocl_memory_t)},
-         {&vc,  sizeof(ocl_memory_t)},
-         {&rs,  sizeof(ocl_memory_t)},
-         {&n,   sizeof(int32_t)},
-         {&m,   sizeof(int32_t)}
-    };
     fp64_t user = seconds();
-    ocl_event_t done = ocl.enqueue_kernel(c, k, m, countof(a), a);
+    ocl_event_t done = ocl.enqueue(c, k, n,
+        &mx,  sizeof(ocl_memory_t),
+        &vc,  sizeof(ocl_memory_t),
+        &rs,  sizeof(ocl_memory_t),
+        null, local_bytes, // shared memory for all work-items inside group
+        &n,   sizeof(int32_t),
+        &m,   sizeof(int32_t),
+        null, 0
+    );
     if (ocl.is_profiling(c)) { ocl.profile_add(c, done); }
     ocl.finish(c);
     user = seconds() - user;
@@ -303,12 +280,10 @@ static fp32_t init_mx1(int32_t j, int32_t i) {
 static void tests() {
     static ocl_profiling_t p[4096];
     // profiling measurement:
-    for (int i = 0; i < ocl.count; i++) {
+    for (int i = 1; i < ocl.count; i++) {
 //      ocl.dump(i);
         const ocl_device_t* d = &ocl.devices[i];
         ocl_override_t ov = {
-//.max_groups = 2,
-//.max_items = 8,
             .profiling = p,
             .max_profiling_count = countof(p),
             .profiling_count = 0
@@ -319,11 +294,12 @@ static void tests() {
         traceln("");
         gemv_init(&c);
         verbose = true; // set to true if crashes
-        test(&c, 2, 3, init_vc0, init_mx0, d->name);
-        test(&c, 8, 16, init_vc0, init_mx0, d->name);
+//      test(&c, 2, 3, init_vc0, init_mx0, d->name);
+//      test(&c, 8, 16, init_vc0, init_mx0, d->name);
+        test(&c, 1024, 1024, init_vc1, init_mx1, d->name);
+#if 0
         test(&c, 1024, 1024, init_vc1, init_mx1, d->name);
         test(&c, 1024, 1024, init_vc1, init_mx1, d->name);
-#if 1
         test(&c, 4 * 1024,  4 * 1024, init_vc1, init_mx1, d->name);
         test(&c, 4 * 1024, 16 * 1024, init_vc1, init_mx1, d->name); // GPT-J 6b inermost gemv()
         // only run on NVIDIA GPU. Intel UHD Graphics GPU reports 16GB as global memory

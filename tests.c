@@ -191,18 +191,12 @@ static void dot_tests() {
     dot_test();
     for (int d = 0; d < ocl.count; d++) {
 //      ocl.dump(i);
-        static ocl_override_t ov[2] = {
-            { .max_groups = 2, .max_items = 4 },
-            { .max_groups = 2, .max_items = 2 }
-        };
-        for (int i = 0; i < 2; i++) {
-            ocl_context_t c = ocl.open(d, &ov[i]);
-            blast_t b = { 0 };
-            blast.init(&b, &c);
-            test_permutations(&b);
-            blast.fini(&b);
-            ocl.close(&c);
-        }
+        ocl_context_t c = ocl.open(d, null);
+        blast_t b = { 0 };
+        blast.init(&b, &c);
+        test_permutations(&b);
+        blast.fini(&b);
+        ocl.close(&c);
     }
     for (int d = 0; d < ocl.count; d++) {
         static ocl_profiling_t p[16 * 1024];

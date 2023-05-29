@@ -1,13 +1,1 @@
-﻿#if 0
-#ifdef RC_INVOKED
-#ifndef _INC_WINDOWS
-#define _INC_WINDOWS
-#include "winres.h"
-#endif
-#endif
-#else
-#include <stdint.h>
-#endif
-
-#define RCDATA (uintptr_t)((uint16_t)10)
-blast_cl RCDATA "blast.cl"
+﻿blast_cl RCDATA "blast.cl"
