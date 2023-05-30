@@ -16,7 +16,98 @@
 #define local_fence()    barrier(CLK_LOCAL_MEM_FENCE)
 #define subgroup_fence() sub_group_barrier(CLK_LOCAL_MEM_FENCE);
 
-// shared memory is accessible for all work items in a group
+#define reduce_add concat(reduce_add, fpmx)
+
+#define reduce_add_subgroups concat(concat(reduce_add, fpmx), _subgroups)
+
+// shared memory "sm" is accessible for all work items in a group
+
+// #define debug_reduce_add 1
+
+inline void reduce_add(const uint lid, uint i,
+        fpmx_t s, __local fpmx_t* restrict sm) {
+    sm[lid] = s; // (*1*)
+#ifdef debug_reduce_add
+    printf("lid: %d sm[%d]: %f i:%d\n", lid, lid, sm[lid], i);
+#endif
+    while (i > 1) {
+        // this fence guarantees all (*1*) memory write are complete
+        // in this group and s = ... (*2*) reads coherent values
+        uint i2 = i >> 1;
+        local_fence();
+#ifdef debug_reduce_add
+        printf("i: %d i/2: %d\n", i, i2);
+#endif
+        if (lid < i2) {
+#ifndef debug_reduce_add
+            s = sm[lid] + sm[lid + i2] + // (*2*)
+                (((lid == 0) & (i & 1)) ? sm[lid + i - 1] : 0.0f);
+#else
+            if ((lid == 0) & (i & 1)) {
+                s = sm[lid] + sm[lid + i2] + sm[lid + i - 1];
+                printf("sm[%d]: %f += sm[%d + %d]: %f + sm[%d + %d]: %f -> %f\n",
+                        lid, sm[lid], lid, i2, sm[lid + i2], lid, i - 1, sm[lid + i - 1], s);
+            } else {
+                s = sm[lid] + sm[lid + i2];
+                printf("sm[%d]: %f += sm[%d + %d]: %f -> %f\n",
+                        lid, sm[lid], lid, i2, sm[lid + i2], s);
+            }
+#endif
+        }
+        // this fence guarantees that all (*2*) reads are done and summed
+        // in register "s".
+        local_fence();
+        // and now work items in the group can write to shared memory
+        // at their locations without racing with (*2*) reads above:
+        if (lid < i2) { sm[lid] = s; } // (*3*)
+        i = i2;
+    }
+    // this fence guarantees that all (*3*) writes of the last iteration
+    // has been completed:
+    local_fence();
+}
+
+inline void reduce_add_subgroups(uint sub_group_id,
+        uint num_sub_groups, fpmx_t s, __local fpmx_t* restrict sm) {
+    const uint ix = sub_group_id;
+    sm[ix] = s;
+    uint i = num_sub_groups;
+#ifdef debug_reduce_add
+    printf("sub_group_id: %d sm[%d]: %f i:%d\n",
+        sub_group_id, sub_group_id, sm[ix], i);
+#endif
+    while (i > 1) {
+        uint i2 = i >> 1;
+        local_fence();
+#ifdef debug_reduce_add
+        printf("i: %d i/2: %d sub_group_id (ix): %d\n", i, i2, ix);
+#endif
+        if (ix < i2) {
+#ifndef debug_reduce_add
+            s = sm[ix] += sm[ix + i2] +
+                (((sub_group_id == 0) & (i & 1)) ?
+                   sm[ix + i - 1] : 0.0f);
+#else
+            if ((sub_group_id == 0) & (i & 1)) {
+                s = sm[ix] + sm[ix + i2] + sm[ix + i - 1];
+                printf("sm[%d]: %f += sm[%d]: %f + sm[%d + %d]: %f -> %f\n",
+                        ix, sm[ix], i2, sm[ix + i2],
+                        ix, i - 1, sm[ix + i - 1], s);
+            } else {
+                s = sm[ix] + sm[ix + i2];
+                printf("sm[%d]: %f += sm[%d]: %f -> %f\n",
+                        ix, sm[ix], i2, sm[ix + i2], s);
+            }
+#endif
+        }
+        local_fence();
+        if (sub_group_id < i2) {
+            sm[sub_group_id] = s;
+        }
+        i = i2;
+    }
+    local_fence();
+}
 
 #if fpp != 16
 
@@ -31,18 +122,12 @@ inline void concat(gemv_, fpp)(
     const uint gid = get_group_id(0);
     const uint items = get_local_size(0);
     const uint groups = get_num_groups(0);
+//  printf("%s:%d groups:%d items:%d\n", __FUNCTION__, __LINE__, groups, items);
     for (uint y = gid; y < m; y += groups) {
-//      printf("y: %d [gid:%d .. m:%d]\n", y, gid, m);
         const __global fp_t* row = mx + y * n;
         fpmx_t s = 0;
         for (uint x = lid; x < n; x += items) { s += row[x] * vc[x]; }
-        sm[lid] = s;
-        local_fence();
-        for (uint s = items >> 1; s > 0; s >>= 1) {
-            if (lid < s) { sm[lid] += sm[lid + s]; }
-            local_fence();
-        }
-        local_fence();
+        reduce_add(lid, items, s, sm);
         if (lid == 0) { rs[y] = sm[0]; }
     }
 }
@@ -58,22 +143,13 @@ inline void concat(concat(gemv_, fpp), x4)(
     const uint gid = get_group_id(0);
     const uint items = get_local_size(0);
     const uint groups = get_num_groups(0);
+//  printf("%s:%d groups:%d items:%d\n", __FUNCTION__, __LINE__, groups, items);
     for (uint y = gid; y < m; y += groups) {
         const __global vec4_t* row = mx + y * n;
         fpmx_t s = 0;
-        for (uint x = lid; x < n; x += items) {
-            s += dot(row[x], vc[x]);
-        }
-        sm[lid] = s;
-        local_fence();
-        for (uint s = items >> 1; s > 0; s >>= 1) {
-            if (lid < s) { sm[lid] += sm[lid + s]; }
-            local_fence();
-        }
-        local_fence();
-        if (lid == 0) {
-            rs[y] = sm[0];
-        }
+        for (uint x = lid; x < n; x += items) { s += dot(row[x], vc[x]); }
+        reduce_add(lid, items, s, sm);
+        if (lid == 0) { rs[y] = sm[0]; }
     }
 }
 
@@ -88,29 +164,54 @@ inline void concat(concat(gemv_, fpp), x16)(
     const uint gid = get_group_id(0);
     const uint items = get_local_size(0);
     const uint groups = get_num_groups(0);
+//  printf("%s:%d groups:%d items:%d\n", __FUNCTION__, __LINE__, groups, items);
     for (uint y = gid; y < m; y += groups) {
-        const __global vec4_t* row = mx + y * n;
+        const __global vec4_t* row = mx + y * n * 4;
         fpmx_t s = 0;
         for (uint x = lid; x < n; x += items) {
+            uint x4 = x << 2;
             s +=
-                dot(row[x + 0], vc[x + 0]) +
-                dot(row[x + 1], vc[x + 1]) +
-                dot(row[x + 2], vc[x + 3]) +
-                dot(row[x + 4], vc[x + 4]);
+                dot(row[x4 + 0], vc[x4 + 0]) +
+                dot(row[x4 + 1], vc[x4 + 1]) +
+                dot(row[x4 + 2], vc[x4 + 2]) +
+                dot(row[x4 + 3], vc[x4 + 3]);
         }
-        sm[lid] = s;
-        local_fence();
-        for (uint s = items >> 1; s > 0; s >>= 1) {
-            if (lid < s) { sm[lid] += sm[lid + s]; }
-            local_fence();
-        }
-        local_fence();
-        if (lid == 0) {
-            rs[y] = sm[0];
-        }
+        reduce_add(lid, items, s, sm);
+        if (lid == 0) { rs[y] = sm[0]; }
     }
 }
 
+inline void concat(concat(gemv_, fpp), x32)(
+        __global const vec4_t* restrict mx,
+        __global const vec4_t* restrict vc,
+        __global       fpmx_t* restrict rs,
+        __local        fpmx_t* restrict sm,
+        const int32_t n, const int32_t m) {
+    // gemv_32x16 gemv_64x16. "n" is 1/32 of row width
+    const uint lid = get_local_id(0);
+    const uint gid = get_group_id(0);
+    const uint items = get_local_size(0);
+    const uint groups = get_num_groups(0);
+//  printf("%s:%d groups:%d items:%d\n", __FUNCTION__, __LINE__, groups, items);
+    for (uint y = gid; y < m; y += groups) {
+        const __global vec4_t* row = mx + y * n * 8;
+        fpmx_t s = 0;
+        for (uint x = lid; x < n; x += items) {
+            uint x8 = x << 3;
+            s +=
+                dot(row[x8 + 0], vc[x8 + 0]) +
+                dot(row[x8 + 1], vc[x8 + 1]) +
+                dot(row[x8 + 2], vc[x8 + 2]) +
+                dot(row[x8 + 3], vc[x8 + 3]) +
+                dot(row[x8 + 4], vc[x8 + 4]) +
+                dot(row[x8 + 5], vc[x8 + 5]) +
+                dot(row[x8 + 6], vc[x8 + 6]) +
+                dot(row[x8 + 7], vc[x8 + 7]);
+        }
+        reduce_add(lid, items, s, sm);
+        if (lid == 0) { rs[y] = sm[0]; }
+    }
+}
 
 #if max_subgroups > 0
 
@@ -127,18 +228,16 @@ inline void concat(concat(gemv_, fpp), _subgroups)(
     const uint groups = get_num_groups(0);
     const uint sub_group_id = get_sub_group_id();
     const uint num_sub_groups = get_num_sub_groups();
+//  printf("%s:%d groups:%d items:%d\n", __FUNCTION__, __LINE__, groups, items);
     for (uint y = gid; y < m; y += groups) {
         const __global fp_t* row = mx + y * n;
         fpmx_t s = 0;
         for (uint x = lid; x < n; x += items) { s += row[x] * vc[x]; }
         subgroup_fence()
-        sm[lid + sub_group_id] = sub_group_reduce_add(s);
-        local_fence();
-        for (uint s = num_sub_groups >> 1; s > 0; s >>= 1) {
-            if (sub_group_id < s) { sm[sub_group_id] += sm[sub_group_id + s]; }
-            local_fence();
-        }
-        local_fence();
+        s = sub_group_reduce_add(s);
+//      printf("lid: %d sub_group_id: %d num_sub_groups: %d s: %f\n",
+//          lid, sub_group_id, num_sub_groups, s);
+        reduce_add_subgroups(sub_group_id, num_sub_groups, s, sm);
         if (lid == 0) { rs[y] = sm[0]; }
     }
 }
@@ -161,13 +260,7 @@ inline void concat(concat(gemv_, fpp), x4_subgroups)(
         fpmx_t s = 0;
         for (uint x = lid; x < n; x += items) { s += dot(row[x], vc[x]); }
         subgroup_fence()
-        sm[lid + sub_group_id] = sub_group_reduce_add(s);
-        local_fence();
-        for (uint s = num_sub_groups >> 1; s > 0; s >>= 1) {
-            if (sub_group_id < s) { sm[sub_group_id] += sm[sub_group_id + s]; }
-            local_fence();
-        }
-        local_fence();
+        reduce_add_subgroups(sub_group_id, num_sub_groups, sub_group_reduce_add(s), sm);
         if (lid == 0) { rs[y] = sm[0]; }
     }
 }
@@ -186,23 +279,59 @@ inline void concat(concat(gemv_, fpp), x16_subgroups)(
     const uint sub_group_id = get_sub_group_id();
     const uint num_sub_groups = get_num_sub_groups();
     for (uint y = gid; y < m; y += groups) {
-        const __global vec4_t* row = mx + y * n;
+        const __global vec4_t* row = mx + y * n * 4;
         fpmx_t s = 0;
         for (uint x = lid; x < n; x += items) {
+            uint x4 = x << 2;
             s +=
-                dot(row[x + 0], vc[x + 0]) +
-                dot(row[x + 1], vc[x + 1]) +
-                dot(row[x + 2], vc[x + 2]) +
-                dot(row[x + 3], vc[x + 3]);
+                dot(row[x4 + 0], vc[x4 + 0]) +
+                dot(row[x4 + 1], vc[x4 + 1]) +
+                dot(row[x4 + 2], vc[x4 + 2]) +
+                dot(row[x4 + 3], vc[x4 + 3]);
+        }
+        subgroup_fence();
+        reduce_add_subgroups(sub_group_id, num_sub_groups, sub_group_reduce_add(s), sm);
+        if (lid == 0) { rs[y] = sm[0]; }
+    }
+}
+
+inline void concat(concat(gemv_, fpp), x32_subgroups)(
+        __global const vec4_t* restrict mx,
+        __global const vec4_t* restrict vc,
+        __global     fpmx_t* restrict rs,
+        __local      fpmx_t* restrict sm,
+        const int32_t n, const int32_t m) {
+    // "n" is 1/16 or row width
+    const uint lid = get_local_id(0);
+    const uint gid = get_group_id(0);
+    const uint items = get_local_size(0);
+    const uint groups = get_num_groups(0);
+    const uint sub_group_id = get_sub_group_id();
+    const uint num_sub_groups = get_num_sub_groups();
+    for (uint y = gid; y < m; y += groups) {
+        const __global vec4_t* row = mx + y * n * 8;
+        fpmx_t s = 0;
+        for (uint x = lid; x < n; x += items) {
+            uint x8 = x << 3;
+            s +=
+                dot(row[x8 + 0], vc[x8 + 0]) +
+                dot(row[x8 + 1], vc[x8 + 1]) +
+                dot(row[x8 + 2], vc[x8 + 2]) +
+                dot(row[x8 + 3], vc[x8 + 3]) +
+                dot(row[x8 + 4], vc[x8 + 4]) +
+                dot(row[x8 + 5], vc[x8 + 5]) +
+                dot(row[x8 + 6], vc[x8 + 6]) +
+                dot(row[x8 + 7], vc[x8 + 7]);
         }
         subgroup_fence()
-        sm[lid + sub_group_id] = sub_group_reduce_add(s);
-        local_fence();
-        for (uint s = num_sub_groups >> 1; s > 0; s >>= 1) {
-            if (sub_group_id < s) { sm[sub_group_id] += sm[sub_group_id + s]; }
-            local_fence();
-        }
-        local_fence();
+        reduce_add_subgroups(sub_group_id, num_sub_groups, sub_group_reduce_add(s), sm);
+//      sm[lid + sub_group_id] = sub_group_reduce_add(s);
+//      local_fence();
+//      for (uint s = num_sub_groups >> 1; s > 0; s >>= 1) {
+//          if (sub_group_id < s) { sm[sub_group_id] += sm[sub_group_id + s]; }
+//          local_fence();
+//      }
+//      local_fence();
         if (lid == 0) { rs[y] = sm[0]; }
     }
 }
@@ -216,6 +345,7 @@ void concat(gemv, fpp)( // gemv32 gemv16 gemv64; fpp float point precision
         __global       fp_t rs[/*m*/],
         __local        fp_t sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
+//  printf("%s:%d max_subgroups: %d\n", __FUNCTION__, __LINE__, max_subgroups);
 #if max_subgroups > 0
     concat(concat(gemv_, fpp), _subgroups)(mx, vc, rs, sm, n, m);
 #else // sm[max_items * max_groups] must be allocated by host
@@ -251,6 +381,20 @@ void concat(concat(gemv, fpp), x16)( // gemv32x4 "float4" version
 #endif
 }
 
+__kernel
+void concat(concat(gemv, fpp), x32)( // gemv32x4 "float4" version
+        __global const vec4_t mx[/*m][n*/],
+        __global const vec4_t vc[/*n*/],
+        __global       fp_t   rs[/*m*/],
+        __local        fp_t   sm[/*work_group_items*/],
+        const int32_t n, const int32_t m) {
+#if max_subgroups > 0
+    concat(concat(gemv_, fpp), x32_subgroups)(mx, vc, rs, sm, n, m);
+#else
+    concat(concat(gemv_, fpp), x32)(mx, vc, rs, sm, n, m);
+#endif
+}
+
 #else
 
 inline void gemv_16(
@@ -266,16 +410,8 @@ inline void gemv_16(
     for (uint y = gid; y < m; y += groups) {
         const __global fp_t* row = mx + y * n;
         fpmx_t s = 0;
-        for (uint x = lid; x < n; x += items) {
-            s += vload_half(x, row) * vc[x];
-        }
-        sm[lid] = s;
-        local_fence();
-        for (uint s = items >> 1; s > 0; s >>= 1) {
-            if (lid < s) { sm[lid] += sm[lid + s]; }
-            local_fence();
-        }
-        local_fence();
+        for (uint x = lid; x < n; x += items) { s += vload_half(x, row) * vc[x]; }
+        reduce_add(lid, items, s, sm);
         if (lid == 0) { rs[y] = sm[0]; }
     }
 }
@@ -296,16 +432,8 @@ inline void gemv_16x4(
     for (uint y = gid; y < m; y += groups) {
         const __global fp16_t* row = mx + y * n * 4;
         fpmx_t s = 0; // ^^^ * 4 because mx is fp16_t*
-        for (uint x = lid; x < n; x += items) {
-            s += dot(vload_half4(x, row), vc[x]);
-        }
-        sm[lid] = s;
-        local_fence();
-        for (uint s = items >> 1; s > 0; s >>= 1) {
-            if (lid < s) { sm[lid] += sm[lid + s]; }
-            local_fence();
-        }
-        local_fence();
+        for (uint x = lid; x < n; x += items) { s += dot(vload_half4(x, row), vc[x]); }
+        reduce_add(lid, items, s, sm);
         if (lid == 0) { rs[y] = sm[0]; }
     }
 }
@@ -326,23 +454,48 @@ inline void gemv_16x16(
         fpmx_t s = 0; // ^^^ * 16 because mx is fp16_t*
         for (uint x = lid; x < n; x += items) {
             uint x4 = x << 2;
-//          printf("y: %d x*4: %d row[x4+0]: %g vc[x4+0]: %g\n", y, x4, vload_half(x4, row), vc[x4].x);
             s +=
                 dot(vload_half4(x4 + 0, row), vc[x4 + 0]) +
                 dot(vload_half4(x4 + 1, row), vc[x4 + 1]) +
                 dot(vload_half4(x4 + 2, row), vc[x4 + 2]) +
                 dot(vload_half4(x4 + 3, row), vc[x4 + 3]);
         }
-        sm[lid] = s;
-        local_fence();
-        for (uint s = items >> 1; s > 0; s >>= 1) {
-            if (lid < s) { sm[lid] += sm[lid + s]; }
-            local_fence();
-        }
-        local_fence();
+        reduce_add32(lid, items, s, sm);
         if (lid == 0) { rs[y] = sm[0]; }
     }
 }
+
+inline void gemv_16x32(
+        __global const fp16_t*  restrict mx,
+        __global const fpmx4_t* restrict vc,
+        __global       fpmx_t*  restrict rs,
+        __local        fpmx_t*  restrict sm,
+        const int32_t n, const int32_t m) {
+    // "n" is 1/16 of row width
+    const uint lid = get_local_id(0);
+    const uint gid = get_group_id(0);
+    const uint items = get_local_size(0);
+    const uint groups = get_num_groups(0);
+    for (uint y = gid; y < m; y += groups) {
+        const __global fp16_t* row = mx + y * n * 32;
+        fpmx_t s = 0; // ^^^ * 16 because mx is fp16_t*
+        for (uint x = lid; x < n; x += items) {
+            uint x8 = x << 3;
+            s +=
+                dot(vload_half4(x8 + 0, row), vc[x8 + 0]) +
+                dot(vload_half4(x8 + 1, row), vc[x8 + 1]) +
+                dot(vload_half4(x8 + 2, row), vc[x8 + 2]) +
+                dot(vload_half4(x8 + 3, row), vc[x8 + 3]) +
+                dot(vload_half4(x8 + 4, row), vc[x8 + 4]) +
+                dot(vload_half4(x8 + 5, row), vc[x8 + 5]) +
+                dot(vload_half4(x8 + 6, row), vc[x8 + 6]) +
+                dot(vload_half4(x8 + 7, row), vc[x8 + 7]);
+        }
+        reduce_add(lid, items, s, sm);
+        if (lid == 0) { rs[y] = sm[0]; }
+    }
+}
+
 
 __kernel
 void gemv16(
@@ -372,6 +525,16 @@ void gemv16x16(
         __local        fpmx_t  sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
     gemv_16x16(mx, vc, rs, sm, n, m);
+}
+
+__kernel
+void gemv16x32(
+        __global const fp16_t  mx[/*m][n*/],
+        __global const fpmx4_t vc[/*n*/],
+        __global       fpmx_t  rs[/*m*/],
+        __local        fpmx_t  sm[/*work_group_items*/],
+        const int32_t n, const int32_t m) {
+    gemv_16x32(mx, vc, rs, sm, n, m);
 }
 
 #endif

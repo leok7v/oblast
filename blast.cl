@@ -13,7 +13,7 @@
 // #define vec16 type16
 // there <type> is one of half|float|double
 
-// this is deprectated in favor of mad() and fma()
+// this is deprecated in favor of mad() and fma()
 // #pragma OPENCL SELECT_ROUNDING_MODE rte // rte rtz rtp rtn
 
 // Because half4, half8 and half16 has limited support at the
@@ -169,7 +169,7 @@ __kernel void name(gemv4, suffix)(fp_ro_t mx, fp_ro_t v, fp_wr_t r, int32_t n) {
 //      [ m40 M41_M42_M43 ]
 //      [ m50 M51_M52_M53]]
 // to the vector [v1, v3, v5]
-// producins r[4]
+// producing r[4]
 //   r[0] = [v1, v3, v5] dot  [M11 M12 M13]
 //   r[1] = [v1, v3, v5] dot  [M21 M22 M23]
 //   r[2] = [v1, v3, v5] dot  [M31 M32 M33]

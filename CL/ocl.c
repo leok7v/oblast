@@ -251,7 +251,7 @@ static void ocl_profile(ocl_profiling_t* p) {
         p->g32ops = p->i32ops * gops;
         p->g64ops = p->i64ops * gops;
     }
-    ocl.release_event(p->e); // decrement refernce count
+    ocl.release_event(p->e); // decrement reference count
     p->e = null;
 
 //  uint64_t ema_samples = p->ema_samples == 0 ? 128 : p->ema_samples;
@@ -491,7 +491,7 @@ static void ocl_init(void) {
 // Real problem is the cl_khr_* are [ab]used for both reporting
 // and enablement/disablement which is muddy.
 // For now both cl_khr_fp64 and cl_intel_accelerator are checked
-// until OpenCL achive clarity on #pragma extension
+// until OpenCL achieve clarity on #pragma extension
 // enabling/disabling and reporting
 // https://github.com/KhronosGroup/OpenCL-Docs/issues/82
 // https://github.com/KhronosGroup/OpenCL-Docs/pull/355
@@ -546,8 +546,8 @@ static void ocl_compiler(int argc, const char* argv[]) {
     fatal_if(f == null, "failed to open file: %s", argv[2]);
     int64_t source_bytes = (int64_t)fread(source, 1, source_max, f);
     if (f != null) { fclose(f); }
-    int optc = 0; // characters in options
-    for (int i = 3; i < argc; i++) { optc += (int)strlen(argv[i]) + 1; }
+    size_t optc = 0; // characters in options
+    for (int i = 3; i < argc; i++) { optc += strlen(argv[i]) + 1; }
     char* opt = optc > 0 ? alloca(optc + 1) : null;
     if (opt != null) {
         opt[0] = 0;
@@ -663,7 +663,7 @@ ocl_if ocl = {
 // File description OpenCL Client DLL
 // Type Application extension
 // File version 3.0.3.0
-// Productname Khronos OpenCL ICD Loader
+// Product name Khronos OpenCL ICD Loader
 // Product version 3.0.3.0
 // Copyright Copyright © The Khronos Group Inc 2016-2023
 // Date modified 1/20/2023 3:20 PM
@@ -684,12 +684,12 @@ ocl_if ocl = {
 static void* ocl_dl; // OpenCL dynamic library
 
 void* clBindFunction(const char* name) {
-    static bool inititialized;
-    if (!inititialized) {
+    static bool initialized;
+    if (!initialized) {
         ocl_dl = load_dl(OpenCL_dll);
-        // if not found, try anywheere else on the path:
+        // if not found, try anywhere else on the path:
         if (ocl_dl == null) { ocl_dl = load_dl(OpenCL_dll); }
-        inititialized = true;
+        initialized = true;
     }
     return ocl_dl != null ? find_symbol(ocl_dl, name) : null;
 }
