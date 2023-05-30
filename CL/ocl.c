@@ -123,6 +123,26 @@ static void  ocl_unmap(ocl_context_t* c, ocl_memory_t m, const void* a) {
         0, null, null));
 }
 
+static int ocl_va_count(va_list vl) {
+    int argc = 0;
+    while (va_arg(vl, void*) != null) { argc++; }
+    return argc;
+}
+
+static void ocl_migrate_with_flags(ocl_context_t* c, int f, ocl_memory_t m) {
+    ocl_event_t e = null;
+    call(clEnqueueMigrateMemObjects(c->q, 1, &m, f, 0, null, &e));
+    ocl.wait(&e, 1);
+}
+
+static void ocl_migrate(ocl_context_t* c, ocl_memory_t m) {
+    ocl_migrate_with_flags(c, 0, m);
+}
+
+void ocl_migrate_undefined(ocl_context_t* c, ocl_memory_t m) {
+    ocl_migrate_with_flags(c, CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED, m);
+}
+
 static ocl_program_t ocl_compile(ocl_context_t* c,
         const char* code, size_t bytes, const char* options,
         char log[], int64_t log_capacity) {
@@ -640,6 +660,8 @@ ocl_if ocl = {
     .deallocate = ocl_deallocate,
     .map = ocl_map,
     .unmap = ocl_unmap,
+    .migrate = ocl_migrate,
+    .migrate_undefined = ocl_migrate_undefined,
     .compile = ocl_compile,
     .create_kernel = ocl_create_kernel,
     .kernel_info = ocl_kernel_info,

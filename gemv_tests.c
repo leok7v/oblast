@@ -3,19 +3,17 @@
 #include "dot.h"
 #include "gemv.h"
 
+static int  best_of = 3;
 static bool verbose = true;
 static bool unchecked;
 
 enum { KB = 1024, MB = 1024 * KB, GB = 1024 * MB };
 
-static fp64_t avg_time;
-static fp64_t avg_user;
-static fp64_t avg_host;
-static fp64_t avg_gflops;
-
 static fp64_t cpu_time;
 static fp64_t avx_time;
-static fp64_t gpu_time;
+static fp64_t ocl_time; // total time for gemv() call
+static fp64_t gpu_time; // gpu time
+static fp64_t gpu_gfps; // gpu GFlops
 
 #define strprintf(s, ...) \
     (snprintf(s, countof(s) - 1, "" __VA_ARGS__))
@@ -64,10 +62,12 @@ static void test(gemv_t* g, int fpp,
                  fp64_t (*init_vc)(int32_t i),
                  fp64_t (*init_mx)(int32_t j, int32_t i, int32_t n)) {
     ocl_context_t* c = g->c;
-    traceln("%d x %d fp%d_t", n, m, ocl_fpp_bytes[fpp] * 8);
+//  traceln("%d x %d fp%d_t", n, m, ocl_fpp_bytes[fpp] * 8);
+    ocl_time = DBL_MAX;
     gpu_time = DBL_MAX;
     avx_time = DBL_MAX;
     cpu_time = DBL_MAX;
+    gpu_gfps = 0;
     const size_t meb = ocl_fpp_bytes[fpp]; // matrix element bytes
     // vector element bytes
     const size_t veb = fpp == ocl_fpp16 ? 4 : 8;
@@ -183,9 +183,30 @@ static void test(gemv_t* g, int fpp,
     ocl.unmap(c, matrix, mx);
     ocl.unmap(c, vector, vc);
     user = seconds();
-    gemv.gemv(g, fpp, 0, matrix, vector, result, n, m);
+    ocl.migrate(c, matrix); // these are "hints"
+    ocl.migrate(c, vector);
+    ocl.migrate_undefined(c, result);
     user = seconds() - user;
-    gpu_time = min(gpu_time, user);
+//  traceln("migrate: %.6f ms", user * 1000.0);
+    assert(best_of >= 1);
+    for (int repeat = 0; repeat < best_of; repeat++) {
+        user = seconds();
+        gemv.gemv(g, fpp, 0, matrix, vector, result, n, m);
+        user = seconds() - user;
+        ocl_time = min(ocl_time, user);
+        if (ocl.is_profiling(g->c)) {
+            ocl_profiling_t* pf = &g->c->ov->profiling[0];
+            gpu_time = min(gpu_time, pf->time);
+            gpu_gfps = max(gpu_gfps, pf->gflops);
+        }
+    }
+ // if (ocl.is_profiling(g->c)) {
+ //     ocl_profiling_t* pf = &g->c->ov->profiling[0];
+ //     if (n > 64 && m > 64) {
+ //         traceln("%dx%d gpu: %6.3fms %4.1fGFlops",
+ //                 n, m, pf->time * MSEC_IN_SEC, pf->gflops);
+ //     }
+ // }
     void* rs = ocl.map(c, ocl_map_read, result, 0, m * veb);
     if (verbose && m <= 64) {
         printf("gpu: ");
@@ -250,11 +271,15 @@ static void test(gemv_t* g, int fpp,
     ocl.deallocate(matrix);
     if (n > 64 && m > 64) {
         if (avx_time < DBL_MAX) {
-            traceln("%dx%d gpu: %6.3f avx: %6.3f ms", n, m,
-                gpu_time * MSEC_IN_SEC, avx_time * MSEC_IN_SEC);
+            traceln("fp%d_t %5d x %-5d gpu: %6.3f (call: %7.3f) avx: %8.3f ms %5.1fGFlops",
+                ocl_fpp_bytes[fpp] * 8, n, m,
+                gpu_time * MSEC_IN_SEC, ocl_time * MSEC_IN_SEC,
+                avx_time * MSEC_IN_SEC, gpu_gfps);
         } else {
-            traceln("%dx%d gpu: %6.3f cpu: %6.3f ms", n, m,
-                gpu_time * MSEC_IN_SEC, cpu_time * MSEC_IN_SEC);
+            traceln("fp%d_t %5d x %-5d gpu: %6.3f (call: %7.3f) cpu: %8.3f ms %5.1fGFlops",
+                ocl_fpp_bytes[fpp] * 8, n, m,
+                gpu_time * MSEC_IN_SEC, ocl_time * MSEC_IN_SEC,
+                cpu_time * MSEC_IN_SEC, gpu_gfps);
         }
     }
 }
@@ -289,17 +314,16 @@ static void tests() {
             .profiling_count = 0
         };
         ocl_context_t c = ocl.open(i, &ov);
-        traceln("");
-        traceln("%s", d->name);
-        traceln("");
+        traceln("*** %s ***", d->name);
         gemv_t g = {0};
         gemv.init(&g, &c);
+//      test(&g, ocl_fpp32, 4 * 1024, 16 * 1024, init_vc1, init_mx1); // GPT-J 6b innermost gemv()
 #if 0
-
-#if 0
+        // used to explorer and trace failing case from permutaions below
         verbose = true;
         test(&g, ocl_fpp32, 33, 1, init_vc0, init_mx0);
 #else
+        // all 1..64 x 1..64 permutations
         verbose = false; // set to true if crashes
         for (int fpp = ocl_fpp16; fpp <= ocl_fpp64; fpp++) {
             for (int n = 1; n <= 64; n++) {
@@ -311,14 +335,8 @@ static void tests() {
             }
         }
 #endif
-//      verbose = true; // set to true if crashes
-//      test16(&g, 2, 3, init_vc0, init_mx0); // easy to cpu math visually
-//      test16(&g, 2, 3, init_vc1, init_mx1); // less overflow
-//      test16(&g, 4, 4, init_vc0, init_mx0);
-//      test16(&g, 8, 16, init_vc0, init_mx0);
-//      test16(&g, 32, 1, init_vc0, init_mx0);
-//      test16(&g, 64, 64, init_vc1, init_mx1);
-#else
+
+#if 1   // large matrix/vectors performance tests
         for (int fpp = ocl_fpp16; fpp <= ocl_fpp32; fpp++) {
             test(&g, fpp, 1024, 1024, init_vc1, init_mx1);
             test(&g, fpp, 1024, 1024, init_vc1, init_mx1);
@@ -338,7 +356,7 @@ static void tests() {
                 unchecked--;
                 traceln("==================================================");
             } else {
-                test(&g, fpp, 32 * 1024, 2 * 1024, init_vc1, init_mx1); // GPT-J 6b inermost gemv()
+                test(&g, fpp, 32 * 1024, 2 * 1024, init_vc1, init_mx1); // GPT-J 6b innermost gemv()
             }
         }
 #endif

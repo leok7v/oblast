@@ -1,6 +1,10 @@
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
+// ocl.h exposes opencl.h and by design is just set of
+// convenience fail fast wrappers to make code more
+// readable and easier to maintain. It does NOT `abstract`
+// OpenCL API
 #include <CL/opencl.h>
 
 #ifdef __cplusplus
@@ -13,13 +17,11 @@ enum { ocl_fpp16 = 0, ocl_fpp32 = 1, ocl_fpp64 = 2 };
 extern const char* ocl_fpp_names[3];
 extern const int   ocl_fpp_bytes[3]; // { 2, 4, 8 }
 
-// TODO: since ocl.h exposes opencl.h no need to warp
-//                                    types to exra layer of abstraction
-typedef struct ocl_device_id_s* ocl_device_id_t;
-typedef struct ocl_memory_s*    ocl_memory_t;
-typedef struct ocl_program_s*   ocl_program_t;
-typedef struct ocl_kernel_s*    ocl_kernel_t;
-typedef struct ocl_event_s*     ocl_event_t;
+typedef cl_device_id ocl_device_id_t;
+typedef cl_mem       ocl_memory_t;
+typedef cl_program   ocl_program_t;
+typedef cl_kernel    ocl_kernel_t;
+typedef cl_event     ocl_event_t;
 
 enum { // flavor (bitset because of collaboration and mixed solutions)
     ocl_nvidia    = (1 << 0),
@@ -173,6 +175,8 @@ typedef struct ocl_if {
         size_t offset, size_t bytes);
     // memory must be unmapped before the kernel is executed
     void (*unmap)(ocl_context_t* c, ocl_memory_t m, const void* address);
+    void (*migrate)(ocl_context_t* c, ocl_memory_t m);
+    void (*migrate_undefined)(ocl_context_t* c, ocl_memory_t m);
     // compile() with log != null may return null, with log == null
     // any error is fatal.
     ocl_program_t (*compile)(ocl_context_t* c, const char* code,
