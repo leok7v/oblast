@@ -13,6 +13,7 @@ static fp64_t avg_user;
 static fp64_t avg_host;
 static fp64_t avg_gflops;
 
+static fp64_t cpu_time;
 static fp64_t avx_time;
 static fp64_t gpu_time;
 
@@ -66,6 +67,7 @@ static void test(gemv_t* g, int fpp,
     traceln("%d x %d fp%d_t", n, m, ocl_fpp_bytes[fpp] * 8);
     gpu_time = DBL_MAX;
     avx_time = DBL_MAX;
+    cpu_time = DBL_MAX;
     const size_t meb = ocl_fpp_bytes[fpp]; // matrix element bytes
     // vector element bytes
     const size_t veb = fpp == ocl_fpp16 ? 4 : 8;
@@ -119,6 +121,7 @@ static void test(gemv_t* g, int fpp,
     }
     void* cpu = (fp32_t*)alloca(m * veb);
     fatal_if(cpu == null);
+    fp64_t user = seconds();
     switch (fpp) {
         case ocl_fpp16:
             for (int32_t j = 0; j < m; j++) {
@@ -153,6 +156,8 @@ static void test(gemv_t* g, int fpp,
         default:
             fatal_if("fpp?", "fpp: %d", fpp);
     }
+    user = seconds() - user;
+    cpu_time = min(cpu_time, user);
     if (verbose && n <= 64 && m <= 64) {
         switch (fpp) {
             case ocl_fpp16:
@@ -177,7 +182,7 @@ static void test(gemv_t* g, int fpp,
     }
     ocl.unmap(c, matrix, mx);
     ocl.unmap(c, vector, vc);
-    fp64_t user = seconds();
+    user = seconds();
     gemv.gemv(g, fpp, 0, matrix, vector, result, n, m);
     user = seconds() - user;
     gpu_time = min(gpu_time, user);
@@ -244,8 +249,13 @@ static void test(gemv_t* g, int fpp,
     ocl.deallocate(vector);
     ocl.deallocate(matrix);
     if (n > 64 && m > 64) {
-        traceln("%dx%d gpu: %6.3f avx: %6.3f ms", n, m,
-            gpu_time * MSEC_IN_SEC, avx_time * MSEC_IN_SEC);
+        if (avx_time < DBL_MAX) {
+            traceln("%dx%d gpu: %6.3f avx: %6.3f ms", n, m,
+                gpu_time * MSEC_IN_SEC, avx_time * MSEC_IN_SEC);
+        } else {
+            traceln("%dx%d gpu: %6.3f cpu: %6.3f ms", n, m,
+                gpu_time * MSEC_IN_SEC, cpu_time * MSEC_IN_SEC);
+        }
     }
 }
 
@@ -285,6 +295,8 @@ static void tests() {
         gemv_t g = {0};
         gemv.init(&g, &c);
 #if 0
+
+#if 0
         verbose = true;
         test(&g, ocl_fpp32, 33, 1, init_vc0, init_mx0);
 #else
@@ -306,26 +318,28 @@ static void tests() {
 //      test16(&g, 8, 16, init_vc0, init_mx0);
 //      test16(&g, 32, 1, init_vc0, init_mx0);
 //      test16(&g, 64, 64, init_vc1, init_mx1);
-#if 0
-        test16(&g, 1024, 1024, init_vc1, init_mx1);
-        test16(&g, 1024, 1024, init_vc1, init_mx1);
-        test16(&g, 4 * 1024,  4 * 1024, init_vc1, init_mx1);
-        test16(&g, 4 * 1024, 16 * 1024, init_vc1, init_mx1); // GPT-J 6b innermost gemv()
-        // only run on NVIDIA GPU. Intel UHD Graphics GPU reports 16GB as global memory
-        // but cannot allocate any of this huge memory chunks
-        if (strstr(d->vendor, "NVIDIA") != null) {
-            test16(&g, 16 * 1024, 64 * 1024, init_vc1, init_mx1);
-            traceln("--------------------------------------------------");
-            // GPT-J 6b [16K, 4K, 7] * [4K, 7] 7 is probably dimension of word embedding?
-            // 32*64 = 2048M x sizeof(fp32_t) = 8GB
-            // use 30x60 instead to fit into 8GB of GPU memory
-            // the accumulated error is too big to check:
-            unchecked++;
-            test16(&g, 30 * 1024, 60 * 1024, init_vc1, init_mx1);
-            unchecked--;
-            traceln("==================================================");
-        } else {
-            test16(&g, 32 * 1024, 2 * 1024, init_vc1, init_mx1); // GPT-J 6b inermost gemv()
+#else
+        for (int fpp = ocl_fpp16; fpp <= ocl_fpp32; fpp++) {
+            test(&g, fpp, 1024, 1024, init_vc1, init_mx1);
+            test(&g, fpp, 1024, 1024, init_vc1, init_mx1);
+            test(&g, fpp, 4 * 1024,  4 * 1024, init_vc1, init_mx1);
+            test(&g, fpp, 4 * 1024, 16 * 1024, init_vc1, init_mx1); // GPT-J 6b innermost gemv()
+            // only run on NVIDIA GPU. Intel UHD Graphics GPU reports 16GB as global memory
+            // but cannot allocate any of this huge memory chunks
+            if (strstr(d->vendor, "NVIDIA") != null && fpp < ocl_fpp64) {
+                test(&g, fpp, 16 * 1024, 64 * 1024, init_vc1, init_mx1);
+                traceln("--------------------------------------------------");
+                // GPT-J 6b [16K, 4K, 7] * [4K, 7] 7 is probably dimension of word embedding?
+                // 32*64 = 2048M x sizeof(fp32_t) = 8GB
+                // use 30x60 instead to fit into 8GB of GPU memory
+                // the accumulated error is too big to check:
+                unchecked++;
+                test(&g, fpp, 30 * 1024, 60 * 1024, init_vc1, init_mx1);
+                unchecked--;
+                traceln("==================================================");
+            } else {
+                test(&g, fpp, 32 * 1024, 2 * 1024, init_vc1, init_mx1); // GPT-J 6b inermost gemv()
+            }
         }
 #endif
         gemv.fini(&g);

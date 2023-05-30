@@ -74,6 +74,8 @@
       </DelayLoadDLLs>
       <AdditionalDependencies />
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+      <StackReserveSize>8388608</StackReserveSize>
+      <StackCommitSize>8388608</StackCommitSize>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -124,6 +126,8 @@
       <AdditionalDependencies />
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <StackReserveSize>8388608</StackReserveSize>
+      <StackCommitSize>8388608</StackCommitSize>
     </Link>
     <PostBuildEvent>
       <Command>
