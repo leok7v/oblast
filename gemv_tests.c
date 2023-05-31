@@ -16,14 +16,6 @@ static fp64_t ocl_time; // total time for gemv() call
 static fp64_t gpu_time; // gpu time
 static fp64_t gpu_gfps; // gpu GFlops
 
-#define strprintf(s, ...) \
-    (snprintf(s, countof(s) - 1, "" __VA_ARGS__))
-#define catprintf(s, ...) \
-    (strlen(s) < counts(s) - 5 ? \
-        snprintf(s + strlen(s), countof(s) - 1 - strlen(s), "" __VA_ARGS__) : \
-        "..." \
-    )
-
 static void v32println(const fp32_t* vc, const int32_t n) {
     for (int32_t i = 0; i < n; i++) { printf("%5g ", vc[i]); }
     printf("\n");
@@ -326,9 +318,9 @@ static void permutations(gemv_t* g, const ocl_device_t* d) {
         for (int n = 1; n <= 64; n++) {
             for (int m = 1; m <= 64; m++) {
                 if (fpp != ocl_fpp64 || d->double_fp_config != 0) {
-                    if (_isatty(_fileno(stdout))) {
-                        printf("%2dx%-2d: %d\r", n, m, ocl_fpp_bytes[fpp] * 8);
-                    }
+//                  if (_isatty(_fileno(stdout))) {
+//                      printf("%2dx%-2d: %d\r", n, m, ocl_fpp_bytes[fpp] * 8);
+//                  }
                     test(g, fpp, n, m, init_vc0, init_mx0);
                 }
             }
@@ -341,18 +333,17 @@ static void permutations(gemv_t* g, const ocl_device_t* d) {
 #endif
 }
 
-static void tests(bool profiling) {
-    static ocl_profiling_t p[1];
-    // profiling measurement:
-    for (int i = 1; i < ocl.count; i++) {
+static void tests(bool profile) {
+    for (int i = 0; i < ocl.count; i++) {
 //      ocl.dump(i);
         const ocl_device_t* d = &ocl.devices[i];
+        ocl_profiling_t profiling[1]; // [1] because single kernel
         ocl_override_t ov = {
-            .profiling = p,
-            .max_profiling_count = countof(p),
+            .profiling = profiling,
+            .max_profiling_count = countof(profiling),
             .profiling_count = 0
         };
-        ocl_context_t c = ocl.open(i, profiling ? &ov : null);
+        ocl_context_t c = ocl.open(i, profile ? &ov : null);
         println("*** %s : %.1fGB ***", d->name, d->global_memory / (double)GB);
         gemv_t g = {0};
         gemv.init(&g, &c);
@@ -368,7 +359,7 @@ static void tests(bool profiling) {
                     {     1024,      1024},
                     { 4 * 1024,  4 * 1024},
                     { 4 * 1024, 16 * 1024}, // GPT-J 6b innermost gemv()
-                    {16 * 1024, 60 * 1024}, // GPT-J 6b innermost gemv() x 8 layers
+                    {16 * 1024, 48 * 1024}, // GPT-J 6b innermost gemv() x 8 layers
                     {30 * 1024, 60 * 1024},
                     {64 * 1024,  8 * 1024},
                 };

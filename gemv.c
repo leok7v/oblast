@@ -3,6 +3,7 @@
 static void ocl_gemv(gemv_t* g, int fpp, int64_t offset,
         ocl_memory_t mx, ocl_memory_t vc,
         ocl_memory_t rs, int64_t n, int64_t m) {
+    assert(offset == 0, "Not implemented yet");
     (void) offset; // TODO: use it
     if (ocl.is_profiling(g->c)) { g->c->ov->profiling_count = 0; }
     ocl_device_t* d = &ocl.devices[g->c->ix];

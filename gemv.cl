@@ -6,10 +6,6 @@
 #pragma OPENCL EXTENSION cl_khr_fp16: enable
 #endif
 
-// #pragma OPENCL EXTENSION cl_amd_printf : enable
-// #pragma OPENCL EXTENSION cl_intel_printf : enable
-// #pragma OPENCL EXTENSION cl_nvidia_printf : enable
-
 #define _concat_(first, last)  first ## last
 #define concat(first, last) _concat_(first, last)
 
@@ -18,41 +14,19 @@
 
 #define reduce_add concat(reduce_add, fpmx)
 
-#define reduce_add_subgroups concat(concat(reduce_add, fpmx), _subgroups)
-
 // shared memory "sm" is accessible for all work items in a group
 
-// #define debug_reduce_add 1
-
-inline void reduce_add(const uint lid, uint i,
-        fpmx_t s, __local fpmx_t* restrict sm) {
+inline void reduce_add(const uint lid, uint i, fpmx_t s,
+        __local fpmx_t* restrict sm) {
     sm[lid] = s; // (*1*)
-#ifdef debug_reduce_add
-    printf("lid: %d sm[%d]: %f i:%d\n", lid, lid, sm[lid], i);
-#endif
     while (i > 1) {
         // this fence guarantees all (*1*) memory write are complete
         // in this group and s = ... (*2*) reads coherent values
         uint i2 = i >> 1;
         local_fence();
-#ifdef debug_reduce_add
-        printf("i: %d i/2: %d\n", i, i2);
-#endif
         if (lid < i2) {
-#ifndef debug_reduce_add
             s = sm[lid] + sm[lid + i2] + // (*2*)
                 (((lid == 0) & (i & 1)) ? sm[lid + i - 1] : 0.0f);
-#else
-            if ((lid == 0) & (i & 1)) {
-                s = sm[lid] + sm[lid + i2] + sm[lid + i - 1];
-                printf("sm[%d]: %f += sm[%d + %d]: %f + sm[%d + %d]: %f -> %f\n",
-                        lid, sm[lid], lid, i2, sm[lid + i2], lid, i - 1, sm[lid + i - 1], s);
-            } else {
-                s = sm[lid] + sm[lid + i2];
-                printf("sm[%d]: %f += sm[%d + %d]: %f -> %f\n",
-                        lid, sm[lid], lid, i2, sm[lid + i2], s);
-            }
-#endif
         }
         // this fence guarantees that all (*2*) reads are done and summed
         // in register "s".
@@ -64,48 +38,6 @@ inline void reduce_add(const uint lid, uint i,
     }
     // this fence guarantees that all (*3*) writes of the last iteration
     // has been completed:
-    local_fence();
-}
-
-inline void reduce_add_subgroups(uint sub_group_id,
-        uint num_sub_groups, fpmx_t s, __local fpmx_t* restrict sm) {
-    const uint ix = sub_group_id;
-    sm[ix] = s;
-    uint i = num_sub_groups;
-#ifdef debug_reduce_add
-    printf("sub_group_id: %d sm[%d]: %f i:%d\n",
-        sub_group_id, sub_group_id, sm[ix], i);
-#endif
-    while (i > 1) {
-        uint i2 = i >> 1;
-        local_fence();
-#ifdef debug_reduce_add
-        printf("i: %d i/2: %d sub_group_id (ix): %d\n", i, i2, ix);
-#endif
-        if (ix < i2) {
-#ifndef debug_reduce_add
-            s = sm[ix] += sm[ix + i2] +
-                (((sub_group_id == 0) & (i & 1)) ?
-                   sm[ix + i - 1] : 0.0f);
-#else
-            if ((sub_group_id == 0) & (i & 1)) {
-                s = sm[ix] + sm[ix + i2] + sm[ix + i - 1];
-                printf("sm[%d]: %f += sm[%d]: %f + sm[%d + %d]: %f -> %f\n",
-                        ix, sm[ix], i2, sm[ix + i2],
-                        ix, i - 1, sm[ix + i - 1], s);
-            } else {
-                s = sm[ix] + sm[ix + i2];
-                printf("sm[%d]: %f += sm[%d]: %f -> %f\n",
-                        ix, sm[ix], i2, sm[ix + i2], s);
-            }
-#endif
-        }
-        local_fence();
-        if (sub_group_id < i2) {
-            sm[sub_group_id] = s;
-        }
-        i = i2;
-    }
     local_fence();
 }
 
@@ -122,7 +54,6 @@ inline void concat(gemv_, fpp)(
     const uint gid = get_group_id(0);
     const uint items = get_local_size(0);
     const uint groups = get_num_groups(0);
-//  printf("%s:%d groups:%d items:%d\n", __FUNCTION__, __LINE__, groups, items);
     for (uint y = gid; y < m; y += groups) {
         const __global fp_t* row = mx + y * n;
         fpmx_t s = 0;
@@ -143,7 +74,6 @@ inline void concat(concat(gemv_, fpp), x4)(
     const uint gid = get_group_id(0);
     const uint items = get_local_size(0);
     const uint groups = get_num_groups(0);
-//  printf("%s:%d groups:%d items:%d\n", __FUNCTION__, __LINE__, groups, items);
     for (uint y = gid; y < m; y += groups) {
         const __global vec4_t* row = mx + y * n;
         fpmx_t s = 0;
@@ -164,7 +94,6 @@ inline void concat(concat(gemv_, fpp), x16)(
     const uint gid = get_group_id(0);
     const uint items = get_local_size(0);
     const uint groups = get_num_groups(0);
-//  printf("%s:%d groups:%d items:%d\n", __FUNCTION__, __LINE__, groups, items);
     for (uint y = gid; y < m; y += groups) {
         const __global vec4_t* row = mx + y * n * 4;
         fpmx_t s = 0;
@@ -192,7 +121,6 @@ inline void concat(concat(gemv_, fpp), x32)(
     const uint gid = get_group_id(0);
     const uint items = get_local_size(0);
     const uint groups = get_num_groups(0);
-//  printf("%s:%d groups:%d items:%d\n", __FUNCTION__, __LINE__, groups, items);
     for (uint y = gid; y < m; y += groups) {
         const __global vec4_t* row = mx + y * n * 8;
         fpmx_t s = 0;
@@ -228,16 +156,13 @@ inline void concat(concat(gemv_, fpp), _subgroups)(
     const uint groups = get_num_groups(0);
     const uint sub_group_id = get_sub_group_id();
     const uint num_sub_groups = get_num_sub_groups();
-//  printf("%s:%d groups:%d items:%d\n", __FUNCTION__, __LINE__, groups, items);
     for (uint y = gid; y < m; y += groups) {
         const __global fp_t* row = mx + y * n;
         fpmx_t s = 0;
         for (uint x = lid; x < n; x += items) { s += row[x] * vc[x]; }
         subgroup_fence()
         s = sub_group_reduce_add(s);
-//      printf("lid: %d sub_group_id: %d num_sub_groups: %d s: %f\n",
-//          lid, sub_group_id, num_sub_groups, s);
-        reduce_add_subgroups(sub_group_id, num_sub_groups, s, sm);
+        reduce_add(sub_group_id, num_sub_groups, s, sm);
         if (lid == 0) { rs[y] = sm[0]; }
     }
 }
@@ -260,7 +185,7 @@ inline void concat(concat(gemv_, fpp), x4_subgroups)(
         fpmx_t s = 0;
         for (uint x = lid; x < n; x += items) { s += dot(row[x], vc[x]); }
         subgroup_fence()
-        reduce_add_subgroups(sub_group_id, num_sub_groups, sub_group_reduce_add(s), sm);
+        reduce_add(sub_group_id, num_sub_groups, sub_group_reduce_add(s), sm);
         if (lid == 0) { rs[y] = sm[0]; }
     }
 }
@@ -290,7 +215,7 @@ inline void concat(concat(gemv_, fpp), x16_subgroups)(
                 dot(row[x4 + 3], vc[x4 + 3]);
         }
         subgroup_fence();
-        reduce_add_subgroups(sub_group_id, num_sub_groups, sub_group_reduce_add(s), sm);
+        reduce_add(sub_group_id, num_sub_groups, sub_group_reduce_add(s), sm);
         if (lid == 0) { rs[y] = sm[0]; }
     }
 }
@@ -324,14 +249,7 @@ inline void concat(concat(gemv_, fpp), x32_subgroups)(
                 dot(row[x8 + 7], vc[x8 + 7]);
         }
         subgroup_fence()
-        reduce_add_subgroups(sub_group_id, num_sub_groups, sub_group_reduce_add(s), sm);
-//      sm[lid + sub_group_id] = sub_group_reduce_add(s);
-//      local_fence();
-//      for (uint s = num_sub_groups >> 1; s > 0; s >>= 1) {
-//          if (sub_group_id < s) { sm[sub_group_id] += sm[sub_group_id + s]; }
-//          local_fence();
-//      }
-//      local_fence();
+        reduce_add(sub_group_id, num_sub_groups, sub_group_reduce_add(s), sm);
         if (lid == 0) { rs[y] = sm[0]; }
     }
 }
@@ -345,7 +263,6 @@ void concat(gemv, fpp)( // gemv32 gemv16 gemv64; fpp float point precision
         __global       fp_t rs[/*m*/],
         __local        fp_t sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
-//  printf("%s:%d max_subgroups: %d\n", __FUNCTION__, __LINE__, max_subgroups);
 #if max_subgroups > 0
     concat(concat(gemv_, fpp), _subgroups)(mx, vc, rs, sm, n, m);
 #else // sm[max_items * max_groups] must be allocated by host
@@ -495,7 +412,6 @@ inline void gemv_16x32(
         if (lid == 0) { rs[y] = sm[0]; }
     }
 }
-
 
 __kernel
 void gemv16(
