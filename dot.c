@@ -480,17 +480,17 @@ static void performance(int n, int bestof, dot_performance_t* m,
 }
 
 static void report_preformance(dot_performance_t* p, const char* label) {
-    traceln("%s", label);
-//  traceln("C     : %7.3f nanoseconds", p->ns_c);
-//  if (p->ns_avx2   != 0) { traceln("avx2  : %7.3f nanoseconds", p->ns_avx2); }
-//  if (p->ns_avx512 != 0) { traceln("avx512: %7.3f nanoseconds", p->ns_avx512); }
+    println("%s", label);
+//  println("C     : %7.3f nanoseconds", p->ns_c);
+//  if (p->ns_avx2   != 0) { println("avx2  : %7.3f nanoseconds", p->ns_avx2); }
+//  if (p->ns_avx512 != 0) { println("avx512: %7.3f nanoseconds", p->ns_avx512); }
     // GFlops (2 flops per element)
     fp64_t gfps_c      = 2.0 / p->ns_c;
     fp64_t gfps_avx2   = p->ns_avx2   != 0 ? 2.0 / p->ns_avx2   : 0;
     fp64_t gfps_avx512 = p->ns_avx512 != 0 ? 2.0 / p->ns_avx512 : 0;
-    traceln("C     : %7.3f Gflops", gfps_c);
-    if (p->ns_avx2   != 0) { traceln("avx2  : %7.3f Gflops", gfps_avx2); }
-    if (p->ns_avx512 != 0) { traceln("avx512: %7.3f Gflops", gfps_avx512); }
+    println("C     : %7.3f Gflops", gfps_c);
+    if (p->ns_avx2   != 0) { println("avx2  : %7.3f Gflops", gfps_avx2); }
+    if (p->ns_avx512 != 0) { println("avx512: %7.3f Gflops", gfps_avx512); }
 }
 
 static void dot_test_performance() {

@@ -31,7 +31,7 @@ enum { KB = 1024, MB = 1024 * KB, GB = 1024 * MB };
 
 static void ocl_error_notify(const char * errinfo,
     const void* private_info, size_t cb, void* user_data) {
-    traceln("ERROR: %*s", errinfo);
+    println("ERROR: %*s", errinfo);
     (void)private_info;
     (void)cb;
     (void)user_data;
@@ -178,9 +178,9 @@ static ocl_program_t ocl_compile(ocl_context_t* c,
             }
         }
         if (log == log_on_stack) {
-            traceln("%s", log);
+            println("%s", log);
             if (e != 0) {
-                traceln("WARNING: clGetProgramBuildInfo(CL_PROGRAM_BUILD_LOG) "
+                println("WARNING: clGetProgramBuildInfo(CL_PROGRAM_BUILD_LOG) "
                         "failed %s", ocl.error(e));
             }
             fatal_if(clBuildProgram, "clBuildProgram() failed %s", ocl.error(r));
@@ -262,7 +262,7 @@ static void ocl_profile(ocl_profiling_t* p) {
     static double sum;
     p->time = (p->end - p->start) / (double)NSEC_IN_SEC;
 //  sum += p->time;
-//  traceln("time: %.6fus sum: %.6fus", p->time * USEC_IN_SEC, sum * USEC_IN_SEC);
+//  println("time: %.6fus sum: %.6fus", p->time * USEC_IN_SEC, sum * USEC_IN_SEC);
     if (p->count != 0) {
         double seconds_per_kernel = p->time / p->count;
         double invocations_per_second = 1.0 / seconds_per_kernel;
@@ -422,7 +422,7 @@ static void ocl_check_fp16_support(int dix) {
         ocl.devices[dix].float_fp_config |= ocl_fp_half;
         ocl.release_program(p);
     } else {
-        traceln("%s\n%s\n", sc, log);
+        println("%s\n%s\n", sc, log);
     }
     ocl.close(&c);
 }
@@ -537,22 +537,22 @@ static const char* ocl_fp_config_to_string(int64_t config) {
 
 static void ocl_dump(int ix) {
     const ocl_device_t* d = &ocl.devices[ix];
-    traceln("Device name:     %s OpenCL %d.%d C %d.%d", d->name,
+    println("Device name:     %s OpenCL %d.%d C %d.%d", d->name,
         d->version_major, d->version_minor, d->c_version_major, d->c_version_minor);
-    traceln("compute_units:    %lld @ %lldMHz", d->compute_units, d->clock_frequency);
-    traceln("global_memory:    %lldMB", d->global_memory / MB);
-    traceln("local_memory:     %lld bytes", d->local_memory);
-    traceln("max_const_args:   %lld", d->max_const_args);
-    traceln("max_groups:       %lld", d->max_groups);
-    traceln("max_subgroups:    %lld", d->max_subgroups);
+    println("compute_units:    %lld @ %lldMHz", d->compute_units, d->clock_frequency);
+    println("global_memory:    %lldMB", d->global_memory / MB);
+    println("local_memory:     %lld bytes", d->local_memory);
+    println("max_const_args:   %lld", d->max_const_args);
+    println("max_groups:       %lld", d->max_groups);
+    println("max_subgroups:    %lld", d->max_subgroups);
 
-    traceln("subgroup_ifp:     %lld", d->subgroup_ifp);
-    traceln("dimensions:       %lld", d->dimensions);
+    println("subgroup_ifp:     %lld", d->subgroup_ifp);
+    println("dimensions:       %lld", d->dimensions);
     const int64_t* wi = d->max_items;
-    traceln("max_items[]:     {%lld %lld %lld}", wi[0], wi[1], wi[2]);
-    traceln("float_fp_config:  %s", ocl_fp_config_to_string(d->float_fp_config));
-    traceln("double_fp_config: %s", ocl_fp_config_to_string(d->double_fp_config));
-    traceln("extensions:       %s", d->extensions);
+    println("max_items[]:     {%lld %lld %lld}", wi[0], wi[1], wi[2]);
+    println("float_fp_config:  %s", ocl_fp_config_to_string(d->float_fp_config));
+    println("double_fp_config: %s", ocl_fp_config_to_string(d->double_fp_config));
+    println("extensions:       %s", d->extensions);
 }
 
 // run with args: compile kernel.cl options...
@@ -592,11 +592,11 @@ static void ocl_compiler(int argc, const char* argv[]) {
         int from = ocl_fpp16;
         int to = d->double_fp_config == 0 ? ocl_fpp32 : ocl_fpp64;
         for (int fpp = from; fpp <= to; fpp++) {
-            traceln("compile: %s for %s @ %s", argv[2], ocl_fpp_names[fpp], d->name);
-            traceln("");
+            println("compile: %s for %s @ %s", argv[2], ocl_fpp_names[fpp], d->name);
+            println("");
             ocl_program_t p = ocl.compile(&c, source, source_bytes, opt, null, 0);
             if (p == null) {
-                traceln("failed to compile for %s: %s", ocl_fpp_names[fpp], argv[2]);
+                println("failed to compile for %s: %s", ocl_fpp_names[fpp], argv[2]);
             } else {
                 int64_t n = 0; // number of devices
                 fatal_if(clGetProgramInfo((cl_program)p, CL_PROGRAM_NUM_DEVICES,
@@ -643,7 +643,7 @@ static void ocl_compiler(int argc, const char* argv[]) {
         ocl.close(&c);
     }
     if (source_bytes <= 0) {
-        traceln("failed to read: %s", argv[2]);
+        println("failed to read: %s", argv[2]);
     }
     free(source);
 }

@@ -161,7 +161,7 @@ inline fp32_t fp16to32(fp16_t fp16) {
         exponent++;
         mantissa &= 0x7FFFFF; // remove hidden bit
         result = sign | (exponent << 23) | mantissa;
-//      traceln("normalized result: 0x%08X", result);
+//      println("normalized result: 0x%08X", result);
     } else {
         assert(mantissa == 0 && exponent == 0, "+/- zero");
         result = sign;
@@ -201,8 +201,8 @@ inline bool fp16_neq(fp16_t x, fp16_t y) { return fp16_compare(x, y) != 0; }
 
 void fp16_test() {
 #if 0
-    #define dump_f16(label, v) traceln("%-35s 0x%04X %.7E", label, v.bytes, fp16to32(v))
-    #define dump_f32(label, v) traceln("%-35s 0x%08X %.7E", label, *(uint32_t*)&v, v)
+    #define dump_f16(label, v) println("%-35s 0x%04X %.7E", label, v.bytes, fp16to32(v))
+    #define dump_f32(label, v) println("%-35s 0x%08X %.7E", label, *(uint32_t*)&v, v)
 #else
     #define dump_f16(label, v) (void)(v); // unused
     #define dump_f32(label, v) (void)(v); // unused
@@ -300,24 +300,24 @@ void fp16_test() {
         b[i] = fp32to16((float)(countof(a) - 1 - i));
         sum32 += (float)i + (float)i;
         sum64 += i + i;
-        traceln("[%d] a:%.6f b:%.6f", i, fp16to32(a[i]), fp16to32(b[i]));
+        println("[%d] a:%.6f b:%.6f", i, fp16to32(a[i]), fp16to32(b[i]));
         sum = fp16_add(fp16_add(a[i], b[i]), sum);
     }
-    traceln("sum fp16:%.6f fp32:%.6f fp64:%.6f", fp16to32(sum), sum32, sum64);
+    println("sum fp16:%.6f fp32:%.6f fp64:%.6f", fp16to32(sum), sum32, sum64);
 
     for (int i = 0; i < countof(a); i++) {
         double ai = 2.0 * ((random32(&seed) / (double)UINT32_MAX) - 1.0);
         a[i] = fp32to16((float)ai);
         double bi = 2.0 * ((random32(&seed) / (double)UINT32_MAX) - 1.0);
         b[i] = fp32to16((float)bi);
-        traceln("%.6f %.6f", fp16to32(a[i]), fp16to32(b[i]));
+        println("%.6f %.6f", fp16to32(a[i]), fp16to32(b[i]));
         sum32 += (float)ai * (float)bi;
         sum64 += ai * bi;
     }
     for (int i = 0; i < countof(a); i++) {
         sum = fp16_add(fp16_mul(a[i], b[i]), sum);
     }
-    traceln("sum fp16:%.6f fp32:%.6f fp64:%.6f", fp16to32(sum), sum32, sum64);
+    println("sum fp16:%.6f fp32:%.6f fp64:%.6f", fp16to32(sum), sum32, sum64);
     sum = fp32to16(0);
     // all integers:
     for (int i = 0; i < (2U << 10); i++) {

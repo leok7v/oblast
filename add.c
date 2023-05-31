@@ -67,7 +67,7 @@ static void x_add_y(ocl_context_t* c, ocl_kernel_t k,
     ocl.unmap(c, mz, z);
     if (p != null) {
         if (verbose) {
-            traceln("kernel: %6.3f user: %8.3f host: %7.3f (microsec) GFlops: %6.3f",
+            println("kernel: %6.3f user: %8.3f host: %7.3f (microsec) GFlops: %6.3f",
                     p->time * USEC_IN_SEC, p->user * USEC_IN_SEC, host * USEC_IN_SEC,
                     p->gflops);
         }
@@ -137,7 +137,7 @@ __kernel void x_add_y(__global const float* x,                                \n
 
 static int test(ocl_context_t* c, int64_t n) {
     int result = 0;
-//  traceln("%s\n", sc);
+//  println("%s\n", sc);
     ocl_program_t p = ocl.compile(c, sc, strlen(sc), null, null, 0);
     ocl_kernel_t k = ocl.create_kernel(p, kernel_name);
     const int64_t bytes = n * sizeof(fp32_t);
@@ -154,8 +154,8 @@ static int test(ocl_context_t* c, int64_t n) {
         avg_user /= M;
         avg_host /= M;
         avg_gflops /= M;
-        traceln("average of %d runs for n: %d", M, n);
-        traceln("gpu: %6.3f user: %8.3f host: %7.3f (microsec) GFlops: %6.3f",
+        println("average of %d runs for n: %d", M, n);
+        println("gpu: %6.3f user: %8.3f host: %7.3f (microsec) GFlops: %6.3f",
                 avg_time * USEC_IN_SEC, avg_user * USEC_IN_SEC, avg_host * USEC_IN_SEC,
                 avg_gflops);
     }
@@ -183,9 +183,9 @@ int32_t main(int32_t argc, const char* argv[]) {
             ocl_device_t* d = &ocl.devices[i];
             int64_t n = min(N, d->max_groups * d->max_items[0]);
             ocl_context_t c = ocl.open(i, null);
-            traceln("%s\n", ocl.devices[i].name);
+            println("%s\n", ocl.devices[i].name);
             result = test(&c, n);
-            traceln("test: %s\n", result == 0 ? "OK" : "FAILED");
+            println("test: %s\n", result == 0 ? "OK" : "FAILED");
             ocl.close(&c);
         }
     }
@@ -200,9 +200,9 @@ int32_t main(int32_t argc, const char* argv[]) {
         ocl_device_t* d = &ocl.devices[i];
         int64_t n = min(N, d->max_groups * d->max_items[0]);
         ocl_context_t c = ocl.open(i, &ov);
-        traceln("%s", ocl.devices[i].name);
+        println("%s", ocl.devices[i].name);
         result = test(&c, n);
-        traceln("test: %s\n", result == 0 ? "OK" : "FAILED");
+        println("test: %s\n", result == 0 ? "OK" : "FAILED");
         ocl.close(&c);
     }
     return result;

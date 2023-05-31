@@ -36,7 +36,7 @@ static void ocl_gemv(gemv_t* g, int fpp, int64_t offset,
         p[0].i32ops = m * xn * 3; // indexing ops
         ocl.profile(&p[0]);
 //      if (n > 64 && m > 64) {
-//          traceln("%dx%d gpu: %6.3fms %4.1fGFlops",
+//          println("%dx%d gpu: %6.3fms %4.1fGFlops",
 //                  n, m, p[0].time * MSEC_IN_SEC, p[0].gflops);
 //      }
     }
@@ -67,7 +67,7 @@ static const char* gemv_program_options(gemv_t* g, int fpp) {
     append("-D max_subgroups=%lld ", d->max_subgroups);
     #pragma pop_macro("append")
     *p = 0;
-//  traceln("%s", options);
+//  println("%s", options);
     return options;
 }
 

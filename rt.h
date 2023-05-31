@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <float.h>
+#include <io.h>
 #include <malloc.h>
 #include <math.h>
 #include <stdarg.h>
@@ -58,11 +59,11 @@ void     sleep(double seconds);
 
 #define thread_local __declspec(thread)
 
-#define traceln(...) traceline(__FILE__, __LINE__, __func__, "" __VA_ARGS__)
+#define println(...) traceline(__FILE__, __LINE__, __func__, "" __VA_ARGS__)
 
 #define assertion(b, ...) do {                                              \
     if (!(b)) {                                                             \
-        traceln("%s false\n", #b); traceln("" __VA_ARGS__);                 \
+        println("%s false\n", #b); println("" __VA_ARGS__);                 \
         printf("%s false\n", #b); printf("" __VA_ARGS__); printf("\n");     \
         __debugbreak();                                                     \
         exit(1);                                                            \

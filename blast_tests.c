@@ -86,7 +86,7 @@ static void test_first_n(blast_t* b, int64_t n, int fpp,
     td.rse = td.expected - td.dot;
     td.rse = sqrt(td.rse * td.rse);
     if (verbose || td.rse > FLT_EPSILON) {
-        traceln("%s[%2d] [o:%2d s:%2d] [o:%2d s:%2d] "
+        println("%s[%2d] [o:%2d s:%2d] [o:%2d s:%2d] "
                 "%25.17f expected: %25.17f rse: %.17f",
                 ocl_fpp_names[fpp], n, o0, s0, o1, s1,
                 td.dot, td.expected, td.rse);
@@ -149,7 +149,7 @@ static void test_performance(blast_t* b, const int32_t n) {
     blast.deallocate(&m1);
     double rse = sqrt(pow(dot - sum, 2));
     if (rse > FLT_EPSILON) {
-        traceln("n: %d dot: %.7E sum: %.7E sum - dot: %.7E rse: %.7E\n",
+        println("n: %d dot: %.7E sum: %.7E sum - dot: %.7E rse: %.7E\n",
                     n, dot, sum, sum - dot, rse);
     }
     assert(fabs(dot - sum) <= FLT_EPSILON, "dot: %.7e != %.7e\n", dot, sum);
@@ -168,7 +168,7 @@ static void test_dot_compare_gpu_avx(blast_t* b) {
         y[i] = 1.0f - sign * ((i + 1) * delta);
         assert(x[i] * y[i] == 1.0f);
     }
-    traceln("Nx1000,   AVX,     GPU, milliseconds");
+    println("Nx1000,   AVX,     GPU, milliseconds");
     for (int i = 4096; i < n / 1024; i += 512) {
         double avx = seconds();
         fp64_t sum0 = dot32(x, 1, y, 1, i * 1024);
@@ -180,7 +180,7 @@ static void test_dot_compare_gpu_avx(blast_t* b) {
         test_dot_map(&td);
         x = (fp32_t*)td.a0;
         y = (fp32_t*)td.a1;
-        traceln("%6d, %5.3f, %7.3f", i, avx * MSEC_IN_SEC, gpu * MSEC_IN_SEC);
+        println("%6d, %5.3f, %7.3f", i, avx * MSEC_IN_SEC, gpu * MSEC_IN_SEC);
         fatal_if(sum0 != sum1);
     }
     test_dot_unmap(&td);
@@ -206,14 +206,14 @@ static void dot_tests() {
             .profiling_count = 0,
         };
         ocl_context_t c = ocl.open(d, &ov);
-        traceln("%s", ocl.devices[d].name);
+        println("%s", ocl.devices[d].name);
         blast_t b = { 0 };
         blast.init(&b, &c);
         // because fp32 have 24 binary digits significand and 2^24 is 16M:
         // 16M is the largest number w/o losing precision
         enum { n = 16 * 1024 * 1024 };
         test_performance(&b, n);
-        traceln("dot_fp32 x %d: %7.3f user: %7.3f (ms) GFlops: %7.3f", n,
+        println("dot_fp32 x %d: %7.3f user: %7.3f (ms) GFlops: %7.3f", n,
             p[0].time * MSEC_IN_SEC, p[0].user * MSEC_IN_SEC, p[0].gflops);
         blast.fini(&b);
         ocl.close(&c);
@@ -226,7 +226,7 @@ static void dot_tests() {
             .profiling_count = 0,
         };
         ocl_context_t c = ocl.open(d, &ov);
-        traceln("%s", ocl.devices[d].name);
+        println("%s", ocl.devices[d].name);
         blast_t b = { 0 };
         blast.init(&b, &c);
         test_dot_compare_gpu_avx(&b);

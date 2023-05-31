@@ -29,12 +29,12 @@ static blast_memory_t blast_allocate(blast_t* b, int access, int64_t bytes) {
     gm.b = b;
     gm.s = bytes;
     gm.h = ocl.allocate(b->c, blast_alloc_access_to_ocl[access], bytes);
-//  traceln("%p: %p", bm->h, bm->m);
+//  println("%p: %p", bm->h, bm->m);
     return gm;
 }
 
 static void blast_deallocate(blast_memory_t* bm) {
-//  traceln("%p: %p", bm->h, bm->m);
+//  println("%p: %p", bm->h, bm->m);
     ocl.deallocate((ocl_memory_t)bm->h);
     memset(bm, 0, sizeof(bm));
 }
@@ -43,12 +43,12 @@ static void* blast_map(blast_memory_t* bm, int access, int64_t offset,
         int64_t bytes) {
     bm->m = ocl.map(bm->b->c, blast_map_access_to_ocl[access],
         (ocl_memory_t)bm->h, offset, bytes);
-//  traceln("%p: %p", bm->h, bm->m);
+//  println("%p: %p", bm->h, bm->m);
     return bm->m;
 }
 
 static void blast_unmap(blast_memory_t* bm) {
-//  traceln("%p: %p", bm->h, bm->m);
+//  println("%p: %p", bm->h, bm->m);
     ocl.unmap(bm->b->c, (ocl_memory_t)bm->h, bm->m);
     bm->m = null;
 }
@@ -194,7 +194,7 @@ static fp64_t blast_dot(
         if (o0 == 0 && s0 == 1 && o1 == 0 && s1 == 1) {
             blast_dot_compact(ne, v0, v1, &r, fpp);
         } else {
-//          traceln("offsets: %8lld %8lld strides: %lld %lld ne: %8lld", o0, o1, s0, s1, ne);
+//          println("offsets: %8lld %8lld strides: %lld %lld ne: %8lld", o0, o1, s0, s1, ne);
             blast_dot_strided(ne, v0, o0, s0, v1, o1, s1, &r, fpp);
         }
         s += sum_and_finish(&r, ne, fpp);
@@ -261,13 +261,13 @@ static const char* blast_program_options(blast_t* b, int fpp) {
           (fpp == ocl_fpp16 ? "-D fp16_surrogate" : ""));
     #pragma pop_macro("append")
     *p = 0;
-//  traceln("options: %s", options);
+//  println("options: %s", options);
     return options;
 }
 
 static ocl_program_t blast_compile(blast_t* b, int fpp,
         const void* code, int bytes) {
-//  traceln("\nfpp: %s\n%*.*s\n\n", ocl_fpp_names[fpp], bytes, bytes, code);
+//  println("\nfpp: %s\n%*.*s\n\n", ocl_fpp_names[fpp], bytes, bytes, code);
     const char* opts = blast_program_options(b, fpp);
     return ocl.compile(b->c, code, bytes, opts, null, 0);
 }
