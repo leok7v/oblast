@@ -69,7 +69,7 @@ static avx512_if avx512 = { .init = avx512_init };
 
 static atomic_bool dot_initialized;
 
-void dot_init() {
+static void dot_init() {
     // it is not expected for 2 threads to hit this code simultensiosly
     // on two independent cores but if they do:
     static atomic_bool initialize;
@@ -191,7 +191,7 @@ static fp64_t dot64_c(const fp64_t *v0, const fp64_t* v1, int64_t n) {
     }
 }
 
-fp64_t dot16(const fp16_t* v0, int64_t s0, const fp16_t* v1, int64_t s1, int64_t n) {
+static fp64_t dot16(const fp16_t* v0, int64_t s0, const fp16_t* v1, int64_t s1, int64_t n) {
     if (!dot_initialized) { dot_init(); }
     assert(s0 >= 1 && s1 >= 1);
     if (s0 == 1 && s1 == 1) {
@@ -201,7 +201,7 @@ fp64_t dot16(const fp16_t* v0, int64_t s0, const fp16_t* v1, int64_t s1, int64_t
     }
 }
 
-fp64_t dot16bf(const bf16_t* v0, int64_t s0, const bf16_t* v1, int64_t s1,
+static fp64_t dot16bf(const bf16_t* v0, int64_t s0, const bf16_t* v1, int64_t s1,
         int64_t n) {
     if (!dot_initialized) { dot_init(); }
     assert(s0 >= 1 && s1 >= 1);
@@ -212,7 +212,7 @@ fp64_t dot16bf(const bf16_t* v0, int64_t s0, const bf16_t* v1, int64_t s1,
     }
 }
 
-fp64_t dot32(const fp32_t* v0, int64_t s0, const fp32_t* v1, int64_t s1, int64_t n) {
+static fp64_t dot32(const fp32_t* v0, int64_t s0, const fp32_t* v1, int64_t s1, int64_t n) {
     if (!dot_initialized) { dot_init(); }
     assert(s0 >= 1 && s1 >= 1);
     if (s0 == 1 && s1 == 1) {
@@ -222,7 +222,7 @@ fp64_t dot32(const fp32_t* v0, int64_t s0, const fp32_t* v1, int64_t s1, int64_t
     }
 }
 
-fp64_t dot64(const fp64_t* v0, int64_t s0, const fp64_t* v1, int64_t s1, int64_t n) {
+static fp64_t dot64(const fp64_t* v0, int64_t s0, const fp64_t* v1, int64_t s1, int64_t n) {
     if (!dot_initialized) { dot_init(); }
     assert(s0 >= 1 && s1 >= 1);
     if (s0 == 1 && s1 == 1) {
@@ -378,26 +378,6 @@ static fp64_t avx512_dot16(const fp16_t* restrict v0,
 
 #define avx512_dot32_LATE_REDUCE // measures the best
 
-#if avx512_dot32_SIMPLEST
-
-// TODO: elaborate avx512_dot32 measures faster on the L1 cache
-//       for not a very well understood reason
-
-static fp64_t avx512_dot32(const fp32_t* restrict v0,
-        const fp32_t* restrict v1, int64_t n) { // ~18GFlops
-    fp64_t sum = 0;
-    while (n >= 16) {
-        sum += _mm512_reduce_add_ps(
-            _mm512_mul_ps(_mm512_loadu_ps(v0),
-                          _mm512_loadu_ps(v1)));
-        n -= 16; v0 +=16; v1 += 16;
-    }
-    if (n > 0) { sum += cpu_dot32_c(v0, v1, n); }
-    return sum;
-}
-
-#elif defined(avx512_dot32_LATE_REDUCE)
-
 // turns out from measurements:
 // 1. _mm512_reduce_add_ps() is very expensive better to do it later
 // 2. L1 cache prefetch() is a liability 26GFlops w/o 22GFlops with.
@@ -421,34 +401,6 @@ static fp64_t avx512_dot32(const fp32_t* restrict v0,
     return sum;
 }
 
-#else
-
-static fp64_t avx512_dot32(const fp32_t* restrict v0,
-        const fp32_t* restrict v1, int64_t n) { // ~22GFlops
-    fp64_t sum = 0;
-    if (n >= 16) {
-        f32x16_t mul_add_f32x16 = _mm512_setzero_ps(); // multiply and add
-        while (n >= 16) {
-            f32x16_t a = _mm512_loadu_ps(v0); // f32x8
-            f32x16_t b = _mm512_loadu_ps(v1); // f32x8
-            n -= 16; v0 +=16; v1 += 16;
-            if (n > 0) { prefetch2_L1L2L3(v0, v1); }
-            mul_add_f32x16 = _mm512_fmadd_ps(a, b, mul_add_f32x16);
-        }
-        f32x8_t f32x8 = _mm256_add_ps(
-            _mm512_castps512_ps256(mul_add_f32x16),     // 0,1,2,3,4,5,6,7
-            _mm512_extractf32x8_ps(mul_add_f32x16, 1)); // 8,9,10,11,12,13,14,15
-        f32x4_t f32x4 = _mm_add_ps(
-            _mm256_castps256_ps128(f32x8),     // 0,1,2,3
-            _mm256_extractf32x4_ps(f32x8, 1)); // 4,5,6,7
-        sum = f32x4.m128_f32[0] + f32x4.m128_f32[1] + f32x4.m128_f32[2] + f32x4.m128_f32[3];
-    }
-    if (n > 0) { sum += cpu_dot32_c(v0, v1, n); }
-    return sum;
-}
-
-#endif
-
 static fp64_t avx512_dot64(const fp64_t* restrict v0, const fp64_t* restrict v1, int64_t n) {
     fp64_t sum = 0;
     if (n >= 8) {
@@ -461,15 +413,6 @@ static fp64_t avx512_dot64(const fp64_t* restrict v0, const fp64_t* restrict v1,
             mul_add_f64x8 = _mm512_fmadd_pd(a, b, mul_add_f64x8);
         }
         sum = _mm512_reduce_add_pd(mul_add_f64x8);
-/*
-        f64x4_t f64x4 = _mm256_add_pd(
-                _mm512_castpd512_pd256(mul_add_f64x8),     // 0,1,2,3
-                _mm512_extractf64x4_pd(mul_add_f64x8, 1)); // 4,5,6,7
-        f64x2_t f64x2 = _mm_add_pd(
-            _mm256_castpd256_pd128(f64x4),     // 0,1
-            _mm256_extractf64x2_pd(f64x4, 1)); // 2,3
-        sum = f64x2.m128d_f64[0] + f64x2.m128d_f64[1];
-*/
     }
     if (n > 0) { sum += cpu_dot64_c(v0, v1, n); }
     return sum;
@@ -584,41 +527,6 @@ static void avx2_init(void) {
         avx_try_and_set(fp16_t, 8, avx2, dot16);
         avx_try_and_set(fp32_t, 8, avx2, dot32);
         avx_try_and_set(fp64_t, 8, avx2, dot64);
-//      __try {
-//          bf16_t d0[8] = { 0 };
-//          bf16_t d1[8] = { 0 };
-//          fp64_t r = avx2_dot16bf(d0, d1, countof(d0));
-//          avx2.dot16bf = avx2_dot16bf;
-//          fatal_if(r != 0); // prevents optimizing out
-//      }
-//      __except (1) {
-//      }
-//      __try {
-//          fp16_t d0[16] = { 0 };
-//          fp16_t d1[16] = { 0 };
-//          fp64_t r = avx2_dot16(d0, d1, countof(d0));
-//          avx2.dot16 = avx2_dot16;
-//          fatal_if(r != 0); // prevents optimizing out
-//      }
-//      __except (1) {
-//      }
-//      __try {
-//          fp32_t d0[16] = { 0 };
-//          fp32_t d1[16] = { 0 };
-//          fp64_t r = avx2_dot32(d0, d1, countof(d0));
-//          avx2.dot32 = avx2_dot32;
-//          fatal_if(r != 0); // prevents optimizing out
-//      }
-//      __except (1) {
-//      }
-//      __try {
-//          fp64_t d0[16] = { 0 };
-//          fp64_t d1[16] = { 0 };
-//          fp64_t r = avx2_dot64(d0, d1, countof(d0));
-//          avx2.dot64 = avx2_dot64;
-//          fatal_if(r != 0);
-//      } __except(1) {
-//      }
     }
 }
 
@@ -628,51 +536,15 @@ static void avx512_init(void) {
         avx_try_and_set(fp16_t, 8, avx512, dot16);
         avx_try_and_set(fp32_t, 8, avx512, dot32);
         avx_try_and_set(fp64_t, 8, avx512, dot64);
-//      __try {
-//          bf16_t d0[16] = { 0 };
-//          bf16_t d1[16] = { 0 };
-//          fp64_t r = avx512_dot16bf(d0, d1, countof(d0));
-//          avx512.dot16bf = avx512_dot16bf;
-//          fatal_if(r != 0); // prevents optimizing out
-//      }
-//      __except (1) {
-//      }
-//
-//      __try {
-//          fp16_t d0[16] = { 0 };
-//          fp16_t d1[16] = { 0 };
-//          fp64_t r = avx512_dot16(d0, d1, countof(d0));
-//          avx512.dot16 = avx512_dot16;
-//          fatal_if(r != 0); // prevents optimizing out
-//      }
-//      __except (1) {
-//      }
-//      __try {
-//          fp32_t d0[16] = { 0 };
-//          fp32_t d1[16] = { 0 };
-//          fp64_t r = avx512_dot32(d0, d1, countof(d0));
-//          avx512.dot32 = avx512_dot32;
-//          fatal_if(r != 0);
-//      }
-//      __except (1) {
-//      }
-//      __try {
-//          fp64_t d0[16] = { 0 };
-//          fp64_t d1[16] = { 0 };
-//          fp64_t r = avx512_dot64(d0, d1, countof(d0));
-//          avx512.dot64 = avx512_dot64;
-//          fatal_if(r != 0);
-//      }
-//      __except (1) {
-//      }
     }
 }
 
 #pragma pop_macro("avx_try_and_set")
 
-#undef DOT_TEST
+#define DOT_TEST // TODO: undefine and save memory
+// #undef DOT_TEST
 
-#ifndef DOT_TEST
+#ifdef DOT_TEST
 
 static void test_dot16bf_c() {
     bf16_t a[21];
@@ -1021,7 +893,7 @@ static void dot_test_performance() {
     performance(128,  25, &p, measure_dot64);   report_preformance(&p, "fp64 RAM");
 }
 
-void dot_test() {
+static void dot_test(void) {
     dot_init(); // needed here because tests are using internal calls
     test_dot16bf_c();
     test_dot16_c();
@@ -1030,33 +902,53 @@ void dot_test() {
     dot_test_performance();
 }
 
+#endif // DOT_TEST
+
+dot_if dot = {
+    .fp16 = dot16,
+    .fp32 = dot32,
+    .fp64 = dot64,
+    .bf16 = dot16bf,
+#ifdef DOT_TEST
+    .test = dot_test
+#endif
+};
+
 /*
     11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz / 4.00 GHz
 
+    bf16 L1
+    C     :   2.246 GFlops
+    avx2  :  14.404 GFlops
+    avx512:  28.807 GFlops
+    bf16 RAM
+    C     :   2.174 GFlops
+    avx2  :  11.174 GFlops
+    avx512:  13.328 GFlops
     fp16 L1
-    C     :   0.315 Gflops
+    C     :   0.332 GFlops
+    avx2  :  12.136 GFlops
+    avx512:  15.697 GFlops
     fp16 RAM
-    C     :   0.306 Gflops
-
+    C     :   0.325 GFlops
+    avx2  :  11.673 GFlops
+    avx512:  13.157 GFlops
     fp32 L1
-    C     :   2.254 Gflops
-    avx2  :  17.955 Gflops
-    avx512:  22.029 Gflops
-
+    C     :   2.295 GFlops
+    avx2  :  12.725 GFlops
+    avx512:  16.697 GFlops
     fp32 RAM
-    C     :   2.232 Gflops
-    avx2  :   6.974 Gflops
-    avx512:   5.936 Gflops
-
+    C     :   2.205 GFlops
+    avx2  :   6.564 GFlops
+    avx512:   5.675 GFlops
     fp64 L1
-    C     :   2.248 Gflops
-    avx2  :   9.039 Gflops
-    avx512:  11.015 Gflops
-
+    C     :   2.244 GFlops
+    avx2  :   9.039 GFlops
+    avx512:  10.403 GFlops
     fp64 RAM
-    C     :   2.177 Gflops
-    avx2  :   3.483 Gflops
-    avx512:   2.980 Gflops (note: something wrong with fp64 prefetch)
+    C     :   2.069 GFlops
+    avx2  :   3.251 GFlops
+    avx512:   2.736 GFlops
+
 */
 
-#endif // TEST_DOT_PRODUCT_PERFORMANCE

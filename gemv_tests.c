@@ -131,13 +131,13 @@ static void test(gemv_t* g, int fpp,
             case ocl_fpp32:
                 for (int32_t j = 0; j < m; j++) {
                     fp32_t* row = (fp32_t*)mx + j * n;
-                    ((fp32_t*)avx)[j] = (fp32_t)dot32((fp32_t*)vc, 1, row, 1, n);
+                    ((fp32_t*)avx)[j] = (fp32_t)dot.fp32((fp32_t*)vc, 1, row, 1, n);
                 }
                 break;
             case ocl_fpp64:
                 for (int64_t j = 0; j < m; j++) {
                     fp64_t* row = (fp64_t*)mx + j * n;
-                    ((fp64_t*)avx)[j] = dot64((fp64_t*)vc, 1, row, 1, n);
+                    ((fp64_t*)avx)[j] = dot.fp64((fp64_t*)vc, 1, row, 1, n);
                 }
                 break;
             default:
@@ -380,8 +380,8 @@ static void tests(bool profile) {
 
 int32_t main(int32_t argc, const char* argv[]) {
     (void)argc; (void)argv;
-dot_test();
-if (argc > 0) exit(0);
+//  dot_tests();
+//  if (argc > 0) exit(0);
     ocl.init();
     if (argc > 1 && strcmp(argv[1], "compile") == 0) {
         if (argc >= 3) {

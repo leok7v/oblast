@@ -146,15 +146,15 @@ static void test_performance(blast_t* b, const int32_t n) {
     }
     blast.unmap(&m1);
     blast.unmap(&m0);
-    fp64_t dot = b->dot[ocl_fpp32](&m0, 0, 1, &m1, 0, 1, n);
+    fp64_t res = b->dot[ocl_fpp32](&m0, 0, 1, &m1, 0, 1, n);
     blast.deallocate(&m0);
     blast.deallocate(&m1);
-    double rse = sqrt(pow(dot - sum, 2));
+    double rse = sqrt(pow(res - sum, 2));
     if (rse > FLT_EPSILON) {
-        println("n: %d dot: %.7E sum: %.7E sum - dot: %.7E rse: %.7E\n",
-                    n, dot, sum, sum - dot, rse);
+        println("n: %d res: %.7E sum: %.7E sum - res: %.7E rse: %.7E\n",
+                    n, res, sum, sum - res, rse);
     }
-    assert(fabs(dot - sum) <= FLT_EPSILON, "dot: %.7e != %.7e\n", dot, sum);
+    assert(fabs(res - sum) <= FLT_EPSILON, "res: %.7e != %.7e\n", res, sum);
 }
 
 static void test_dot_compare_gpu_avx(blast_t* b,
@@ -174,7 +174,7 @@ static void test_dot_compare_gpu_avx(blast_t* b,
     println("Nx1000,   AVX,     GPU, milliseconds");
     for (int i = 4096; i < n / 1024; i += 512) {
         double avx = seconds();
-        fp64_t sum0 = dot32(x, 1, y, 1, i * 1024);
+        fp64_t sum0 = dot.fp32(x, 1, y, 1, i * 1024);
         avx = seconds() - avx;
         test_dot_unmap(&td);
         double gpu = seconds();
@@ -191,8 +191,8 @@ static void test_dot_compare_gpu_avx(blast_t* b,
     test_dot_free(&td);
 }
 
-static void dot_tests() {
-//  dot_test();
+static void tests() {
+    if (dot.test != null) { dot.test(); }
     for (int d = 0; d < ocl.count; d++) {
 //      ocl.dump(i);
         ocl_context_t c = ocl.open(d, null);
@@ -242,7 +242,7 @@ static void dot_tests() {
 int32_t main(int32_t argc, const char* argv[]) {
     (void)argc; (void)argv;
     ocl.init();
-    dot_tests();
+    tests();
     return 0;
 }
 
