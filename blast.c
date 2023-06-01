@@ -191,6 +191,7 @@ static fp64_t blast_dot(
     while (n > 0) {
         int64_t ne = min(max_items * max_groups, n);
         blast_memory_t r = blast.allocate(b, blast_access_read, ne * bytes);
+        ocl.migrate_undefined(r.b->c, r.h);
         if (o0 == 0 && s0 == 1 && o1 == 0 && s1 == 1) {
             blast_dot_compact(ne, v0, v1, &r, fpp);
         } else {

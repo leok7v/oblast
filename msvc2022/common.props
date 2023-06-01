@@ -7,7 +7,8 @@
       <PreprocessorDefinitions>STRICT;WIN32_LEAN_AND_MEAN;VC_EXTRALEAN;_CRT_NONSTDC_NO_WARNINGS;CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS=1;WIN32;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
-    </ClCompile>
+ 	  <AdditionalOptions>/experimental:c11atomics %(AdditionalOptions)</AdditionalOptions>
+   </ClCompile>
 	<Link>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <LinkIncremental>false</LinkIncremental>

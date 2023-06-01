@@ -37,6 +37,8 @@ static void test_dot_map(test_dot_t* td) {
 static void test_dot_unmap(test_dot_t* td) {
     blast.unmap(&td->v0);
     blast.unmap(&td->v1);
+    ocl.migrate(td->v0.b->c, td->v0.h);
+    ocl.migrate(td->v1.b->c, td->v1.h);
 }
 
 static void test_dot_free(test_dot_t* td) {
@@ -155,7 +157,8 @@ static void test_performance(blast_t* b, const int32_t n) {
     assert(fabs(dot - sum) <= FLT_EPSILON, "dot: %.7e != %.7e\n", dot, sum);
 }
 
-static void test_dot_compare_gpu_avx(blast_t* b) {
+static void test_dot_compare_gpu_avx(blast_t* b,
+        const ocl_profiling_t* p) {
     enum { n = 16 * 1024 * 1024 };
     test_dot_t td = test_dot_alloc(b, ocl_fpp32, n, n);
     test_dot_map(&td);
@@ -177,6 +180,7 @@ static void test_dot_compare_gpu_avx(blast_t* b) {
         double gpu = seconds();
         fp64_t sum1 = b->dot[ocl_fpp32](&td.v0, 0, 1, &td.v1, 0, 1, i * 1024);
         gpu = seconds() - gpu;
+        gpu = p->time;
         test_dot_map(&td);
         x = (fp32_t*)td.a0;
         y = (fp32_t*)td.a1;
@@ -188,7 +192,7 @@ static void test_dot_compare_gpu_avx(blast_t* b) {
 }
 
 static void dot_tests() {
-    dot_test();
+//  dot_test();
     for (int d = 0; d < ocl.count; d++) {
 //      ocl.dump(i);
         ocl_context_t c = ocl.open(d, null);
@@ -229,7 +233,7 @@ static void dot_tests() {
         println("%s", ocl.devices[d].name);
         blast_t b = { 0 };
         blast.init(&b, &c);
-        test_dot_compare_gpu_avx(&b);
+        test_dot_compare_gpu_avx(&b, p);
         blast.fini(&b);
         ocl.close(&c);
     }

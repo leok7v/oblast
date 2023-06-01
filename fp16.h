@@ -2,8 +2,12 @@
 #include "rt.h"
 
 // TODO: mf8_t  https://en.wikipedia.org/wiki/Minifloat
-// TODO: bf16_t https://en.wikipedia.org/wiki/Bfloat16_floating-point_format
+
 // AVX512 support both fp16 and bf16 but only on three (server grade) processors so far
+// see:   https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html
+//        search for bf16 and fp16 with [x] AVX512 and [x] AVX
+//        CPUID Flags: AVX512_BF16 + AVX512_FP16 + AVX512VL
+//        however it is easy to emulate with absence of bf16/fp16 AVX512 extension
 // https://en.wikichip.org/wiki/x86/avx512_bf16
 
 // https://en.wikipedia.org/wiki/Half-precision_floating-point_format
@@ -12,10 +16,18 @@ typedef begin_packed struct _fp16_u_ {
     uint16_t bytes;
 } end_packed _fp16_t_;
 
+typedef begin_packed struct _bf16_u_ { // "brain fart" "brain float 16 bit"
+    uint16_t bytes;
+} end_packed _bf16_t_;
+
 #undef fp16_t
-#define fp16_t _fp16_t_
+#define fp16_t _fp16_t_ // using define allows to write #ifdef fp16_t
+#undef bf16_t
+#define bf16_t _bf16_t_
 
 static_assert(sizeof(fp16_t) == 2, "fp16_t size must be 2");
+static_assert(sizeof(bf16_t) == 2, "fp16_t size must be 2");
+
 
 #define fp16x(hex)       ((fp16_t){ .bytes = hex })
 
@@ -194,6 +206,42 @@ inline bool fp16_les(fp16_t x, fp16_t y) { return fp16_compare(x, y) <  0; }
 inline bool fp16_gtr(fp16_t x, fp16_t y) { return fp16_compare(x, y) >  0; }
 inline bool fp16_gte(fp16_t x, fp16_t y) { return fp16_compare(x, y) >= 0; }
 inline bool fp16_neq(fp16_t x, fp16_t y) { return fp16_compare(x, y) != 0; }
+
+inline fp32_t bf16to32(const bf16_t bf16) {
+    const uint32_t uint32 = ((uint32_t)(bf16.bytes)) << 16;
+    return *(fp32_t*)&uint32;
+}
+
+inline bf16_t bf32to16(const fp32_t fp32) {
+    const uint16_t uint16 = (uint16_t)((*(uint32_t*)&fp32) >> 16);
+    return *(bf16_t*)&uint16;
+}
+
+inline bf16_t bf16_add(bf16_t x, bf16_t y) {
+    return bf32to16(bf16to32(x) + bf16to32(y));
+}
+
+inline bf16_t bf16_sub(bf16_t x, bf16_t y) {
+    return bf32to16(bf16to32(x) - bf16to32(y));
+}
+inline bf16_t bf16_mul(bf16_t x, bf16_t y) {
+    return bf32to16(bf16to32(x) * bf16to32(y));
+}
+inline bf16_t bf16_div(bf16_t x, bf16_t y) {
+    return bf32to16(bf16to32(x) / bf16to32(y));
+}
+
+inline int bf16_compare(bf16_t x, bf16_t y) {
+    bf16_t diff = bf16_sub(x, y);
+    return (diff.bytes & 0x8000) ? -1 : (diff.bytes == 0) ? 0 : +1;
+}
+
+inline bool bf16_equ(bf16_t x, bf16_t y) { return bf16_compare(x, y) == 0; }
+inline bool bf16_leq(bf16_t x, bf16_t y) { return bf16_compare(x, y) <= 0; }
+inline bool bf16_les(bf16_t x, bf16_t y) { return bf16_compare(x, y) <  0; }
+inline bool bf16_gtr(bf16_t x, bf16_t y) { return bf16_compare(x, y) >  0; }
+inline bool bf16_gte(bf16_t x, bf16_t y) { return bf16_compare(x, y) >= 0; }
+inline bool bf16_neq(bf16_t x, bf16_t y) { return bf16_compare(x, y) != 0; }
 
 #ifdef RT_IMPLEMENTATION
 

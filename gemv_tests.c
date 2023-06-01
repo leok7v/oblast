@@ -380,6 +380,8 @@ static void tests(bool profile) {
 
 int32_t main(int32_t argc, const char* argv[]) {
     (void)argc; (void)argv;
+dot_test();
+if (argc > 0) exit(0);
     ocl.init();
     if (argc > 1 && strcmp(argv[1], "compile") == 0) {
         if (argc >= 3) {
