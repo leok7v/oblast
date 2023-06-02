@@ -24,14 +24,15 @@ static test_dot_t test_dot_alloc(blast_t* b, int fpp, int64_t n0, int64_t n1) {
     test_dot_t td = {0};
     td.bytes0 = n0 * sizes[fpp];
     td.bytes1 = n1 * sizes[fpp];
-    td.v0 = blast.allocate(b, blast_access_write, td.bytes0);
-    td.v1 = blast.allocate(b, blast_access_write, td.bytes1);
+    enum { write_only = CL_MEM_WRITE_ONLY|CL_MEM_HOST_WRITE_ONLY };
+    td.v0 = blast.allocate(b, write_only, td.bytes0);
+    td.v1 = blast.allocate(b, write_only, td.bytes1);
     return td;
 }
 
 static void test_dot_map(test_dot_t* td) {
-    td->a0 = blast.map(&td->v0, blast_access_write, 0, td->bytes0);
-    td->a1 = blast.map(&td->v1, blast_access_write, 0, td->bytes1);
+    td->a0 = blast.map(&td->v0, CL_MAP_WRITE_INVALIDATE_REGION, 0, td->bytes0);
+    td->a1 = blast.map(&td->v1, CL_MAP_WRITE_INVALIDATE_REGION, 0, td->bytes1);
 }
 
 static void test_dot_unmap(test_dot_t* td) {
@@ -131,10 +132,11 @@ static void test_permutations(blast_t* b) {
 
 static void test_performance(blast_t* b, const int32_t n) {
     const int64_t bytes = n * sizeof(fp32_t);
-    blast_memory_t m0 = blast.allocate(b, blast_access_write, bytes);
-    blast_memory_t m1 = blast.allocate(b, blast_access_write, bytes);
-    fp32_t* x = (fp32_t*)blast.map(&m0, blast_access_write, 0, bytes);
-    fp32_t* y = (fp32_t*)blast.map(&m1, blast_access_write, 0, bytes);
+    enum { write_only = CL_MEM_WRITE_ONLY|CL_MEM_HOST_WRITE_ONLY };
+    blast_memory_t m0 = blast.allocate(b, write_only, bytes);
+    blast_memory_t m1 = blast.allocate(b, write_only, bytes);
+    fp32_t* x = (fp32_t*)blast.map(&m0, CL_MAP_WRITE_INVALIDATE_REGION, 0, bytes);
+    fp32_t* y = (fp32_t*)blast.map(&m1, CL_MAP_WRITE_INVALIDATE_REGION, 0, bytes);
     fp32_t delta = (fp32_t)(1.0 / (double)(1ULL << 63));
     fp32_t sum = 0;
     for (int64_t i = 0; i < n; i++) {

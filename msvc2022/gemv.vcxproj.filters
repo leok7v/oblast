@@ -32,6 +32,9 @@
     </ClInclude>
     <ClInclude Include="..\dot.h" />
     <ClInclude Include="..\gemv.h" />
+    <ClInclude Include="..\CL\cl_ext.h">
+      <Filter>CL</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CL">

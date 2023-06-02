@@ -6,13 +6,6 @@
 extern "C"
 #endif
 
-
-enum { // .allocate()/.map() flags
-    blast_access_read  = 0, // not a bitset!
-    blast_access_write = 1,
-    blast_access_rw    = 2
-};
-
 typedef struct blast_s blast_t;
 
 typedef struct blast_memory_s { // treat as read only, will change don't cache

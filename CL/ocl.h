@@ -36,7 +36,7 @@ enum { // flavor (bitset because of collaboration and mixed solutions)
     // to be continued...
 };
 
-enum { // float_fp_config, double_fp_config bits
+enum { // fp16_config, fp32_config, fp64_config bits
     ocl_fp_denorm                        = (1 << 0),
     ocl_fp_inf_nan                       = (1 << 1),
     ocl_fp_round_to_nearest              = (1 << 2),
@@ -44,8 +44,7 @@ enum { // float_fp_config, double_fp_config bits
     ocl_fp_round_to_inf                  = (1 << 4),
     ocl_fp_fma                           = (1 << 5),
     ocl_fp_soft_float                    = (1 << 6),
-    ocl_fp_correctly_rounded_divide_sqrt = (1 << 7),
-    ocl_fp_half                          = (1 << 31) // only in float_fp_config
+    ocl_fp_correctly_rounded_divide_sqrt = (1 << 7)
 };
 
 // __kernel can use
@@ -64,8 +63,10 @@ typedef struct ocl_device_s {
     int32_t c_version_major;  // OpenCL kernel .cl C language version
     int32_t c_version_minor;  // see: note ** below
     int64_t clock_frequency;  // MHz
-    int64_t global_memory;    // size in bytes
-    int64_t local_memory;     // size in bytes
+    int64_t global_cache;     // size in bytes
+    int64_t global_cacheline; 
+    int64_t global_memory;    
+    int64_t local_memory;     
     int64_t max_const_args;   // maximum number of constant args
     int64_t compute_units;    // max compute units, see: *** below
     int64_t max_groups;       // max number of work groups, see: ** below
@@ -73,9 +74,9 @@ typedef struct ocl_device_s {
     int64_t dimensions;       // dimensionality of work items
     int64_t max_items[3];     // max work items in a group per dimension
     int32_t flavor;           // GPU manufacturer - tricky, could be a mix
-//  int32_t fp_config;
-    int64_t double_fp_config;
-    int64_t float_fp_config;
+    int64_t fp16_config;
+    int64_t fp32_config;
+    int64_t fp64_config;
     int64_t subgroup_ifp;     // bool: independent forward progress
     char    extensions[4096]; // use strstr(extensions, "cl_khr_fp16")
 } ocl_device_t;
@@ -156,17 +157,10 @@ typedef struct ocl_shared_s {  // TODO: if double mapping is not necessary delet
     int32_t access; // CL_MEM_READ_WRITE, CL_MEM_WRITE_ONLY, CL_MEM_READ_ONLY
 } ocl_shared_t;
 
-enum { // .allocate() access flags (matching OpenCL)
-    ocl_allocate_read  = (1 << 2),
-    ocl_allocate_write = (1 << 1),
-    ocl_allocate_rw    = (1 << 0)
-};
-
-enum { // .map() access flags (matching OpenCL)
-    ocl_map_read  = (1 << 0),
-    ocl_map_write = (1 << 2), // invalidates region
-    ocl_map_rw    = ((1 << 0) | (1 << 1)),
-};
+// alloc/allocate/alloc_shared access flags:
+// CL_MEM_READ_WRITE .. CL_MEM_KERNEL_READ_AND_WRITE
+// map/map_shared mapping flags
+// CL_MAP_READ, CL_MAP_WRITE, CL_MAP_WRITE_INVALIDATE_REGION
 
 // single device single queue OpenCL interface
 
@@ -180,22 +174,25 @@ typedef struct ocl_if {
     ocl_memory_t (*allocate)(ocl_context_t* c, int access, size_t bytes);
     // alloc() may return null, allocate() fatal if null
     void (*deallocate)(ocl_memory_t m);
+    // CL_MEM_WRITE_ONLY -> CL_MAP_WRITE_INVALIDATE_REGION ...
+    int (*access_to_map)(int access); 
+    // ocl_map_read  - host will read data written by GPU
+    // ocl_map_write - host will write data that GPU will read
+    void* (*map)(ocl_context_t* c, int mapping, ocl_memory_t m,
+        size_t offset, size_t bytes); // may return null
+    // memory must be unmapped before the kernel is executed
+    void (*unmap)(ocl_context_t* c, ocl_memory_t m, const void* address);
+    void (*migrate)(ocl_context_t* c, ocl_memory_t m);
+    void (*migrate_undefined)(ocl_context_t* c, ocl_memory_t m);
     // device/host shared memory (w/o fine-grained access/atomics)
     // alloc_shared().a and .m will be null if failed
+    // experimentally NVIDIA GPU only allows 1GB mapping... :(
     ocl_shared_t (*alloc_shared)(ocl_context_t* c, int access, size_t bytes);
     void* (*map_shared)(ocl_shared_t* sm);
     void (*unmap_shared)(ocl_shared_t* sm);
     void (*migrate_shared)(ocl_shared_t* sm);
     void (*migrate_shared_undefined)(ocl_shared_t* sm);
     void (*free_shared)(ocl_shared_t* sm);
-    // ocl_map_read  - host will read data written by GPU
-    // ocl_map_write - host will write data that GPU will read
-    void* (*map)(ocl_context_t* c, int mapping, ocl_memory_t m,
-        size_t offset, size_t bytes);
-    // memory must be unmapped before the kernel is executed
-    void (*unmap)(ocl_context_t* c, ocl_memory_t m, const void* address);
-    void (*migrate)(ocl_context_t* c, ocl_memory_t m);
-    void (*migrate_undefined)(ocl_context_t* c, ocl_memory_t m);
     // compile() with log != null may return null, with log == null
     // any error is fatal.
     ocl_program_t (*compile)(ocl_context_t* c, const char* code,

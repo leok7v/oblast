@@ -22,6 +22,8 @@
 
 https://registry.khronos.org/OpenCL/specs/3.0-unified/html/OpenCL_API.html
 
+https://registry.khronos.org/OpenCL/sdk/3.0/docs/man/html/cl_khr_fp16.html
+
 https://github.com/leok7v/OpenCL
 
 https://github.com/KhronosGroup/SPIR/issues/54
@@ -97,3 +99,4 @@ cases or precise rounding.
 Subgroups:
 
 https://github.com/KhronosGroup/OpenCL-Docs/blob/main/ext/cl_khr_subgroups.asciidoc
+

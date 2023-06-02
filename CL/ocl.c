@@ -31,7 +31,7 @@ enum { KB = 1024, MB = 1024 * KB, GB = 1024 * MB };
 
 static void ocl_error_notify(const char * errinfo,
     const void* private_info, size_t cb, void* user_data) {
-    println("ERROR: %*s", errinfo);
+    println("ERROR: %.256s", errinfo);
     (void)private_info;
     (void)cb;
     (void)user_data;
@@ -104,7 +104,7 @@ static ocl_memory_t ocl_allocate(ocl_context_t* c, int access, size_t bytes) {
     return (ocl_memory_t)m;
 }
 
-static void  ocl_deallocate(ocl_memory_t m) {
+static void ocl_deallocate(ocl_memory_t m) {
     // Customary free(null) is OK because 1. it's mostly harmless
     // 2. simplifies error hangling in multiple alloc() situations
     // (which are almost always).
@@ -117,7 +117,7 @@ static void* ocl_map(ocl_context_t* c, int mapping, ocl_memory_t m, size_t offse
     // blocking_map: true sync mapping
     void* a = clEnqueueMapBuffer((cl_command_queue)c->q, (cl_mem)m,
         /*blocking_map: */ true, mapping, offset, bytes, 0, null, null, &r);
-    not_null(a, r);
+//  if (a == null) { println("WARGNING: %s", ocl.error(r)); }
     return a;
 }
 
@@ -135,9 +135,24 @@ static ocl_shared_t ocl_alloc_shared(ocl_context_t* c, int access, size_t bytes)
     cl_int r = 0;
     s.a = clSVMAlloc(c->c, access, bytes, sizeof(uint64_t) * 16);
     if (s.a != null) {
-        s.m = clCreateBuffer(c->c, access|CL_MEM_ALLOC_HOST_PTR, bytes, s.a, &r);
+        s.m = clCreateBuffer(c->c, access|CL_MEM_USE_HOST_PTR, bytes, s.a, &r);
+        fatal_if(s.m == null || r != 0, "%s", ocl.error(r));
     }
     return s;
+}
+
+static int ocl_access_to_map(int access) {
+    int map = 0;
+    if (access & CL_MEM_READ_ONLY)  { 
+        map |= CL_MAP_READ; 
+    } else if (access & CL_MEM_READ_WRITE) { 
+        map |= CL_MAP_READ|CL_MAP_WRITE;
+    } else if (access & CL_MEM_WRITE_ONLY) { 
+        map |= CL_MAP_WRITE_INVALIDATE_REGION;
+    } else {
+        fatal_if("invalid access", "%d", access);
+    }
+    return map;
 }
 
 static void* ocl_map_shared(ocl_shared_t* s) {
@@ -472,7 +487,7 @@ static void ocl_check_fp16_support(int dix) {
     ocl_program_t p = ocl.compile(&c, sc, strlen(sc), null, log, countof(log));
     bool b = p != null;
     if (b) {
-        ocl.devices[dix].float_fp_config |= ocl_fp_half;
+        ocl.devices[dix].fp16_config |= ocl_fp_denorm; // assume at least that
         ocl.release_program(p);
     } else {
         println("%s\n%s\n", sc, log);
@@ -519,26 +534,31 @@ static void ocl_init(void) {
                 d->c_version_major = major;
                 d->c_version_minor = minor;
                 get_str(CL_DEVICE_EXTENSIONS, d->extensions);
-                get_val(CL_DEVICE_MAX_CLOCK_FREQUENCY,      d->clock_frequency);
-                get_val(CL_DEVICE_GLOBAL_MEM_SIZE,          d->global_memory);
-                get_val(CL_DEVICE_LOCAL_MEM_SIZE,           d->local_memory);
-                get_val(CL_DEVICE_MAX_CONSTANT_ARGS,        d->max_const_args);
-                get_val(CL_DEVICE_MAX_COMPUTE_UNITS,        d->compute_units);
-                get_val(CL_DEVICE_MAX_WORK_GROUP_SIZE,      d->max_groups);
-                get_val(CL_DEVICE_MAX_NUM_SUB_GROUPS,       d->max_subgroups);
-                get_val(CL_DEVICE_DOUBLE_FP_CONFIG,         d->double_fp_config);
-                get_val(CL_DEVICE_SINGLE_FP_CONFIG,         d->float_fp_config);
-                get_val(CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, d->dimensions);
+                get_val(CL_DEVICE_MAX_CLOCK_FREQUENCY,       d->clock_frequency);
+                get_val(CL_DEVICE_GLOBAL_MEM_CACHE_SIZE,     d->global_cache);
+                get_val(CL_DEVICE_GLOBAL_MEM_CACHELINE_SIZE, d->global_cacheline);
+                get_val(CL_DEVICE_GLOBAL_MEM_SIZE,           d->global_memory);
+                get_val(CL_DEVICE_LOCAL_MEM_SIZE,            d->local_memory);
+                get_val(CL_DEVICE_MAX_CONSTANT_ARGS,         d->max_const_args);
+                get_val(CL_DEVICE_MAX_COMPUTE_UNITS,         d->compute_units);
+                get_val(CL_DEVICE_MAX_WORK_GROUP_SIZE,       d->max_groups);
+                get_val(CL_DEVICE_MAX_NUM_SUB_GROUPS,        d->max_subgroups);
+                get_val(CL_DEVICE_SINGLE_FP_CONFIG,          d->fp32_config);
+                get_val(CL_DEVICE_DOUBLE_FP_CONFIG,          d->fp64_config);
+                get_val(CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS,  d->dimensions);
                 get_val(CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS,
-                                                            d->subgroup_ifp);
+                                                             d->subgroup_ifp);
                 call(d->dimensions > countof(d->max_items));
                 get_val(CL_DEVICE_MAX_WORK_ITEM_SIZES, d->max_items);
                 d->flavor = 0;
                 d->flavor |= ext("_intel_") ? ocl_intel  : 0;
                 d->flavor |= ext("_nv_")    ? ocl_nvidia : 0;
                 d->flavor |= ext("_amd_")   ? ocl_amd    : 0;
+                bool check_fp16_support = clGetDeviceInfo(id, 
+                    CL_DEVICE_HALF_FP_CONFIG, 
+                    sizeof(d->fp16_config), &d->fp16_config, null) != 0;
                 ocl.count++;
-                ocl_check_fp16_support(ocl.count - 1);
+                if (check_fp16_support) { ocl_check_fp16_support(ocl.count - 1); }
             }
         }
     }
@@ -593,6 +613,8 @@ static void ocl_dump(int ix) {
     println("Device name:     %s OpenCL %d.%d C %d.%d", d->name,
         d->version_major, d->version_minor, d->c_version_major, d->c_version_minor);
     println("compute_units:    %lld @ %lldMHz", d->compute_units, d->clock_frequency);
+    println("global_cache:     %lldMB", d->global_cache / MB);
+    println("global_cacheline: %lld",   d->global_cacheline);
     println("global_memory:    %lldMB", d->global_memory / MB);
     println("local_memory:     %lld bytes", d->local_memory);
     println("max_const_args:   %lld", d->max_const_args);
@@ -603,8 +625,9 @@ static void ocl_dump(int ix) {
     println("dimensions:       %lld", d->dimensions);
     const int64_t* wi = d->max_items;
     println("max_items[]:     {%lld %lld %lld}", wi[0], wi[1], wi[2]);
-    println("float_fp_config:  %s", ocl_fp_config_to_string(d->float_fp_config));
-    println("double_fp_config: %s", ocl_fp_config_to_string(d->double_fp_config));
+    println("fp16_config:      %s", ocl_fp_config_to_string(d->fp16_config));
+    println("fp32_config:      %s", ocl_fp_config_to_string(d->fp32_config));
+    println("fp64_config:      %s", ocl_fp_config_to_string(d->fp64_config));
     println("extensions:       %s", d->extensions);
 }
 
@@ -642,8 +665,8 @@ static void ocl_compiler(int argc, const char* argv[]) {
         // Intel UHD Graphics GPU supports "half" and reports cl_khr_fp16
         // PS: Intel also supports and reports cl_khr_subgroup_extended_types,
         //     NVIDIA is silent about its support if any TODO: investigate
-        int from = ocl_fpp16;
-        int to = d->double_fp_config == 0 ? ocl_fpp32 : ocl_fpp64;
+        int from = d->fp16_config != 0 ? ocl_fpp16 : ocl_fpp32;
+        int to   = d->fp64_config == 0 ? ocl_fpp32 : ocl_fpp64;
         for (int fpp = from; fpp <= to; fpp++) {
             println("compile: %s for %s @ %s", argv[2], ocl_fpp_names[fpp], d->name);
             println("");
@@ -711,16 +734,17 @@ ocl_if ocl = {
     .alloc = ocl_alloc,
     .allocate = ocl_allocate,
     .deallocate = ocl_deallocate,
+    .access_to_map = ocl_access_to_map,
+    .map = ocl_map,
+    .unmap = ocl_unmap,
+    .migrate = ocl_migrate,
+    .migrate_undefined = ocl_migrate_undefined,
     .alloc_shared = ocl_alloc_shared,
     .map_shared = ocl_map_shared,
     .unmap_shared = ocl_unmap_shared,
     .migrate_shared = ocl_migrate_shared,
     .migrate_shared_undefined = ocl_migrate_shared_undefined,
     .free_shared = ocl_free_shared,
-    .map = ocl_map,
-    .unmap = ocl_unmap,
-    .migrate = ocl_migrate,
-    .migrate_undefined = ocl_migrate_undefined,
     .compile = ocl_compile,
     .create_kernel = ocl_create_kernel,
     .kernel_info = ocl_kernel_info,
@@ -783,12 +807,4 @@ static_assertion(CL_FP_ROUND_TO_INF                  == ocl_fp_round_to_inf);
 static_assertion(CL_FP_FMA                           == ocl_fp_fma);
 static_assertion(CL_FP_SOFT_FLOAT                    == ocl_fp_soft_float);
 static_assertion(CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT == ocl_fp_correctly_rounded_divide_sqrt);
-
-static_assertion(CL_MEM_READ_WRITE == ocl_allocate_rw);
-static_assertion(CL_MEM_WRITE_ONLY == ocl_allocate_write);
-static_assertion(CL_MEM_READ_ONLY  == ocl_allocate_read);
-
-static_assertion(CL_MAP_READ == ocl_map_read);
-static_assertion((CL_MAP_WRITE|CL_MAP_READ) == ocl_map_rw);
-static_assertion(CL_MAP_WRITE_INVALIDATE_REGION == ocl_map_write);
 

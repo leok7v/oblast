@@ -67,20 +67,26 @@ static avx2_if   avx    = { .init = avx_init };
 static avx2_if   avx2   = { .init = avx2_init };
 static avx512_if avx512 = { .init = avx512_init };
 
-static atomic_bool dot_initialized;
+// <stdatomic.h> is still experimental in MSVC
+// static atomic_bool dot_initialized;
+ static bool dot_initialized;
 
 static void dot_init() {
     // it is not expected for 2 threads to hit this code simultensiosly
     // on two independent cores but if they do:
-    static atomic_bool initialize;
-    bool expected = false;
-    if (atomic_compare_exchange_strong(&initialize, &expected, true)) {
+//  static atomic_bool initialize;
+    static bool initialize;
+//  bool expected = false;
+//  if (atomic_compare_exchange_strong(&initialize, &expected, true)) {
+    if (!initialize) {
+        initialize = true;
         avx.init();
         avx2.init();
         avx512.init();
-        atomic_store(&dot_initialized, true);
+        dot_initialized = true;
+//      atomic_store(&dot_initialized, true);
     } else { // the least fortunate thread will have to spin:
-        while (!atomic_load(&dot_initialized)) { /* spinlock */ }
+//      while (!atomic_load(&dot_initialized)) { /* spinlock */ }
     }
 }
 

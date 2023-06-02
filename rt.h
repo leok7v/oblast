@@ -6,7 +6,7 @@
 #include <malloc.h>
 #include <math.h>
 #include <stdarg.h>
-#include <stdatomic.h>
+// #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>

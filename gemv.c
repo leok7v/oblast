@@ -88,9 +88,9 @@ static void gemv_init(gemv_t* g, ocl_context_t* c) {
     fatal_if(r != 0 || code == null || bytes64 == 0, "is gemv.cl in gemv.rc?");
     fatal_if(bytes64 > INT_MAX, "blast.cl %lld bytes", bytes64);
     int bytes = (int)bytes64;
-    const bool has_fp16 = true; // TODO: ? strstr(d->ext, "cl_khr_fp16") != null;
-    const bool has_fp32 = d->float_fp_config  != 0;
-    const bool has_fp64 = d->double_fp_config != 0;
+    const bool has_fp16 = d->fp16_config != 0;
+    const bool has_fp32 = d->fp32_config != 0;
+    const bool has_fp64 = d->fp64_config != 0;
     ocl_program_t p[3] = {
         has_fp16 ? gemv_compile(g, ocl_fpp16, code, bytes) : null,
         has_fp32 ? gemv_compile(g, ocl_fpp32, code, bytes) : null,

@@ -7,28 +7,12 @@
 // because fpp and access enums are used to index arrays they must be compact
 // with exact ordering:
 
-static_assert(blast_access_read  == 0, "order");
-static_assert(blast_access_write == 1, "order");
-static_assert(blast_access_rw    == 2, "order");
-
-static int blast_alloc_access_to_ocl[] = {
-    ocl_allocate_read,
-    ocl_allocate_write,
-    ocl_allocate_rw
-};
-
-static int blast_map_access_to_ocl[] = {
-    ocl_map_read,
-    ocl_map_write,
-    ocl_map_rw
-};
-
 static blast_memory_t blast_allocate(blast_t* b, int access, int64_t bytes) {
     blast_memory_t gm;
     gm.m = null;
     gm.b = b;
     gm.s = bytes;
-    gm.h = ocl.allocate(b->c, blast_alloc_access_to_ocl[access], bytes);
+    gm.h = ocl.allocate(b->c, access, bytes);
 //  println("%p: %p", bm->h, bm->m);
     return gm;
 }
@@ -39,10 +23,9 @@ static void blast_deallocate(blast_memory_t* bm) {
     memset(bm, 0, sizeof(bm));
 }
 
-static void* blast_map(blast_memory_t* bm, int access, int64_t offset,
+static void* blast_map(blast_memory_t* bm, int mapping, int64_t offset,
         int64_t bytes) {
-    bm->m = ocl.map(bm->b->c, blast_map_access_to_ocl[access],
-        (ocl_memory_t)bm->h, offset, bytes);
+    bm->m = ocl.map(bm->b->c, mapping, (ocl_memory_t)bm->h, offset, bytes);
 //  println("%p: %p", bm->h, bm->m);
     return bm->m;
 }
@@ -122,7 +105,7 @@ static void blast_dot_strided(int64_t n,
 
 static fp64_t read_1xfp_from_memory(blast_memory_t* m, int fpp) {
     fp64_t v = 0;
-    void* a = blast.map(m, blast_access_read, 0, ocl_fpp_bytes[fpp]);
+    void* a = blast.map(m, CL_MAP_READ, 0, ocl_fpp_bytes[fpp]);
     switch (fpp) {
         case ocl_fpp16: v = fp16to32(*(fp16_t*)a); break;
         case ocl_fpp32: v = *(fp32_t*)a; break;
@@ -144,7 +127,8 @@ static fp64_t sum_and_finish(blast_memory_t* v, int64_t ne, int fpp) {
         int64_t n = ne;
         int64_t m = n / 2;
         int64_t bytes = ne * ocl_fpp_bytes[fpp] / 2; // odd "ne" truncated
-        blast_memory_t  s = blast.allocate(v->b, blast_access_read, bytes);
+        enum { read_only  = CL_MEM_READ_ONLY|CL_MEM_HOST_READ_ONLY };
+        blast_memory_t  s = blast.allocate(v->b, read_only, bytes);
         blast_memory_t* v0 = v;
         blast_memory_t* v1 = &s;
         while (m >= 1) {
@@ -190,7 +174,8 @@ static fp64_t blast_dot(
     size_t bytes = ocl_fpp_bytes[fpp];
     while (n > 0) {
         int64_t ne = min(max_items * max_groups, n);
-        blast_memory_t r = blast.allocate(b, blast_access_read, ne * bytes);
+        enum { read_only = CL_MEM_READ_ONLY|CL_MEM_HOST_READ_ONLY };
+        blast_memory_t r = blast.allocate(b, read_only, ne * bytes);
         ocl.migrate_undefined(r.b->c, r.h);
         if (o0 == 0 && s0 == 1 && o1 == 0 && s1 == 1) {
             blast_dot_compact(ne, v0, v1, &r, fpp);
@@ -282,8 +267,10 @@ static void blast_init(blast_t* b, ocl_context_t* c) {
     fatal_if(r != 0 || code == null || bytes64 == 0, "blast.cl in blast.rc?");
     fatal_if(bytes64 > INT_MAX, "blast.cl %lld bytes", bytes64);
     int bytes = (int)bytes64;
-    const bool has_fp16 = (d->float_fp_config & ocl_fp_half) != 0;
-    const bool has_fp64 =  d->double_fp_config != 0;
+//  const bool has_fp16 = d->fp16_config != 0;
+    const bool has_fp64 = d->fp64_config != 0;
+// TODO: rewrite kernels
+const bool has_fp16 = false;
     ocl_program_t p[3] = {
         has_fp16 ? blast_compile(b, ocl_fpp16, code, bytes) : null,
         blast_compile(b, ocl_fpp32, code, bytes),
@@ -318,21 +305,20 @@ static void blast_init(blast_t* b, ocl_context_t* c) {
     }
 }
 
+static void blast_release_kernel(ocl_kernel_t k) {
+    if (k != null) { ocl.release_kernel(k); }
+}
+
 static void blast_fini(blast_t* b) {
-    ocl_device_t* d = &ocl.devices[b->c->ix];
-    // all known GPU support at least fp32_t but many do not support
-    // fp16_t and/or fp64_t
-    int from = (d->float_fp_config & ocl_fp_half) != 0 ? ocl_fpp16 : ocl_fpp32;
-    int to   =  d->double_fp_config != 0 ? ocl_fpp64 : ocl_fpp32;
-    for (int fp = from; fp <= to; fp++) {
-        ocl.release_kernel(b->sum_odd[fp]);
-        ocl.release_kernel(b->sum_odd_os[fp]);
-        ocl.release_kernel(b->sum_even[fp]);
-        ocl.release_kernel(b->sum_even_os[fp]);
-        ocl.release_kernel(b->dot_c[fp]);
-        ocl.release_kernel(b->dot_os[fp]);
-        ocl.release_kernel(b->gemv_c[fp]);
-        ocl.release_kernel(b->gemv_os[fp]);
+    for (int fp = ocl_fpp16; fp <= ocl_fpp64; fp++) {
+        blast_release_kernel(b->sum_odd[fp]);
+        blast_release_kernel(b->sum_odd_os[fp]);
+        blast_release_kernel(b->sum_even[fp]);
+        blast_release_kernel(b->sum_even_os[fp]);
+        blast_release_kernel(b->dot_c[fp]);
+        blast_release_kernel(b->dot_os[fp]);
+        blast_release_kernel(b->gemv_c[fp]);
+        blast_release_kernel(b->gemv_os[fp]);
     }
 }
 

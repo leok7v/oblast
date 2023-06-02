@@ -19,8 +19,9 @@ static void x_add_y(ocl_context_t* c, ocl_kernel_t k,
                     ocl_memory_t mx, ocl_memory_t my,
                     ocl_memory_t mz, int64_t n, bool verbose) {
     {   // initialize pinned memory:
-        float* x = ocl.map(c, ocl_map_write, mx, 0, n * sizeof(float));
-        float* y = ocl.map(c, ocl_map_write, my, 0, n * sizeof(float));
+        enum { map_write = CL_MAP_WRITE_INVALIDATE_REGION };
+        float* x = ocl.map(c, map_write, mx, 0, n * sizeof(float));
+        float* y = ocl.map(c, map_write, my, 0, n * sizeof(float));
         // two input vectors
         for (int32_t i = 0; i < n; i++) { x[i] = (float)i; y[i] = (float)(n - i); }
         for (int32_t i = 0; i < n; i++) { X[i] = x[i]; Y[i] = y[i]; }
@@ -42,7 +43,8 @@ static void x_add_y(ocl_context_t* c, ocl_kernel_t k,
         ocl.profile(p); // collect profiling info and calculate derived values
     }
     ocl.release_event(done); // client's responsibility
-    float* z = (float*)ocl.map(c, ocl_map_read, mz, 0, n * sizeof(float));
+    enum { map_read  = CL_MAP_READ };
+    float* z = (float*)ocl.map(c, map_read, mz, 0, n * sizeof(float));
     double host = 0;
     if (p != null) {
         // measure the same addition of N numbers on CPU
@@ -104,26 +106,6 @@ static void x_add_y(ocl_context_t* c, ocl_kernel_t k,
 
 static const char* sc = ocl_code( ocl_enable_half ocl_enable_double,
 \n
-void test_half(const half* p, const half* q, const half* r) {                 \n
-    float fp = vload_half(0, p);                                              \n
-    float fq = vload_half(0, q);                                              \n
-    vstore_half(fp + fq, 0, r);                                               \n
-}                                                                             \n
-                                                                              \n
-void test_half4(const half4* p, const half4* q, const half4* r) {             \n
-    float4 fp = vload_half4(0, p);                                            \n
-    float4 fq = vload_half4(0, q);                                            \n
-    vstore_half(dot(fp, fq), 0, r);                                           \n
-}                                                                             \n
-                                                                              \n
-void test_half16(const half16* p, const half16* q, const half16* r) {         \n
-    float16 fp = vload_half16(0, p);                                          \n
-    float16 fq = vload_half16(0, q);                                          \n
-    (void)fp;                                                                 \n
-    (void)fq;                                                                 \n
-    vstore_half16(fma(fp, fq, (float16)0), 0, r);                             \n
-}                                                                             \n
-                                                                              \n
 __kernel void x_add_y(__global const float* x,                                \n
                       __global const float* y,                                \n
                       __global float* z) {                                    \n
@@ -141,9 +123,11 @@ static int test(ocl_context_t* c, int64_t n) {
     ocl_program_t p = ocl.compile(c, sc, strlen(sc), null, null, 0);
     ocl_kernel_t k = ocl.create_kernel(p, kernel_name);
     const int64_t bytes = n * sizeof(fp32_t);
-    ocl_memory_t mx = ocl.allocate(c, ocl_allocate_write, bytes);
-    ocl_memory_t my = ocl.allocate(c, ocl_allocate_write, bytes);
-    ocl_memory_t mz = ocl.allocate(c, ocl_allocate_read,  bytes);
+    enum { write_only = CL_MEM_WRITE_ONLY|CL_MEM_HOST_WRITE_ONLY };
+    ocl_memory_t mx = ocl.allocate(c, write_only, bytes);
+    ocl_memory_t my = ocl.allocate(c, write_only, bytes);
+    enum { read_only = CL_MEM_READ_ONLY|CL_MEM_HOST_READ_ONLY };
+    ocl_memory_t mz = ocl.allocate(c, read_only,  bytes);
     x_add_y(c, k, mx, my, mz, n, true);
     enum { M = 128 }; // measurements
     for (int i = 0; i < M; i++) {

@@ -285,6 +285,21 @@ static void run(gemv_t* g, int fpp,
     }
 }
 
+ocl_memory_t alloc(ocl_context_t* c, int access, size_t bytes) {
+    // ocl.alloc() can return not null but map() will actually fail
+    ocl_memory_t m = ocl.alloc(c, access, bytes);
+    if (m != null) {
+        void* p = ocl.map(c, ocl.access_to_map(access), m, 0, bytes);
+        if (p == null) {
+            ocl.deallocate(m);
+            m = null;
+        } else {
+            ocl.unmap(c, m, p);
+        }
+    }
+    return m;
+}
+
 static void test(gemv_t* g, int fpp,
                  int32_t n, int32_t m,
                  fp64_t (*init_mx)(int32_t j, int32_t i, int32_t n),
@@ -295,21 +310,22 @@ static void test(gemv_t* g, int fpp,
     gpu_time = DBL_MAX;
     avx_time = DBL_MAX;
     cpu_time = DBL_MAX;
-    gpu_gfps = 0;
+    gpu_gfps = 0;    
     const size_t meb = ocl_fpp_bytes[fpp]; // matrix element bytes
-    // vector element bytes
-    const size_t veb = fpp == ocl_fpp16 ? 4 : 8;
-    ocl_memory_t matrix = ocl.alloc(c, ocl_allocate_write, (size_t)m * n * meb);
-    ocl_memory_t vector = ocl.alloc(c, ocl_allocate_write, (size_t)n * veb);
-    ocl_memory_t result = ocl.alloc(c, ocl_allocate_read,  (size_t)m * veb);
+    const size_t veb = fpp == ocl_fpp16 ? 4 : 8; // vector bytes
+    enum { write_only = CL_MEM_WRITE_ONLY|CL_MEM_HOST_WRITE_ONLY };
+    enum { read_only  = CL_MEM_READ_ONLY|CL_MEM_HOST_READ_ONLY };
+    ocl_memory_t matrix = alloc(c, write_only, (size_t)m * n * meb);
+    ocl_memory_t vector = alloc(c, write_only, (size_t)n * veb);
+    ocl_memory_t result = alloc(c, read_only,  (size_t)m * veb);
     if (matrix != null && vector != null && result != null) {
-        void* mx = ocl.map(c, ocl_map_write, matrix, 0, (size_t)m * n * meb);
-        void* vc = (fp32_t*)ocl.map(c, ocl_map_write, vector, 0, n * veb);
+        void* mx = ocl.map(c, CL_MAP_WRITE, matrix, 0, (size_t)m * n * meb);
+        void* vc = ocl.map(c, CL_MAP_WRITE, vector, 0, n * veb);
         init_mx_vc(fpp, mx, vc, n, m, init_mx, init_vc);
-        void* avx = (fp32_t*)alloca(m * veb);
+        void* avx = alloca(m * veb);
         fatal_if(avx == null);
         test_avx(fpp, mx, vc, avx, n, m);
-        void* cpu = (fp32_t*)alloca(m * veb);
+        void* cpu = alloca(m * veb);
         fatal_if(cpu == null);
         test_cpu(fpp, mx, vc, cpu, n, m);
         if (verbose && n <= 64 && m <= 64) {
@@ -320,11 +336,11 @@ static void test(gemv_t* g, int fpp,
         fp64_t user = seconds();
 //      ocl.migrate(c, matrix); // migrate is a "hint" to move memory
 //      ocl.migrate(c, vector); // to the GPU dedicated fater access region
-        ocl.migrate_undefined(c, result);
+//      ocl.migrate_undefined(c, result);
         user = seconds() - user;
     //  println("migrate: %.6f ms", user * 1000.0);
         run(g, fpp, matrix, vector, result, n, m);
-        void* rs = ocl.map(c, ocl_map_read, result, 0, m * veb);
+        void* rs = ocl.map(c, CL_MAP_READ, result, 0, m * veb);
         if (verbose && m <= 64) { dump_result(fpp, rs, m); }
         verify(fpp, avx, cpu, rs, n, m);
         // cleanup
@@ -355,17 +371,25 @@ static fp64_t init_mx1(int32_t r, int32_t c, int32_t n) {
 }
 
 static void permutations(gemv_t* g, const ocl_device_t* d) {
-#ifndef PERMUTATIONS_DEBUG_SPECIFIC
+#ifndef PERMUTATIONS_DEBUG_SINGLE_CASE
     // all 1..64 x 1..64 permutations
     verbose = false; // set to true if crashes
     for (int fpp = ocl_fpp16; fpp <= ocl_fpp64; fpp++) {
-        for (int n = 1; n <= 64; n++) {
-            for (int m = 1; m <= 64; m++) {
-                if (fpp != ocl_fpp64 || d->double_fp_config != 0) {
-//                  if (_isatty(_fileno(stdout))) {
-//                      printf("%2dx%-2d: %d\r", n, m, ocl_fpp_bytes[fpp] * 8);
-//                  }
-                    test(g, fpp, n, m, init_mx0, init_vc0);
+        bool supported = true;
+        switch (fpp) {
+            case ocl_fpp16: supported = d->fp16_config != 0; break;
+            case ocl_fpp32: supported = d->fp32_config != 0; break;
+            case ocl_fpp64: supported = d->fp64_config != 0; break;
+        }
+        if (supported) {
+            for (int n = 1; n <= 64; n++) {
+                for (int m = 1; m <= 64; m++) {
+                    if (fpp != ocl_fpp64 || d->fp64_config != 0) {
+//                      if (_isatty(_fileno(stdout))) {
+//                          printf("%2dx%-2d: %d\r", n, m, ocl_fpp_bytes[fpp] * 8);
+//                      }
+                        test(g, fpp, n, m, init_mx0, init_vc0);
+                    }
                 }
             }
         }
@@ -388,16 +412,6 @@ static void tests(bool profile) {
             .profiling_count = 0
         };
         ocl_context_t c = ocl.open(i, profile ? &ov : null);
-
-        for (int k = 0; k < 10; k++) {
-            size_t bytes = (size_t)16384 * 49152 * 4;
-            ocl_memory_t m = ocl.allocate(&c, ocl_allocate_write, bytes);
-            void* p = ocl.map(&c, ocl_map_write, m, 0, bytes);
-            memset(p, 0xFF, bytes);
-            ocl.unmap(&c, m, p);
-//          ocl.migrate(&c, m);
-            ocl.deallocate(m);
-        }
         println("*** %s : %.1fGB *** %s", d->name, 
             d->global_memory / (double)GB, profile ? "PROFILING" : "");
         gemv_t g = {0};
@@ -405,20 +419,31 @@ static void tests(bool profile) {
         permutations(&g, d);
         // large matrix/vectors performance tests
         for (int fpp = ocl_fpp16; fpp <= ocl_fpp64; fpp++) {
-            if (fpp != ocl_fpp64 || d->double_fp_config != 0) {
+            if (fpp != ocl_fpp64 || d->fp64_config != 0) {
                 struct { int32_t n; int32_t m; } tests[] = {
                     {     1024,      1024},
                     { 4 * 1024,  4 * 1024},
                     { 4 * 1024, 16 * 1024}, // GPT-J 6b innermost gemv()
                     {16 * 1024, 48 * 1024}, // GPT-J 6b innermost x 8 layers
-                    {30 * 1024, 60 * 1024},
-                    {64 * 1024,  8 * 1024},
+                    {16 * 1024, 64 * 1024},
+                    {64 * 1024, 16 * 1024},
                 };
                 for (int k = 0; k < countof(tests); k++) {
-                    double gb = (int64_t)tests[k].n * tests[k].m *
-                        ocl_fpp_bytes[fpp] / (double)GB;
-                    println("%d x %d %.3fGB", tests[k].n, tests[k].m, gb);
-                    test(&g, fpp, tests[k].n, tests[k].m, init_mx1, init_vc1);
+                    const int64_t n = tests[k].n;
+                    const int64_t m = tests[k].m;
+                    const int64_t bytes = n * m * ocl_fpp_bytes[fpp];
+                    // 128MB is reserved inside most of modern GPUs
+                    if (bytes < d->global_memory - 128 * MB) {
+#if 0
+                        double gb = bytes / (double)GB;
+                        double dgb = d->global_memory / (double)GB;
+                        println("%d x %d %.3fGB of %.3fGB", n, m, gb, dgb);
+                        println("press any key to continue");
+                        while (_kbhit() == 0) { sleep(1.0 / 64); }
+                        getch();
+#endif
+                        test(&g, fpp, tests[k].n, tests[k].m, init_mx1, init_vc1);
+                    }
                 }
             }
         }
