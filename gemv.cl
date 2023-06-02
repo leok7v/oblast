@@ -16,6 +16,8 @@
 
 // shared memory "sm" is accessible for all work items in a group
 
+// TODO: dot16bf
+
 inline void reduce_add(const uint lid, uint i, fpmx_t s,
         __local fpmx_t* restrict sm) {
     sm[lid] = s; // (*1*)
