@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 // float point precision index
-enum { ocl_fpp16 = 0, ocl_fpp32 = 1, ocl_fpp64 = 2 };
+enum { ocl_fpp16 = 0, ocl_fpp32 = 1, ocl_fpp64 = 2 }; // TODO: ocl_bfp16?
 
 extern const char* ocl_fpp_names[3];
 extern const int   ocl_fpp_bytes[3]; // { 2, 4, 8 }
@@ -144,6 +144,18 @@ typedef struct ocl_arg_s {
     size_t bytes;
 } ocl_arg_t;
 
+// If client need anything more complex from host/device shared memory
+// model it can use direct clAPI calls:
+
+typedef struct ocl_shared_s {  // TODO: if double mapping is not necessary delete .p
+    void* p;        // only valid between map_shared()/unmap_shared()
+    void* a;        // allocated host address or null if clSVMAlloc() failed
+    ocl_memory_t m; // OpenCL memory handle with CL_MEM_USE_HOST_PTR
+    ocl_context_t* c;
+    int64_t  bytes;
+    int32_t access; // CL_MEM_READ_WRITE, CL_MEM_WRITE_ONLY, CL_MEM_READ_ONLY
+} ocl_shared_t;
+
 enum { // .allocate() access flags (matching OpenCL)
     ocl_allocate_read  = (1 << 2),
     ocl_allocate_write = (1 << 1),
@@ -168,7 +180,14 @@ typedef struct ocl_if {
     ocl_memory_t (*allocate)(ocl_context_t* c, int access, size_t bytes);
     // alloc() may return null, allocate() fatal if null
     void (*deallocate)(ocl_memory_t m);
-    // TODO: alloc() that returns null instead of being fatal
+    // device/host shared memory (w/o fine-grained access/atomics)
+    // alloc_shared().a and .m will be null if failed
+    ocl_shared_t (*alloc_shared)(ocl_context_t* c, int access, size_t bytes);
+    void* (*map_shared)(ocl_shared_t* sm);
+    void (*unmap_shared)(ocl_shared_t* sm);
+    void (*migrate_shared)(ocl_shared_t* sm);
+    void (*migrate_shared_undefined)(ocl_shared_t* sm);
+    void (*free_shared)(ocl_shared_t* sm);
     // ocl_map_read  - host will read data written by GPU
     // ocl_map_write - host will write data that GPU will read
     void* (*map)(ocl_context_t* c, int mapping, ocl_memory_t m,

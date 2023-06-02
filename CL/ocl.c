@@ -105,7 +105,10 @@ static ocl_memory_t ocl_allocate(ocl_context_t* c, int access, size_t bytes) {
 }
 
 static void  ocl_deallocate(ocl_memory_t m) {
-    call(clReleaseMemObject((cl_mem)m));
+    // Customary free(null) is OK because 1. it's mostly harmless
+    // 2. simplifies error hangling in multiple alloc() situations
+    // (which are almost always).
+    if (m != null) { call(clReleaseMemObject((cl_mem)m)); }
 }
 
 static void* ocl_map(ocl_context_t* c, int mapping, ocl_memory_t m, size_t offset,
@@ -123,10 +126,60 @@ static void  ocl_unmap(ocl_context_t* c, ocl_memory_t m, const void* a) {
         0, null, null));
 }
 
-static int ocl_va_count(va_list vl) {
-    int argc = 0;
-    while (va_arg(vl, void*) != null) { argc++; }
-    return argc;
+static ocl_shared_t ocl_alloc_shared(ocl_context_t* c, int access, size_t bytes) {
+    ocl_shared_t s = {
+        .access = access,
+        .bytes = bytes,
+        .c = c
+    };
+    cl_int r = 0;
+    s.a = clSVMAlloc(c->c, access, bytes, sizeof(uint64_t) * 16);
+    if (s.a != null) {
+        s.m = clCreateBuffer(c->c, access|CL_MEM_ALLOC_HOST_PTR, bytes, s.a, &r);
+    }
+    return s;
+}
+
+static void* ocl_map_shared(ocl_shared_t* s) {
+    int map = 0;
+    if (s->access & CL_MEM_READ_ONLY)  { map |= CL_MAP_READ; }
+    if (s->access & CL_MEM_READ_WRITE) { map |= CL_MAP_READ|CL_MAP_WRITE; }
+    if (s->access & CL_MEM_WRITE_ONLY) { map |= CL_MAP_WRITE_INVALIDATE_REGION; }
+    //                   blocking:                 wait_list:    done:       
+    call(clEnqueueSVMMap(s->c->q, true, map, s->a, s->bytes, 0, null, null));
+    // TODO: do we need double mapping. I think we do NOT!!!
+//  void* a = ocl.map(s->c, mapping, s->m, 0, s->bytes);
+//  fatal_if(a != s->a, "expected to be the same s->a: %p a: %p", s->a, a);
+    s->p = s->a;
+    return s->p;
+}
+
+static void ocl_unmap_shared(ocl_shared_t* s) {
+    // TODO: do we need double mapping. I think we do NOT!!!
+//  ocl.unmap(s->c, s->m, s->a);
+    call(clEnqueueSVMUnmap(s->c->q, s->a, 0, null, null));
+    s->p = null;
+}
+
+static void ocl_migrate_shared_with_flags(ocl_shared_t* s, int flags) {
+    ocl_event_t done = null;
+    call(clEnqueueSVMMigrateMem(s->c->q, 1, &s->a, (size_t*)&s->bytes, flags,
+        /* wait count: */0, /*wait list:*/null, &done));
+    ocl.wait(&done, 1);
+}
+
+static void ocl_migrate_shared(ocl_shared_t* s) {
+    ocl_migrate_shared_with_flags(s, 0);
+}
+
+static void ocl_migrate_shared_undefined(ocl_shared_t* s) {
+    ocl_migrate_shared_with_flags(s, CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED);
+}
+
+static void ocl_free_shared(ocl_shared_t* s) {
+    if (s->m != null) { call(clReleaseMemObject(s->m)); }
+    if (s->a != null) { clSVMFree(s->c->c, s->a); }
+    memset(s, 0, sizeof(*s));
 }
 
 static void ocl_migrate_with_flags(ocl_context_t* c, int f, ocl_memory_t m) {
@@ -658,6 +711,12 @@ ocl_if ocl = {
     .alloc = ocl_alloc,
     .allocate = ocl_allocate,
     .deallocate = ocl_deallocate,
+    .alloc_shared = ocl_alloc_shared,
+    .map_shared = ocl_map_shared,
+    .unmap_shared = ocl_unmap_shared,
+    .migrate_shared = ocl_migrate_shared,
+    .migrate_shared_undefined = ocl_migrate_shared_undefined,
+    .free_shared = ocl_free_shared,
     .map = ocl_map,
     .unmap = ocl_unmap,
     .migrate = ocl_migrate,
