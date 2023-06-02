@@ -498,13 +498,16 @@ static void ocl_check_fp16_support(int dix) {
 static void ocl_init(void) {
     #pragma push_macro("get_str")
     #pragma push_macro("get_val")
+    #pragma push_macro("get_opt")
     #pragma push_macro("ext")
-    #define get_str(name, s) do { \
+    #define get_str(name, s) do {                             \
         call(clGetDeviceInfo(id, name, countof(s), s, null)); \
     } while (0)
-    #define get_val(name, v) do { \
+    #define get_val(name, v) do {                             \
         call(clGetDeviceInfo(id, name, sizeof(v), &v, null)); \
     } while (0)
+    #define get_opt(name, v) /*optional*/                     \
+        (clGetDeviceInfo(id, name, sizeof(v), &v, null) == 0)  
     #define ext(s) (strstr(d->extensions, (s)) != null)
     // Get platform and device information
     cl_platform_id platforms[16] = {0};
@@ -542,11 +545,12 @@ static void ocl_init(void) {
                 get_val(CL_DEVICE_MAX_CONSTANT_ARGS,         d->max_const_args);
                 get_val(CL_DEVICE_MAX_COMPUTE_UNITS,         d->compute_units);
                 get_val(CL_DEVICE_MAX_WORK_GROUP_SIZE,       d->max_groups);
-                get_val(CL_DEVICE_MAX_NUM_SUB_GROUPS,        d->max_subgroups);
                 get_val(CL_DEVICE_SINGLE_FP_CONFIG,          d->fp32_config);
                 get_val(CL_DEVICE_DOUBLE_FP_CONFIG,          d->fp64_config);
                 get_val(CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS,  d->dimensions);
-                get_val(CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS,
+                // Intel extensions
+                get_opt(CL_DEVICE_MAX_NUM_SUB_GROUPS,        d->max_subgroups);
+                get_opt(CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS,
                                                              d->subgroup_ifp);
                 call(d->dimensions > countof(d->max_items));
                 get_val(CL_DEVICE_MAX_WORK_ITEM_SIZES, d->max_items);
@@ -554,15 +558,15 @@ static void ocl_init(void) {
                 d->flavor |= ext("_intel_") ? ocl_intel  : 0;
                 d->flavor |= ext("_nv_")    ? ocl_nvidia : 0;
                 d->flavor |= ext("_amd_")   ? ocl_amd    : 0;
-                bool check_fp16_support = clGetDeviceInfo(id, 
-                    CL_DEVICE_HALF_FP_CONFIG, 
-                    sizeof(d->fp16_config), &d->fp16_config, null) != 0;
+                bool has_fp16_config = 
+                    get_opt(CL_DEVICE_HALF_FP_CONFIG, d->fp16_config);
                 ocl.count++;
-                if (check_fp16_support) { ocl_check_fp16_support(ocl.count - 1); }
+                if (!has_fp16_config) { ocl_check_fp16_support(ocl.count - 1); }
             }
         }
     }
     #pragma pop_macro("ext")
+    #pragma pop_macro("get_opt")
     #pragma pop_macro("get_val")
     #pragma pop_macro("get_str")
 }
