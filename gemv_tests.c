@@ -54,28 +54,28 @@ static void print(int fpp, int32_t n, int32_t m) { // performance measurements
     if (n > 64 && m > 64) {
         if (avx_time < DBL_MAX) {
             if (gpu_time < DBL_MAX) {
-                println("fp%d_t %5d x %-5d gpu: %7.3f (call: %7.3f) avx: %8.3f "
+                println("fp%d_t %5d x %-5d gpu: %9.3f (call: %9.3f) avx: %9.3f "
                     "ms %5.1fGFlops",
                     ocl_fpp_bytes[fpp] * 8, n, m,
                     gpu_time * MSEC_IN_SEC, ocl_time * MSEC_IN_SEC,
                     avx_time * MSEC_IN_SEC, gpu_gfps);
             } else {
                 gpu_gfps = 3.0 * m * n / (ocl_time * NSEC_IN_SEC);
-                println("fp%d_t %5d x %-5d gpu: %7.3f avx: %8.3f ms %5.1fGFlops",
+                println("fp%d_t %5d x %-5d gpu: %9.3f avx: %9.3f ms %5.1fGFlops",
                     ocl_fpp_bytes[fpp] * 8, n, m,
                     ocl_time * MSEC_IN_SEC,
                     avx_time * MSEC_IN_SEC, gpu_gfps);
             }
         } else {
             if (gpu_time < DBL_MAX) {
-                println("fp%d_t %5d x %-5d gpu: %7.3f (call: %7.3f) cpu: %8.3f ms "
+                println("fp%d_t %5d x %-5d gpu: %9.3f (call: %9.3f) cpu: %9.3f ms "
                     "%5.1fGFlops",
                     ocl_fpp_bytes[fpp] * 8, n, m,
                     gpu_time * MSEC_IN_SEC, ocl_time * MSEC_IN_SEC,
                     cpu_time * MSEC_IN_SEC, gpu_gfps);
             } else {
                 gpu_gfps = 3.0 * m * n / (ocl_time * NSEC_IN_SEC);
-                println("fp%d_t %5d x %-5d gpu: %7.3f cpu: %8.3f ms %5.1fGFlops",
+                println("fp%d_t %5d x %-5d gpu: %9.3f cpu: %9.3f ms %5.1fGFlops",
                     ocl_fpp_bytes[fpp] * 8, n, m,
                     ocl_time * MSEC_IN_SEC,
                     cpu_time * MSEC_IN_SEC, gpu_gfps);
@@ -118,7 +118,10 @@ static void test_avx(int fpp, void* mx, void* vc, void* avx,
         fp64_t user = seconds();
         switch (fpp) {
             case ocl_fpp16:
-                fatal_if("TODO");
+                for (int32_t j = 0; j < m; j++) {
+                    fp16_t* row = (fp16_t*)mx + j * n;
+                    ((fp32_t*)avx)[j] = (fp32_t)dot.fp16((fp16_t*)vc, 1, row, 1, n);
+                }
                 break;
             case ocl_fpp32:
                 for (int32_t j = 0; j < m; j++) {
@@ -375,13 +378,7 @@ static void permutations(gemv_t* g, const ocl_device_t* d) {
     // all 1..64 x 1..64 permutations
     verbose = false; // set to true if crashes
     for (int fpp = ocl_fpp16; fpp <= ocl_fpp64; fpp++) {
-        bool supported = true;
-        switch (fpp) {
-            case ocl_fpp16: supported = d->fp16_config != 0; break;
-            case ocl_fpp32: supported = d->fp32_config != 0; break;
-            case ocl_fpp64: supported = d->fp64_config != 0; break;
-        }
-        if (supported) {
+        if (ocl.has_fpp(g->c, fpp)) {
             for (int n = 1; n <= 64; n++) {
                 for (int m = 1; m <= 64; m++) {
                     if (fpp != ocl_fpp64 || d->fp64_config != 0) {
@@ -405,7 +402,7 @@ static void tests(bool profile) {
     for (int i = 0; i < ocl.count; i++) {
 //      ocl.dump(i);
         const ocl_device_t* d = &ocl.devices[i];
-        ocl_profiling_t profiling[1]; // [1] because single kernel
+        ocl_profiling_t profiling[1] = {0}; // [1] single kernel
         ocl_override_t ov = {
             .profiling = profiling,
             .max_profiling_count = countof(profiling),
@@ -419,7 +416,7 @@ static void tests(bool profile) {
         permutations(&g, d);
         // large matrix/vectors performance tests
         for (int fpp = ocl_fpp16; fpp <= ocl_fpp64; fpp++) {
-            if (fpp != ocl_fpp64 || d->fp64_config != 0) {
+            if (ocl.has_fpp(&c, fpp)) {
                 struct { int32_t n; int32_t m; } tests[] = {
                     {     1024,      1024},
                     { 4 * 1024,  4 * 1024},
@@ -433,7 +430,7 @@ static void tests(bool profile) {
                     const int64_t m = tests[k].m;
                     const int64_t bytes = n * m * ocl_fpp_bytes[fpp];
                     // 128MB is reserved inside most of modern GPUs
-                    if (bytes < d->global_memory - 128 * MB) {
+                    if (bytes < d->global_memory) {
 #if 0
                         double gb = bytes / (double)GB;
                         double dgb = d->global_memory / (double)GB;

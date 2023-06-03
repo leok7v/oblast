@@ -29,7 +29,7 @@ extern "C" {
 uint32_t random32(uint32_t* state); // state aka seed
 double   seconds();     // seconds since boot (3/10MHz resolution)
 int64_t  nanoseconds(); // nanoseconds since boot (3/10MHz resolution)
-void     traceline(const char* file, int line, const char* func,
+void     printline(const char* file, int line, const char* func,
                    const char* format, ...);
 int      memmap_resource(const char* label, void* *data, int64_t *bytes);
 void*    load_dl(const char* pathname); // dlopen | LoadLibrary
@@ -60,7 +60,7 @@ void     sleep(double seconds);
 
 #define thread_local __declspec(thread)
 
-#define println(...) traceline(__FILE__, __LINE__, __func__, "" __VA_ARGS__)
+#define println(...) printline(__FILE__, __LINE__, __func__, "" __VA_ARGS__)
 
 #define assertion(b, ...) do {                                              \
     if (!(b)) {                                                             \
@@ -89,8 +89,8 @@ enum {
 #define fatal_if(b, ...) do {                                    \
     bool _b_ = (b);                                              \
     if (_b_) {                                                   \
-        traceline(__FILE__, __LINE__, __func__, "%s", #b);       \
-        traceline(__FILE__, __LINE__, __func__, "" __VA_ARGS__); \
+        printline(__FILE__, __LINE__, __func__, "%s", #b);       \
+        printline(__FILE__, __LINE__, __func__, "" __VA_ARGS__); \
         fprintf(stderr, "%s(%d) %s() %s failed ",                \
                 __FILE__, __LINE__, __func__, #b);               \
         fprintf(stderr, "" __VA_ARGS__);                         \
@@ -164,7 +164,7 @@ uint64_t time_in_nanoseconds_absolute() {
 }
 */
 
-void traceline(const char* file, int line, const char* func,
+void printline(const char* file, int line, const char* func,
         const char* format, ...) {
     static thread_local char text[32 * 1024];
     va_list vl;
@@ -178,7 +178,11 @@ void traceline(const char* file, int line, const char* func,
     if (n > 0 && text[n - 1] != '\n') { text[n] = '\n'; text[n + 1] = 0;  }
     va_end(vl);
     OutputDebugStringA(text);
-    fprintf(stderr, "%s", text);
+    // chop off full path from filename:
+    p = text + strlen(file);
+    while (p > text && *p != '\\' && *p != '/') { p--; }
+    if (p != text) { p++; }
+    fprintf(stderr, "%s", p);
 }
 
 int memmap_resource(const char* label, void* *data, int64_t *bytes) {

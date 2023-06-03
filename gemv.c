@@ -131,6 +131,8 @@ static void gemv_fini(gemv_t* g) {
 
 #pragma warning(disable: 4100) // TODO: remove me
 
+// TODO: implement or remove?
+
 void ocl_gemv16(gemv_t* g, int64_t offset, ocl_memory_t mx,
     ocl_memory_t vc, ocl_memory_t rs, int64_t n, int64_t m) {
     ocl_gemv(g, ocl_fpp16, offset, mx, vc, rs, n, m);

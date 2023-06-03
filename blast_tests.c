@@ -38,8 +38,8 @@ static void test_dot_map(test_dot_t* td) {
 static void test_dot_unmap(test_dot_t* td) {
     blast.unmap(&td->v0);
     blast.unmap(&td->v1);
-    ocl.migrate(td->v0.b->c, td->v0.h);
-    ocl.migrate(td->v1.b->c, td->v1.h);
+//  ocl.migrate(td->v0.b->c, td->v0.h);
+//  ocl.migrate(td->v1.b->c, td->v1.h);
 }
 
 static void test_dot_free(test_dot_t* td) {
@@ -186,7 +186,7 @@ static void test_dot_compare_gpu_avx(blast_t* b,
         test_dot_map(&td);
         x = (fp32_t*)td.a0;
         y = (fp32_t*)td.a1;
-        println("%6d, %5.3f, %7.3f", i, avx * MSEC_IN_SEC, gpu * MSEC_IN_SEC);
+        println("%6d, %7.3f, %7.3f", i, avx * MSEC_IN_SEC, gpu * MSEC_IN_SEC);
         fatal_if(sum0 != sum1);
     }
     test_dot_unmap(&td);
@@ -195,9 +195,9 @@ static void test_dot_compare_gpu_avx(blast_t* b,
 
 static void tests() {
     if (dot.test != null) { dot.test(); }
-    for (int d = 0; d < ocl.count; d++) {
-//      ocl.dump(i);
-        ocl_context_t c = ocl.open(d, null);
+    for (int dix = 0; dix < ocl.count; dix++) {
+//      ocl.dump(dix);
+        ocl_context_t c = ocl.open(dix, null);
         blast_t b = { 0 };
         blast.init(&b, &c);
         test_permutations(&b);
@@ -250,7 +250,7 @@ int32_t main(int32_t argc, const char* argv[]) {
 
 /*
 
-    11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz / 4.00 GHz
+##11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz / 4.00 GHz
 
     fp16 L1
     C     :   0.315 Gflops
@@ -277,12 +277,11 @@ int32_t main(int32_t argc, const char* argv[]) {
     avx2  :   3.483 Gflops
     avx512:   2.980 Gflops (note: something wrong with fp64 prefetch)
 
+##Compare AVX vs GPU
 
-NVIDIA GeForce RTX 3080 Laptop GPU
+###NVIDIA GeForce RTX 3080 Laptop GPU
+
 dot_fp32 x 16,777,216:   5.413 user:  12.988 (ms) GFlops: 111.254
-
-Intel(R) UHD Graphics
-dot_fp32 x 16,777,216:  12.171 user: 779.006 (ms) GFlops:  44.923
 
 Nx1000,   AVX,     GPU, millisecond
   4096, 1.605,  27.338
@@ -310,7 +309,10 @@ Nx1000,   AVX,     GPU, millisecond
  15360, 5.994,  47.089
  15872, 8.071,  46.622
 
-Intel(R) UHD Graphics i7-11800H
+###Intel(R) UHD Graphics i7-11800H
+
+dot_fp32 x 16,777,216:  12.171 user: 779.006 (ms) GFlops:  44.923
+
 Nx1000,   AVX,     GPU, millisecond
   4096, 1.612, 226.997
   4608, 1.837, 246.279
@@ -337,4 +339,89 @@ Nx1000,   AVX,     GPU, millisecond
  15360, 5.909, 836.726
  15872, 6.261, 842.422
 
+
+ ##7th Gen A9-9420 APU
+
+     bf16 L1
+     C     :   1.030 GFlops
+     avx2  :   5.181 GFlops
+     bf16 RAM
+     C     :   1.048 GFlops
+     avx2  :   3.799 GFlops
+     fp16 L1
+     C     :   0.129 GFlops
+     avx2  :   8.091 GFlops
+     fp16 RAM
+     C     :   0.124 GFlops
+     avx2  :   3.947 GFlops
+     fp32 L1
+     C     :   1.301 GFlops
+     avx2  :   5.958 GFlops
+     fp32 RAM
+     C     :   1.210 GFlops
+     avx2  :   2.130 GFlops
+     fp64 L1
+     C     :   1.242 GFlops
+     fp64 RAM
+     C     :   0.950 GFlops
+
+###Stoney
+
+dot_fp32 x 16777216:  39.468 user:  11.228 (ms) GFlops: 144.659
+
+Nx1000,   AVX,     GPU, milliseconds
+  4096,  668.777,   8.806
+  4608,  785.833,   9.886
+  5120,  846.521,  13.222
+  5632,  931.697,  12.063
+  6144,  991.968,  13.242
+  6656, 1092.674,  15.451
+  7168, 1168.366,  16.688
+  7680, 1256.263,  17.909
+  8192, 1347.751,  17.592
+  8704, 1408.098,  24.292
+  9216, 1493.905,  19.714
+  9728, 1587.863,  20.792
+ 10240, 1633.865,  24.485
+ 10752, 1750.020,  25.677
+ 11264, 1811.006,  25.432
+ 11776, 1902.879,  25.381
+ 12288, 1995.633,  26.448
+ 12800, 2069.339,  27.478
+ 13312, 2142.564,  34.890
+ 13824, 2242.065,  29.734
+ 14336, 2312.985,  31.631
+ 14848, 2403.492,  33.604
+ 15360, 2471.045,  38.786
+ 15872, 2558.356,  34.218
+
+###AMD A9-9420 RADEON R5, 5 COMPUTE CORES 2C+3G   
+
+dot_fp32 x 16777216: 215.335 user:   0.778 (ms) GFlops: 104.773
+
+Nx1000,   AVX,     GPU, milliseconds
+  4096,  6.868,  44.344
+  4608,  7.065,  46.644 
+  5120,  8.326,  70.038
+  5632, 12.074,  79.984
+  6144,  9.719,  93.215
+  6656, 11.991,  79.264
+  7168, 12.847,  86.595
+  7680, 14.022, 107.594
+  8192, 12.718, 108.530
+  8704, 23.717, 136.188
+  9216, 11.775,  93.820
+  9728, 16.925, 141.138
+ 10240, 19.159, 139.296
+ 10752, 17.939, 124.410
+ 11264, 20.808, 136.159
+ 11776, 23.602, 191.307
+ 12288, 24.607, 142.637
+ 12800, 25.410, 168.782
+ 13312, 22.229, 166.912
+ 13824, 22.995, 204.608
+ 14336, 28.556, 145.811
+ 14848, 27.416, 218.053
+ 15360, 30.391, 174.085
+ 15872, 25.585, 200.692
  */

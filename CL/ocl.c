@@ -46,7 +46,7 @@ static bool ocl_is_profiling(const ocl_context_t* c) {
 }
 
 static ocl_context_t ocl_open(int32_t ix, ocl_override_t* ov) {
-    ocl_context_t c;
+    ocl_context_t c = {0};
     call(!(0 <= ix && ix < ocl.count));
     ocl_device_t* d = &ocl.devices[ix];
     cl_context_properties properties[] = {
@@ -61,6 +61,17 @@ static ocl_context_t ocl_open(int32_t ix, ocl_override_t* ov) {
     not_null(c.c, r);
     c.q = ocl_create_queue(&c, ocl.is_profiling(&c));
     return c;
+}
+
+static bool ocl_has_fpp(ocl_context_t* c, int fpp) {
+    const ocl_device_t* d = &ocl.devices[c->ix];
+    switch (fpp) {
+        case ocl_fpp16: return d->fp16_config != 0;
+        case ocl_fpp32: return d->fp32_config != 0;
+        case ocl_fpp64: return d->fp64_config != 0;
+        default: fatal_if("fpp", "%d", fpp);
+    }
+    return false;
 }
 
 static void* ocl_create_queue(ocl_context_t* c, bool profiling) {
@@ -472,16 +483,19 @@ static const char* ocl_error(int r) {
 static void ocl_check_fp16_support(int dix) {
     ocl_context_t c = ocl.open(dix, null);
     static const char* sc = // .cl source code
-    "#pragma OPENCL EXTENSION cl_khr_fp16: enable                                        "
-    "                                                                                    "
-    "__kernel                                                                            "
-    "void mul16(__global const half* x, __global const half* y, __global float* r) {     "
-    "    *r = vload_half(0, x) + vload_half(0, y);                                       "
-    "}                                                                                   "
-    "                                                                                    "
-    "__kernel                                                                            "
-    "void dot16(__global const half4* x, __global const half4* y, __global float* r) {   "
-    "    *r = dot(vload_half4(0, x), vload_half4(0, y));                                   "
+    "#pragma OPENCL EXTENSION cl_khr_fp16: enable          \n"
+    "                                                      \n"
+    "#define gcfp16p_t __global const half*                \n"
+    "#define gfp32p_t  __global float*                     \n"
+    "                                                      \n"
+    "__kernel                                              \n"
+    "void mul_fp16(gcfp16p_t x, gcfp16p_t y, gfp32p_t r) { \n"
+    "    *r = vload_half(0, x) * vload_half(0, y);         \n"
+    "}                                                     \n"
+    "                                                      \n"
+    "__kernel                                              \n"
+    "void dot_fp16(gcfp16p_t x, gcfp16p_t y, gfp32p_t r) { \n"
+    "    *r = dot(vload_half4(0, x), vload_half4(0, y));   \n"
     "}";
     char log[16 * 1024];
     ocl_program_t p = ocl.compile(&c, sc, strlen(sc), null, log, countof(log));
@@ -490,7 +504,7 @@ static void ocl_check_fp16_support(int dix) {
         ocl.devices[dix].fp16_config |= ocl_fp_denorm; // assume at least that
         ocl.release_program(p);
     } else {
-        println("%s\n%s\n", sc, log);
+//      println("code: ---------\n%s\nlog: ---------\n%s\n", sc, log);
     }
     ocl.close(&c);
 }
@@ -561,7 +575,9 @@ static void ocl_init(void) {
                 bool has_fp16_config = 
                     get_opt(CL_DEVICE_HALF_FP_CONFIG, d->fp16_config);
                 ocl.count++;
-                if (!has_fp16_config) { ocl_check_fp16_support(ocl.count - 1); }
+                if (!has_fp16_config || d->fp16_config == 0) { 
+                    ocl_check_fp16_support(ocl.count - 1); 
+                }
             }
         }
     }
@@ -609,7 +625,7 @@ static const char* ocl_fp_config_to_string(int64_t config) {
         append("ocl_fp_correctly_rounded_divide_sqrt");
     }
     #pragma pop_macro("append")
-    return s;
+    return s[0] == 0 ? s : &s[2]; // skip first ", "
 }
 
 static void ocl_dump(int ix) {
@@ -734,6 +750,7 @@ ocl_if ocl = {
     .dump = ocl_dump,
     .open = ocl_open,
     .is_profiling = ocl_is_profiling,
+    .has_fpp = ocl_has_fpp,
     .error = ocl_error,
     .alloc = ocl_alloc,
     .allocate = ocl_allocate,
@@ -812,3 +829,21 @@ static_assertion(CL_FP_FMA                           == ocl_fp_fma);
 static_assertion(CL_FP_SOFT_FLOAT                    == ocl_fp_soft_float);
 static_assertion(CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT == ocl_fp_correctly_rounded_divide_sqrt);
 
+/*
+* TODO: document Intel
+*       11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz / 4.00 GHz
+* and
+*       11th Gen Intel(R) Core(TM) i5-????
+* TODO: move to performance.md
+* 
+* 7th Gen A9-9420 APU runs with 2 "GPU" devices:
+* 
+* AMD A9-9420 RADEON R5, 5 COMPUTE CORES 2C+3G
+*   compute_units: 2 @ 2994MHz 7647MB
+*   OpenCL 1.2 C 1.2
+*   cl_khr_fp64 cl_amd_fp64 cl_amd_printf
+* Stoney OpenCL 2.0 C 2.0
+*   OpenCL 2.0 C 2.0
+*   compute_units: 3 @ 847MHz 3187MB
+*   cl_khr_fp16 cl_khr_fp64 cl_amd_fp64  cl_amd_printf
+*/

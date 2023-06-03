@@ -176,7 +176,7 @@ static fp64_t blast_dot(
         int64_t ne = min(max_items * max_groups, n);
         enum { read_only = CL_MEM_READ_ONLY|CL_MEM_HOST_READ_ONLY };
         blast_memory_t r = blast.allocate(b, read_only, ne * bytes);
-        ocl.migrate_undefined(r.b->c, r.h);
+//      ocl.migrate_undefined(r.b->c, r.h);
         if (o0 == 0 && s0 == 1 && o1 == 0 && s1 == 1) {
             blast_dot_compact(ne, v0, v1, &r, fpp);
         } else {
@@ -241,6 +241,7 @@ static const char* blast_program_options(blast_t* b, int fpp) {
     } while (0)
     append("-D fp16_t=half -D fp32_t=float -D fp64_t=double ");
     append("-D int32_t=int -D int64_t=long ");
+    append("-D fpp=%d ", fpp);
     append("-cl-std=CL%d.%d ", d->c_version_major, d->c_version_minor);
     append("-D fp_t=%s -D vec4=%s4 -D vec8=%s8 -D vec16=%s16 -D suffix=%s %s ",
            fp_t, fp_t,fp_t, fp_t, suffix[fpp],
@@ -252,29 +253,25 @@ static const char* blast_program_options(blast_t* b, int fpp) {
 }
 
 static ocl_program_t blast_compile(blast_t* b, int fpp,
-        const void* code, int bytes) {
-//  println("\nfpp: %s\n%*.*s\n\n", ocl_fpp_names[fpp], bytes, bytes, code);
+        const void* code, int64_t bytes) {
+//  println("\nfpp: %s\n%*.*s\n\n", ocl_fpp_names[fpp], (int)bytes, (int)bytes, code);
     const char* opts = blast_program_options(b, fpp);
     return ocl.compile(b->c, code, bytes, opts, null, 0);
 }
 
 static void blast_init(blast_t* b, ocl_context_t* c) {
     b->c = c;
-    ocl_device_t* d = &ocl.devices[b->c->ix];
     void* code = null;
-    int64_t bytes64 = 0;
-    int r = memmap_resource("blast_cl", &code, &bytes64);
-    fatal_if(r != 0 || code == null || bytes64 == 0, "blast.cl in blast.rc?");
-    fatal_if(bytes64 > INT_MAX, "blast.cl %lld bytes", bytes64);
-    int bytes = (int)bytes64;
-//  const bool has_fp16 = d->fp16_config != 0;
-    const bool has_fp64 = d->fp64_config != 0;
-// TODO: rewrite kernels
-const bool has_fp16 = false;
+    int64_t bytes = 0;
+    int r = memmap_resource("blast_cl", &code, &bytes);
+    fatal_if(r != 0 || code == null || bytes == 0, "blast.cl in blast.rc?");
     ocl_program_t p[3] = {
-        has_fp16 ? blast_compile(b, ocl_fpp16, code, bytes) : null,
-        blast_compile(b, ocl_fpp32, code, bytes),
-        has_fp64 ? blast_compile(b, ocl_fpp64, code, bytes) : null
+        ocl.has_fpp(b->c, ocl_fpp16) ? 
+            blast_compile(b, ocl_fpp16, code, bytes) : null,
+        ocl.has_fpp(b->c, ocl_fpp32) ? 
+            blast_compile(b, ocl_fpp32, code, bytes) : null,
+        ocl.has_fpp(b->c, ocl_fpp64) ? 
+            blast_compile(b, ocl_fpp64, code, bytes) : null
     };
     static const char* sum_odd[]     = {"sum_odd_fp16",     "sum_odd_fp32",     "sum_odd_fp64"};
     static const char* sum_odd_os[]  = {"sum_odd_os_fp16",  "sum_odd_os_fp32",  "sum_odd_os_fp64"};

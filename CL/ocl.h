@@ -169,6 +169,7 @@ typedef struct ocl_if {
     void (*dump)(int ix); // dumps device info
     ocl_context_t (*open)(int32_t ix, ocl_override_t* ocl_override);
     bool (*is_profiling)(ocl_context_t* c);
+    bool (*has_fpp)(ocl_context_t* c, int fpp);
     // pinned memory with CL_MEM_ALLOC_HOST_PTR
     ocl_memory_t (*alloc)(ocl_context_t* c, int access, size_t bytes);
     ocl_memory_t (*allocate)(ocl_context_t* c, int access, size_t bytes);

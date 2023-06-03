@@ -28,11 +28,11 @@
 // dot_fp16x16_2()
 // TODO: measure which one is faster
 
-#if __OPENCL_VERSION__ <= CL_VERSION_1_1
+#if fpp == 64 && __OPENCL_VERSION__ <= CL_VERSION_1_1
 #pragma OPENCL EXTENSION cl_khr_fp64: enable
 #endif
 
-#ifdef fp16_t
+#if fpp == 16
 #pragma OPENCL EXTENSION cl_khr_fp16: enable
 #endif
 
@@ -158,7 +158,7 @@ __kernel void name(gemv4, suffix)(fp_ro_t mx, fp_ro_t v, fp_wr_t r, int32_t n) {
 //      [ m40 m41 m42 m43 ]
 //      [ m50 m51 m52 m53 ]
 // v = [v0 v1 v2 v3 v4 v5 v6 v7 v8]
-// dot_fp??(mx, 6, 5, 1
+// dot_fpXX(mx, 6, 5, 1
 //          v, 1, 2,
 //          r) with groups * items = 5
 // will multiply submatrix M11 to M43 (in CAPS):
