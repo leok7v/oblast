@@ -501,7 +501,7 @@ static void ocl_check_fp16_support(int dix) {
     ocl_program_t p = ocl.compile(&c, sc, strlen(sc), null, log, countof(log));
     bool b = p != null;
     if (b) {
-        ocl.devices[dix].fp16_config |= ocl_fp_denorm; // assume at least that
+        ocl.devices[dix].fp16_config |= CL_FP_DENORM; // assume at least that
         ocl.release_program(p);
     } else {
 //      println("code: ---------\n%s\nlog: ---------\n%s\n", sc, log);
@@ -614,15 +614,15 @@ static const char* ocl_fp_config_to_string(int64_t config) {
     s[0] = 0;
     #pragma push_macro("append")
     #define append(text) do { strcat(s, ", " text); } while (0)
-    if (config & ocl_fp_denorm)           { append("ocl_fp_denorm");           }
-    if (config & ocl_fp_inf_nan)          { append("ocl_fp_inf_nan");          }
-    if (config & ocl_fp_round_to_nearest) { append("ocl_fp_round_to_nearest"); }
-    if (config & ocl_fp_round_to_zero)    { append("ocl_fp_round_to_zero");    }
-    if (config & ocl_fp_round_to_inf)     { append("ocl_fp_round_to_inf");     }
-    if (config & ocl_fp_fma)              { append("ocl_fp_fma");              }
-    if (config & ocl_fp_soft_float)       { append("ocl_fp_soft_float");       }
-    if (config & ocl_fp_correctly_rounded_divide_sqrt) {
-        append("ocl_fp_correctly_rounded_divide_sqrt");
+    if (config & CL_FP_DENORM)           { append("CL_FP_DENORM");           }
+    if (config & CL_FP_INF_NAN)          { append("CL_FP_INF_NAN");          }
+    if (config & CL_FP_ROUND_TO_NEAREST) { append("CL_FP_ROUND_TO_NEAREST"); }
+    if (config & CL_FP_ROUND_TO_ZERO)    { append("CL_FP_ROUND_TO_ZERO");    }
+    if (config & CL_FP_ROUND_TO_INF)     { append("CL_FP_ROUND_TO_INF");     }
+    if (config & CL_FP_FMA)              { append("CL_FP_FMA");              }
+    if (config & CL_FP_SOFT_FLOAT)       { append("CL_FP_SOFT_FLOAT");       }
+    if (config & CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT) {
+        append("CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT");
     }
     #pragma pop_macro("append")
     return s[0] == 0 ? s : &s[2]; // skip first ", "
@@ -820,30 +820,3 @@ void* clBindFunction(const char* name) {
     return ocl_dl != null ? find_symbol(ocl_dl, name) : null;
 }
 
-static_assertion(CL_FP_DENORM                        == ocl_fp_denorm);
-static_assertion(CL_FP_INF_NAN                       == ocl_fp_inf_nan);
-static_assertion(CL_FP_ROUND_TO_NEAREST              == ocl_fp_round_to_nearest);
-static_assertion(CL_FP_ROUND_TO_ZERO                 == ocl_fp_round_to_zero);
-static_assertion(CL_FP_ROUND_TO_INF                  == ocl_fp_round_to_inf);
-static_assertion(CL_FP_FMA                           == ocl_fp_fma);
-static_assertion(CL_FP_SOFT_FLOAT                    == ocl_fp_soft_float);
-static_assertion(CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT == ocl_fp_correctly_rounded_divide_sqrt);
-
-/*
-* TODO: document Intel
-*       11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz / 4.00 GHz
-* and
-*       11th Gen Intel(R) Core(TM) i5-????
-* TODO: move to performance.md
-* 
-* 7th Gen A9-9420 APU runs with 2 "GPU" devices:
-* 
-* AMD A9-9420 RADEON R5, 5 COMPUTE CORES 2C+3G
-*   compute_units: 2 @ 2994MHz 7647MB
-*   OpenCL 1.2 C 1.2
-*   cl_khr_fp64 cl_amd_fp64 cl_amd_printf
-* Stoney OpenCL 2.0 C 2.0
-*   OpenCL 2.0 C 2.0
-*   compute_units: 3 @ 847MHz 3187MB
-*   cl_khr_fp16 cl_khr_fp64 cl_amd_fp64  cl_amd_printf
-*/

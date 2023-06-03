@@ -173,7 +173,7 @@ static void test_dot_compare_gpu_avx(blast_t* b,
         y[i] = 1.0f - sign * ((i + 1) * delta);
         assert(x[i] * y[i] == 1.0f);
     }
-    println("Nx1000,   AVX,     GPU, milliseconds");
+    println("Nx1000,     AVX,       GPU, milliseconds");
     for (int i = 4096; i < n / 1024; i += 512) {
         double avx = seconds();
         fp64_t sum0 = dot.fp32(x, 1, y, 1, i * 1024);
@@ -186,7 +186,7 @@ static void test_dot_compare_gpu_avx(blast_t* b,
         test_dot_map(&td);
         x = (fp32_t*)td.a0;
         y = (fp32_t*)td.a1;
-        println("%6d, %7.3f, %7.3f", i, avx * MSEC_IN_SEC, gpu * MSEC_IN_SEC);
+        println("%6d, %8.3f, %8.3f", i, avx * MSEC_IN_SEC, gpu * MSEC_IN_SEC);
         fatal_if(sum0 != sum1);
     }
     test_dot_unmap(&td);
@@ -251,6 +251,12 @@ int32_t main(int32_t argc, const char* argv[]) {
 /*
 
 ##11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz / 4.00 GHz
+
+    TODO: document Intel
+          11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz / 4.00 GHz
+    and
+          11th Gen Intel(R) Core(TM) i5-????
+    TODO: move to performance.md
 
     fp16 L1
     C     :   0.315 Gflops
@@ -340,30 +346,39 @@ Nx1000,   AVX,     GPU, millisecond
  15872, 6.261, 842.422
 
 
- ##7th Gen A9-9420 APU
+ ## AMD 7th Gen A9-9420 APU runs with 2 "GPU" devices:
+  
+  GPU: AMD A9-9420 RADEON R5, 5 COMPUTE CORES 2C+3G
+    compute_units: 2 @ 2994MHz 7647MB
+    OpenCL 1.2 C 1.2
+    cl_khr_fp64
+  GPU: Stoney OpenCL 2.0 C 2.0
+    OpenCL 2.0 C 2.0
+    compute_units: 3 @ 847MHz 3187MB
+    *cl_khr_fp16* cl_khr_fp64 
 
-     bf16 L1
-     C     :   1.030 GFlops
-     avx2  :   5.181 GFlops
-     bf16 RAM
-     C     :   1.048 GFlops
-     avx2  :   3.799 GFlops
-     fp16 L1
-     C     :   0.129 GFlops
-     avx2  :   8.091 GFlops
-     fp16 RAM
-     C     :   0.124 GFlops
-     avx2  :   3.947 GFlops
-     fp32 L1
-     C     :   1.301 GFlops
-     avx2  :   5.958 GFlops
-     fp32 RAM
-     C     :   1.210 GFlops
-     avx2  :   2.130 GFlops
-     fp64 L1
-     C     :   1.242 GFlops
-     fp64 RAM
-     C     :   0.950 GFlops
+    bf16 L1
+    C     :   1.030 GFlops
+    avx2  :   5.181 GFlops
+    bf16 RAM
+    C     :   1.048 GFlops
+    avx2  :   3.799 GFlops
+    fp16 L1
+    C     :   0.129 GFlops
+    avx2  :   8.091 GFlops
+    fp16 RAM
+    C     :   0.124 GFlops
+    avx2  :   3.947 GFlops
+    fp32 L1
+    C     :   1.301 GFlops
+    avx2  :   5.958 GFlops
+    fp32 RAM
+    C     :   1.210 GFlops
+    avx2  :   2.130 GFlops
+    fp64 L1
+    C     :   1.242 GFlops
+    fp64 RAM
+    C     :   0.950 GFlops
 
 ###Stoney
 

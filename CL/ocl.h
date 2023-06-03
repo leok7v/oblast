@@ -36,16 +36,8 @@ enum { // flavor (bitset because of collaboration and mixed solutions)
     // to be continued...
 };
 
-enum { // fp16_config, fp32_config, fp64_config bits
-    ocl_fp_denorm                        = (1 << 0),
-    ocl_fp_inf_nan                       = (1 << 1),
-    ocl_fp_round_to_nearest              = (1 << 2),
-    ocl_fp_round_to_zero                 = (1 << 3),
-    ocl_fp_round_to_inf                  = (1 << 4),
-    ocl_fp_fma                           = (1 << 5),
-    ocl_fp_soft_float                    = (1 << 6),
-    ocl_fp_correctly_rounded_divide_sqrt = (1 << 7)
-};
+// fp16_config, fp32_config, fp64_config bits
+// CL_FP_DENORM .. CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT
 
 // __kernel can use
 // #pragma OPENCL SELECT_ROUNDING_MODE rte // rte rtz rtp rtn
@@ -119,12 +111,6 @@ typedef struct ocl_profiling_s {
     double  g32ops; // Giga int32 ops
     double  g64ops; // Giga int64 ops
     double  user; // seconds: host time (to be filled by client)
-//  uint64_t ema_samples; // 0 defaults to 128 samples
-//  struct { // exponential moving average
-//      double  user; // seconds: host time (to be calculated by client)
-//      double  time; // seconds: end - start
-//      double  gops; // Giga items per second
-//  } ema;
 } ocl_profiling_t;
 
 typedef struct ocl_override_s {
