@@ -1,4 +1,4 @@
-// expectes to be prepended with
+// expects to be prepended with
 // #define suffix fp16|fp32|fp64
 // #define fp_t float
 // or

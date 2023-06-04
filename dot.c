@@ -28,7 +28,8 @@ enum { // bit order differs from cpuid registers bits
 //     Ivy Bridge (IVB) microarchitecture.
 
 typedef struct avx_if {
-    uint32_t features;
+    void   (*init)(void);
+    uint32_t features; // __cpuidex(7, 0, info) __cpuidex(7, 1, info)
 } avx_if;
 
 typedef struct avx2_if {
@@ -37,7 +38,9 @@ typedef struct avx2_if {
     fp64_t (*dot16)(const fp16_t* restrict v0, const fp16_t* restrict v1, int64_t n);
     fp64_t (*dot32)(const fp32_t* restrict v0, const fp32_t* restrict v1, int64_t n);
     fp64_t (*dot64)(const fp64_t* restrict v0, const fp64_t* restrict v1, int64_t n);
-    uint32_t features; // uint32_t info[4] cpuid(info), info[0] __cpuidex(7, 0, info) info[1]
+    // TODO:
+    fp64_t (*dot32x16bf)(const fp32_t* restrict v0, const bf16_t* restrict v1, int64_t n);
+    fp64_t (*dot32x16)(const fp32_t* restrict v0, const fp16_t* restrict v1, int64_t n);
 } avx2_if;
 
 typedef struct avx512_if {
@@ -46,6 +49,9 @@ typedef struct avx512_if {
     fp64_t (*dot16)(const fp16_t* restrict v0, const fp16_t* restrict v1, int64_t n);
     fp64_t (*dot32)(const fp32_t* restrict v0, const fp32_t* restrict v1, int64_t n);
     fp64_t (*dot64)(const fp64_t* restrict v0, const fp64_t* restrict v1, int64_t n);
+    // TODO:
+    fp64_t (*dot32x16bf)(const fp32_t* restrict v0, const bf16_t* restrict v1, int64_t n);
+    fp64_t (*dot32x16)(const fp32_t* restrict v0, const fp16_t* restrict v1, int64_t n);
 } avx512_if;
 
 // _MM_HINT_T0 (temporal data) — prefetch data into all levels of the caches.
@@ -63,7 +69,7 @@ static void avx_init(void);
 static void avx2_init(void);
 static void avx512_init(void);
 
-static avx2_if   avx    = { .init = avx_init };
+static avx_if    avx    = { .init = avx_init };
 static avx2_if   avx2   = { .init = avx2_init };
 static avx512_if avx512 = { .init = avx512_init };
 
@@ -94,7 +100,15 @@ static inline fp64_t cpu_dot16_c(const fp16_t* restrict v0,
         const fp16_t* restrict v1, int64_t n) {
     fp64_t sum = 0; // "_c" compact vector
     const fp16_t* e = v0 + n;
-    while (v0 < e) { sum += fp16to32(fp16_mul(*v0++, *v1++)); }
+    while (v0 < e) { sum += fp16to32(*v0++) * fp16to32(*v1++); }
+    return sum;
+}
+
+static inline fp64_t cpu_dot32x16_c(const fp32_t* restrict v0,
+        const fp16_t* restrict v1, int64_t n) {
+    fp64_t sum = 0; // "_c" compact vector
+    const fp32_t* e = v0 + n;
+    while (v0 < e) { sum += *v0++ * fp16to32(*v1++); }
     return sum;
 }
 
@@ -102,6 +116,14 @@ static fp64_t cpu_dot16bf_c(const bf16_t* v0, const bf16_t* v1, int64_t n) {
     fp64_t s = 0;
     for (int64_t i = 0; i < n; i++) {
         s += (fp64_t)bf16to32(*(v0 + i)) * (fp64_t)bf16to32(*(v1 + i));
+    }
+    return s;
+}
+
+static fp64_t cpu_dot32x16bf_c(const fp32_t* v0, const bf16_t* v1, int64_t n) {
+    fp64_t s = 0;
+    for (int64_t i = 0; i < n; i++) {
+        s += (fp64_t)*(v0 + i) * (fp64_t)bf16to32(*(v1 + i));
     }
     return s;
 }
@@ -115,13 +137,28 @@ static fp64_t cpu_dot16bf_s(const bf16_t* v0, int64_t s0, const bf16_t* v1, int6
     return s;
 }
 
+static fp64_t cpu_dot32x16bf_s(const fp32_t* v0, int64_t s0, const bf16_t* v1, int64_t s1, int64_t n) {
+    assert(s0 > 1 && s1 > 1);
+    fp64_t s = 0;
+    for (int64_t i = 0; i < n; i++) {
+        s += (fp64_t)*(v0 + i * s0) * (fp64_t)bf16to32(*(v1 + i * s1));
+    }
+    return s;
+}
+
 static inline fp64_t cpu_dot16_s(const fp16_t* restrict v0, int64_t s0,
         const fp16_t* restrict v1, int64_t s1, int64_t n) {
     fp64_t sum = 0; // "_s" strided vector
-    while (n > 0) { sum += fp16to32(fp16_mul(*v0, *v1)); v0 += s0; v1 += s1; n--; }
+    while (n > 0) { sum += fp16to32(*v0) * fp16to32(*v1); v0 += s0; v1 += s1; n--; }
     return sum;
 }
 
+static inline fp64_t cpu_dot32x16_s(const fp32_t* restrict v0, int64_t s0,
+        const fp16_t* restrict v1, int64_t s1, int64_t n) {
+    fp64_t sum = 0; // "_s" strided vector
+    while (n > 0) { sum += *v0 * fp16to32(*v1); v0 += s0; v1 += s1; n--; }
+    return sum;
+}
 
 static inline fp64_t cpu_dot32_c(const fp32_t* restrict v0, const fp32_t* restrict v1,
         int64_t n) {
@@ -164,6 +201,16 @@ static fp64_t dot16_c(const fp16_t *v0, const fp16_t* v1, int64_t n) {
     }
 }
 
+static fp64_t dot32x16_c(const fp32_t *v0, const fp16_t* v1, int64_t n) {
+    prefetch2_L1L2L3(v0, v1);
+    if (n >= 16 && avx512.dot32x16 != null) {
+        return avx512.dot32x16(v0, v1, n);
+    } else if (n >= 8 && avx2.dot32x16 != null) {
+        return avx2.dot32x16(v0, v1, n);
+    } else {
+        return cpu_dot32x16_c(v0, v1, n);
+    }
+}
 
 static fp64_t dot16bf_c(const bf16_t* v0, const bf16_t* v1, int64_t n) {
     if (n >= 8 && avx512.dot16bf != null) {
@@ -172,6 +219,16 @@ static fp64_t dot16bf_c(const bf16_t* v0, const bf16_t* v1, int64_t n) {
         return avx2.dot16bf(v0, v1, n);
     } else {
         return cpu_dot16bf_c(v0, v1, n);
+    }
+}
+
+static fp64_t dot32x16bf_c(const fp32_t* v0, const bf16_t* v1, int64_t n) {
+    if (n >= 8 && avx512.dot32x16bf != null) {
+        return avx512.dot32x16bf(v0, v1, n);
+    } else if (n >= 4 && avx2.dot32x16bf != null) {
+        return avx2.dot32x16bf(v0, v1, n);
+    } else {
+        return cpu_dot32x16bf_c(v0, v1, n);
     }
 }
 
@@ -215,6 +272,27 @@ static fp64_t dot16bf(const bf16_t* v0, int64_t s0, const bf16_t* v1, int64_t s1
         return dot16bf_c(v0, v1, n);
     } else {
         return cpu_dot16bf_s(v0, s0, v1, s1, n);
+    }
+}
+
+static fp64_t dot32x16(const fp32_t* v0, int64_t s0, const fp16_t* v1, int64_t s1, int64_t n) {
+    if (!dot_initialized) { dot_init(); }
+    assert(s0 >= 1 && s1 >= 1);
+    if (s0 == 1 && s1 == 1) {
+        return dot32x16_c(v0, v1, n);
+    } else {
+        return cpu_dot32x16_s(v0, s0, v1, s1, n);
+    }
+}
+
+static fp64_t dot32x16bf(const fp32_t* v0, int64_t s0, const bf16_t* v1, int64_t s1,
+        int64_t n) {
+    if (!dot_initialized) { dot_init(); }
+    assert(s0 >= 1 && s1 >= 1);
+    if (s0 == 1 && s1 == 1) {
+        return dot32x16bf_c(v0, v1, n);
+    } else {
+        return cpu_dot32x16bf_s(v0, s0, v1, s1, n);
     }
 }
 
@@ -915,6 +993,8 @@ dot_if dot = {
     .fp32 = dot32,
     .fp64 = dot64,
     .bf16 = dot16bf,
+    .fp32x16 = dot32x16,
+    .bf32x16 = dot32x16bf,
 #ifdef DOT_TEST
     .test = dot_test
 #endif

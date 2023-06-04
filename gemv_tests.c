@@ -92,6 +92,7 @@ static void init_mx_vc(int fpp,
     const size_t meb = ocl_fpp_bytes[fpp]; // matrix element bytes
     for (int32_t i = 0; i < n; i++) {
         switch (fpp) {
+            case ocl_bfp16:
             case ocl_fpp16:
             case ocl_fpp32: ((fp32_t*)vc)[i] = (fp32_t)init_vc(i); break;
             case ocl_fpp64: ((fp64_t*)vc)[i] = init_vc(i); break;
@@ -102,6 +103,7 @@ static void init_mx_vc(int fpp,
     for (int32_t j = 0; j < m; j++) {
         for (int32_t i = 0; i < n; i++) {
             switch (fpp) {
+                case ocl_bfp16: *((bf16_t*)p) = bf32to16((fp32_t)init_mx(j, i, n)); break;
                 case ocl_fpp16: *((fp16_t*)p) = fp32to16((fp32_t)init_mx(j, i, n)); break;
                 case ocl_fpp32: *((fp32_t*)p) = (fp32_t)init_mx(j, i, n); break;
                 case ocl_fpp64: *((fp64_t*)p) = init_mx(j, i, n); break;
@@ -114,39 +116,53 @@ static void init_mx_vc(int fpp,
 
 static void test_avx(int fpp, void* mx, void* vc, void* avx,
         int32_t n, int32_t m) {
-    if (fpp != ocl_fpp16) {
-        fp64_t user = seconds();
-        switch (fpp) {
-            case ocl_fpp16:
-                for (int32_t j = 0; j < m; j++) {
-                    fp16_t* row = (fp16_t*)mx + j * n;
-                    ((fp32_t*)avx)[j] = (fp32_t)dot.fp16((fp16_t*)vc, 1, row, 1, n);
-                }
-                break;
-            case ocl_fpp32:
-                for (int32_t j = 0; j < m; j++) {
-                    fp32_t* row = (fp32_t*)mx + j * n;
-                    ((fp32_t*)avx)[j] = (fp32_t)dot.fp32((fp32_t*)vc, 1, row, 1, n);
-                }
-                break;
-            case ocl_fpp64:
-                for (int64_t j = 0; j < m; j++) {
-                    fp64_t* row = (fp64_t*)mx + j * n;
-                    ((fp64_t*)avx)[j] = dot.fp64((fp64_t*)vc, 1, row, 1, n);
-                }
-                break;
-            default:
-                fatal_if("fpp?", "fpp: %d", fpp);
-        }
-        user = seconds() - user;
-        avx_time = min(avx_time, user);
+    fp64_t user = seconds();
+    switch (fpp) {
+        case ocl_fpp16:
+            for (int32_t j = 0; j < m; j++) {
+                fp16_t* row = (fp16_t*)mx + j * n;
+                ((fp32_t*)avx)[j] = (fp32_t)dot.fp32x16((fp32_t*)vc, 1, row, 1, n);
+            }
+            break;
+        case ocl_fpp32:
+            for (int32_t j = 0; j < m; j++) {
+                fp32_t* row = (fp32_t*)mx + j * n;
+                ((fp32_t*)avx)[j] = (fp32_t)dot.fp32((fp32_t*)vc, 1, row, 1, n);
+            }
+            break;
+        case ocl_fpp64:
+            for (int64_t j = 0; j < m; j++) {
+                fp64_t* row = (fp64_t*)mx + j * n;
+                ((fp64_t*)avx)[j] = dot.fp64((fp64_t*)vc, 1, row, 1, n);
+            }
+            break;
+        case ocl_bfp16:
+            for (int32_t j = 0; j < m; j++) {
+                bf16_t* row = (bf16_t*)mx + j * n;
+                ((fp32_t*)avx)[j] = (fp32_t)dot.bf32x16((fp32_t*)vc, 1, row, 1, n);
+            }
+            break;
+        default:
+            fatal_if("fpp?", "fpp: %d", fpp);
     }
+    user = seconds() - user;
+    avx_time = min(avx_time, user);
 }
 
 static void test_cpu(int fpp, void* mx, void* vc, void* cpu,
         int32_t n, int32_t m) {
     fp64_t user = seconds();
     switch (fpp) {
+        case ocl_bfp16:
+            for (int32_t j = 0; j < m; j++) {
+                bf16_t* row = (bf16_t*)mx + j * n;
+                fp32_t s = 0;
+                for (int32_t i = 0; i < n; i++) {
+                    s += ((fp32_t*)vc)[i] * bf16to32(row[i]);
+                }
+                ((fp32_t*)cpu)[j] = s;
+            }
+            break;
         case ocl_fpp16:
             for (int32_t j = 0; j < m; j++) {
                 fp16_t* row = (fp16_t*)mx + j * n;
@@ -226,13 +242,12 @@ static void verify(int fpp, void* avx, void* cpu, void* rs, int32_t n, int32_t m
         fp64_t delta_avx_gpu = 0;
         fp64_t delta_avx_cpu = 0;
         switch (fpp) {
+            case ocl_bfp16:
             case ocl_fpp16:
             case ocl_fpp32:
                 delta_cpu_gpu = fabs(((fp32_t*)cpu)[j] - ((fp32_t*)rs)[j]);
-                if (fpp != ocl_fpp16) {
-                    delta_avx_cpu = fabs(((fp32_t*)cpu)[j] - ((fp32_t*)avx)[j]);
-                    delta_avx_gpu = fabs(((fp32_t*)rs)[j] - ((fp32_t*)avx)[j]);
-                }
+                delta_avx_cpu = fabs(((fp32_t*)cpu)[j] - ((fp32_t*)avx)[j]);
+                delta_avx_gpu = fabs(((fp32_t*)rs)[j] - ((fp32_t*)avx)[j]);
                 break;
             case ocl_fpp64:
                 delta_cpu_gpu = fabs(((fp64_t*)cpu)[j] - ((fp64_t*)rs)[j]);
@@ -244,22 +259,23 @@ static void verify(int fpp, void* avx, void* cpu, void* rs, int32_t n, int32_t m
         }
         if (!unchecked) {
             switch (fpp) {
+                case ocl_bfp16:
                 case ocl_fpp16:
                 case ocl_fpp32:
-                    fatal_if(delta_cpu_gpu > epsilon, "delta: %g epsilon: %g cpu[%d]: %g gpu[%d]: %g",
-                        delta_cpu_gpu, epsilon, j, ((fp32_t*)cpu)[j], j, ((fp32_t*)rs)[j]);
-                    fatal_if(delta_avx_cpu > epsilon, "delta: %g epsilon: %g cpu[%d]: %g avx[%d]: %g",
-                        delta_avx_cpu, epsilon, j, ((fp32_t*)cpu)[j], j, ((fp32_t*)avx)[j]);
-                    fatal_if(delta_avx_gpu > epsilon, "delta: %g epsilon: %g avx[%d]: %g gpu[%d]: %g",
-                        delta_avx_gpu, epsilon, j, ((fp32_t*)avx)[j], j, ((fp32_t*)rs)[j]);
+                    fatal_if(delta_cpu_gpu > epsilon, "%d x %d delta: %g epsilon: %g cpu[%d]: %g gpu[%d]: %g",
+                        n, m, delta_cpu_gpu, epsilon, j, ((fp32_t*)cpu)[j], j, ((fp32_t*)rs)[j]);
+                    fatal_if(delta_avx_cpu > epsilon, "%d x %d delta: %g epsilon: %g cpu[%d]: %g avx[%d]: %g",
+                        n, m, delta_avx_cpu, epsilon, j, ((fp32_t*)cpu)[j], j, ((fp32_t*)avx)[j]);
+                    fatal_if(delta_avx_gpu > epsilon, "%d x %d delta: %g epsilon: %g avx[%d]: %g gpu[%d]: %g",
+                        n, m, delta_avx_gpu, epsilon, j, ((fp32_t*)avx)[j], j, ((fp32_t*)rs)[j]);
                     break;
                 case ocl_fpp64:
-                    fatal_if(delta_cpu_gpu > epsilon, "delta: %g epsilon: %g cpu[%d]: %g gpu[%d]: %g",
-                        delta_cpu_gpu, epsilon, j, ((fp64_t*)cpu)[j], j, ((fp64_t*)rs)[j]);
-                    fatal_if(delta_avx_cpu > epsilon, "delta: %g epsilon: %g cpu[%d]: %g avx[%d]: %g",
-                        delta_avx_cpu, epsilon, j, ((fp64_t*)cpu)[j], j, ((fp64_t*)avx)[j]);
-                    fatal_if(delta_avx_gpu > epsilon, "delta: %g epsilon: %g avx[%d]: %g gpu[%d]: %g",
-                        delta_avx_gpu, epsilon, j, ((fp64_t*)avx)[j], j, ((fp64_t*)rs)[j]);
+                    fatal_if(delta_cpu_gpu > epsilon, "%d x %d delta: %g epsilon: %g cpu[%d]: %g gpu[%d]: %g",
+                        n, m, delta_cpu_gpu, epsilon, j, ((fp64_t*)cpu)[j], j, ((fp64_t*)rs)[j]);
+                    fatal_if(delta_avx_cpu > epsilon, "%d x %d delta: %g epsilon: %g cpu[%d]: %g avx[%d]: %g",
+                        n, m, delta_avx_cpu, epsilon, j, ((fp64_t*)cpu)[j], j, ((fp64_t*)avx)[j]);
+                    fatal_if(delta_avx_gpu > epsilon, "%d x %d delta: %g epsilon: %g avx[%d]: %g gpu[%d]: %g",
+                        n, m, delta_avx_gpu, epsilon, j, ((fp64_t*)avx)[j], j, ((fp64_t*)rs)[j]);
                     break;
                 default:
                     fatal_if("fpp?", "fpp: %d", fpp);
@@ -268,7 +284,7 @@ static void verify(int fpp, void* avx, void* cpu, void* rs, int32_t n, int32_t m
     }
 }
 
-static void run(gemv_t* g, int fpp, 
+static void run(gemv_t* g, int fpp,
         ocl_memory_t matrix,
         ocl_memory_t vector,
         ocl_memory_t result,
@@ -281,7 +297,7 @@ static void run(gemv_t* g, int fpp,
         ocl_time = min(ocl_time, user);
         if (ocl.is_profiling(g->c)) {
             ocl_profiling_t* p = &g->c->ov->profiling[0];
-            assert(p->e == null, "did anyone call ocl.profile?");            
+            assert(p->e == null, "did anyone call ocl.profile?");
             gpu_time = min(gpu_time, p->time);
             gpu_gfps = max(gpu_gfps, p->gflops);
         }
@@ -313,7 +329,7 @@ static void test(gemv_t* g, int fpp,
     gpu_time = DBL_MAX;
     avx_time = DBL_MAX;
     cpu_time = DBL_MAX;
-    gpu_gfps = 0;    
+    gpu_gfps = 0;
     const size_t meb = ocl_fpp_bytes[fpp]; // matrix element bytes
     const size_t veb = fpp == ocl_fpp16 ? 4 : 8; // vector bytes
     enum { write_only = CL_MEM_WRITE_ONLY|CL_MEM_HOST_WRITE_ONLY };
@@ -373,20 +389,19 @@ static fp64_t init_mx1(int32_t r, int32_t c, int32_t n) {
     return (fp32_t)(1.0 / pow(2.0, (ix % 9)));
 }
 
-static void permutations(gemv_t* g, const ocl_device_t* d) {
+static void permutations(gemv_t* g) {
 #ifndef PERMUTATIONS_DEBUG_SINGLE_CASE
-    // all 1..64 x 1..64 permutations
+    // all 1..33 x 1..33 permutations of all precisions
+    println("33x33...");
     verbose = false; // set to true if crashes
-    for (int fpp = ocl_fpp16; fpp <= ocl_fpp64; fpp++) {
+    for (int fpp = ocl_fpp_first; fpp <= ocl_fpp_last; fpp++) {
         if (ocl.has_fpp(g->c, fpp)) {
-            for (int n = 1; n <= 64; n++) {
-                for (int m = 1; m <= 64; m++) {
-                    if (fpp != ocl_fpp64 || d->fp64_config != 0) {
-//                      if (_isatty(_fileno(stdout))) {
-//                          printf("%2dx%-2d: %d\r", n, m, ocl_fpp_bytes[fpp] * 8);
-//                      }
-                        test(g, fpp, n, m, init_mx0, init_vc0);
-                    }
+            for (int n = 1; n <= 33; n++) {
+                for (int m = 1; m <= 33; m++) {
+//                  if (_isatty(_fileno(stdout))) {
+//                      printf("%2dx%-2d: %s\r", n, m, ocl_fpp_names[fpp]);
+//                  }
+                    test(g, fpp, n, m, init_mx0, init_vc0);
                 }
             }
         }
@@ -394,7 +409,7 @@ static void permutations(gemv_t* g, const ocl_device_t* d) {
 #else
     // debug and trace a single failing case from permutaions above
     verbose = true;
-    test(g, ocl_fpp32, 33, 1, init_vc0, init_mx0);
+    test(g, ocl_fpp16, 4, 1, init_mx0, init_vc0);
 #endif
 }
 
@@ -409,11 +424,12 @@ static void tests(bool profile) {
             .profiling_count = 0
         };
         ocl_context_t c = ocl.open(i, profile ? &ov : null);
-        println("*** %s : %.1fGB *** %s", d->name, 
+        println("*** %s : %.1fGB *** %s", d->name,
             d->global_memory / (double)GB, profile ? "PROFILING" : "");
         gemv_t g = {0};
         gemv.init(&g, &c);
-        permutations(&g, d);
+        permutations(&g);
+//if (&g) exit(1);
         // large matrix/vectors performance tests
         for (int fpp = ocl_fpp16; fpp <= ocl_fpp64; fpp++) {
             if (ocl.has_fpp(&c, fpp)) {
@@ -451,7 +467,7 @@ static void tests(bool profile) {
 
 int32_t main(int32_t argc, const char* argv[]) {
     (void)argc; (void)argv;
-//  dot_tests();
+    if (dot.test != null) { dot.test(); }
 //  if (argc > 0) exit(0);
     ocl.init();
     if (argc > 1 && strcmp(argv[1], "compile") == 0) {

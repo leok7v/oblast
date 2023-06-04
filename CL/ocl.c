@@ -8,12 +8,14 @@
 #include <CL/cl_bind.inc> // dynamically bind everything
 #endif
 
-static_assert(ocl_fpp16 == 0 && ocl_fpp32 == 1 && ocl_fpp64 == 2, "order");
+static_assert(ocl_fpp16 == 0 && ocl_fpp32 == 1 &&
+              ocl_fpp64 == 2 && ocl_bfp16 == 3, "order");
 
-const char* ocl_fpp_names[3] = {"fp16", "fp32", "fp64"};
+const char* ocl_fpp_names[4] = {"fp16", "fp32", "fp64", "bf16"};
 
-const int ocl_fpp_bytes[3] = {
-    (int)sizeof(fp16_t), (int)sizeof(fp32_t), (int)sizeof(fp64_t)
+const int ocl_fpp_bytes[4] = {
+    (int)sizeof(fp16_t), (int)sizeof(fp32_t),
+    (int)sizeof(fp64_t), (int)sizeof(bf16_t)
 };
 
 static ocl_device_t ocl_devices[32]; // up to 32 GPUs supported
@@ -69,6 +71,7 @@ static bool ocl_has_fpp(ocl_context_t* c, int fpp) {
         case ocl_fpp16: return d->fp16_config != 0;
         case ocl_fpp32: return d->fp32_config != 0;
         case ocl_fpp64: return d->fp64_config != 0;
+        case ocl_bfp16: return d->fp32_config != 0; // bf16 simulated via fp32
         default: fatal_if("fpp", "%d", fpp);
     }
     return false;
@@ -154,11 +157,11 @@ static ocl_shared_t ocl_alloc_shared(ocl_context_t* c, int access, size_t bytes)
 
 static int ocl_access_to_map(int access) {
     int map = 0;
-    if (access & CL_MEM_READ_ONLY)  { 
-        map |= CL_MAP_READ; 
-    } else if (access & CL_MEM_READ_WRITE) { 
+    if (access & CL_MEM_READ_ONLY)  {
+        map |= CL_MAP_READ;
+    } else if (access & CL_MEM_READ_WRITE) {
         map |= CL_MAP_READ|CL_MAP_WRITE;
-    } else if (access & CL_MEM_WRITE_ONLY) { 
+    } else if (access & CL_MEM_WRITE_ONLY) {
         map |= CL_MAP_WRITE_INVALIDATE_REGION;
     } else {
         fatal_if("invalid access", "%d", access);
@@ -171,7 +174,7 @@ static void* ocl_map_shared(ocl_shared_t* s) {
     if (s->access & CL_MEM_READ_ONLY)  { map |= CL_MAP_READ; }
     if (s->access & CL_MEM_READ_WRITE) { map |= CL_MAP_READ|CL_MAP_WRITE; }
     if (s->access & CL_MEM_WRITE_ONLY) { map |= CL_MAP_WRITE_INVALIDATE_REGION; }
-    //                   blocking:                 wait_list:    done:       
+    //                   blocking:                 wait_list:    done:
     call(clEnqueueSVMMap(s->c->q, true, map, s->a, s->bytes, 0, null, null));
     // TODO: do we need double mapping. I think we do NOT!!!
 //  void* a = ocl.map(s->c, mapping, s->m, 0, s->bytes);
@@ -340,8 +343,6 @@ static void ocl_profile(ocl_profiling_t* p) {
     #pragma pop_macro("get_info")
     static double sum;
     p->time = (p->end - p->start) / (double)NSEC_IN_SEC;
-//  sum += p->time;
-//  println("time: %.6fus sum: %.6fus", p->time * USEC_IN_SEC, sum * USEC_IN_SEC);
     if (p->count != 0) {
         double seconds_per_kernel = p->time / p->count;
         double invocations_per_second = 1.0 / seconds_per_kernel;
@@ -352,21 +353,6 @@ static void ocl_profile(ocl_profiling_t* p) {
     }
     ocl.release_event(p->e); // decrement reference count
     p->e = null;
-
-//  uint64_t ema_samples = p->ema_samples == 0 ? 128 : p->ema_samples;
-//  // exponential moving average of 128 samples
-//  const double ema_alpha = 1.0 / (double)ema_samples;
-//  p->time = (p->end - p->start) / (double)NSEC_IN_SEC;
-//  if (items != 0) {
-//      double seconds_per_item = p->time / items;
-//      double ops_per_second = 1.0 / seconds_per_item;
-//      p->gops = ops_per_second / (1000 * 1000 * 1000);
-//      p->ema.gops = p->ema.gops * (1.0 - ema_alpha) + p->gops * ema_alpha;
-//  } else {
-//      p->gops = 0; // cannot determine for unknown number of items
-//  }
-//  p->ema.time = p->ema.time * (1.0 - ema_alpha) + p->time * ema_alpha;
-    // client is responsible updating and calculating .user fields
 }
 
 static void ocl_wait(ocl_event_t* events, int count) {
@@ -521,7 +507,7 @@ static void ocl_init(void) {
         call(clGetDeviceInfo(id, name, sizeof(v), &v, null)); \
     } while (0)
     #define get_opt(name, v) /*optional*/                     \
-        (clGetDeviceInfo(id, name, sizeof(v), &v, null) == 0)  
+        (clGetDeviceInfo(id, name, sizeof(v), &v, null) == 0)
     #define ext(s) (strstr(d->extensions, (s)) != null)
     // Get platform and device information
     cl_platform_id platforms[16] = {0};
@@ -552,6 +538,7 @@ static void ocl_init(void) {
                 d->c_version_minor = minor;
                 get_str(CL_DEVICE_EXTENSIONS, d->extensions);
                 get_val(CL_DEVICE_MAX_CLOCK_FREQUENCY,       d->clock_frequency);
+                get_val(CL_DEVICE_ADDRESS_BITS,              d->address_bits);
                 get_val(CL_DEVICE_GLOBAL_MEM_CACHE_SIZE,     d->global_cache);
                 get_val(CL_DEVICE_GLOBAL_MEM_CACHELINE_SIZE, d->global_cacheline);
                 get_val(CL_DEVICE_GLOBAL_MEM_SIZE,           d->global_memory);
@@ -572,11 +559,11 @@ static void ocl_init(void) {
                 d->flavor |= ext("_intel_") ? ocl_intel  : 0;
                 d->flavor |= ext("_nv_")    ? ocl_nvidia : 0;
                 d->flavor |= ext("_amd_")   ? ocl_amd    : 0;
-                bool has_fp16_config = 
+                bool has_fp16_config =
                     get_opt(CL_DEVICE_HALF_FP_CONFIG, d->fp16_config);
                 ocl.count++;
-                if (!has_fp16_config || d->fp16_config == 0) { 
-                    ocl_check_fp16_support(ocl.count - 1); 
+                if (!has_fp16_config || d->fp16_config == 0) {
+                    ocl_check_fp16_support(ocl.count - 1);
                 }
             }
         }
@@ -632,7 +619,9 @@ static void ocl_dump(int ix) {
     const ocl_device_t* d = &ocl.devices[ix];
     println("Device name:     %s OpenCL %d.%d C %d.%d", d->name,
         d->version_major, d->version_minor, d->c_version_major, d->c_version_minor);
-    println("compute_units:    %lld @ %lldMHz", d->compute_units, d->clock_frequency);
+    println("compute_units:    %lld @ %lldMHz (intptr_t %d bits)",
+                                        d->compute_units,
+                                        d->clock_frequency, (int)d->address_bits);
     println("global_cache:     %lldMB", d->global_cache / MB);
     println("global_cacheline: %lld",   d->global_cacheline);
     println("global_memory:    %lldMB", d->global_memory / MB);

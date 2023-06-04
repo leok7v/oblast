@@ -3,10 +3,10 @@
 
 typedef struct gemv_s {
     ocl_context_t* c;
-    ocl_kernel_t kernel[3];     // gemv kernels ocl_fpp16, ocl_fpp32, ocl_fpp64
-    ocl_kernel_t kernel4x[3];   // vec4 kernel
-    ocl_kernel_t kernel16x[3];  // 4 x vec4
-    ocl_kernel_t kernel32x[3];  // 8 x vec4
+    // gemv kernels ocl_fpp16, ocl_fpp32, ocl_fpp64, ocl_bfp16
+    ocl_kernel_t kernel[ocl_fpp_last - ocl_fpp_first + 1];
+    ocl_kernel_t kernel4x[ocl_fpp_last - ocl_fpp_first + 1];   // vec4 kernel
+    ocl_kernel_t kernel16x[ocl_fpp_last - ocl_fpp_first + 1];  // 4 x vec4
 } gemv_t;
 
 typedef struct gemv_if {

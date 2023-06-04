@@ -12,10 +12,14 @@ extern "C" {
 #endif
 
 // float point precision index
-enum { ocl_fpp16 = 0, ocl_fpp32 = 1, ocl_fpp64 = 2 }; // TODO: ocl_bfp16?
+enum {
+    ocl_fpp_first = 0,
+    ocl_fpp16 = 0, ocl_fpp32 = 1, ocl_fpp64 = 2, ocl_bfp16 = 3,
+    ocl_fpp_last = 3
+};
 
-extern const char* ocl_fpp_names[3];
-extern const int   ocl_fpp_bytes[3]; // { 2, 4, 8 }
+extern const char* ocl_fpp_names[4]; // "fp16", "fp32", "fp64", "bf16"
+extern const int   ocl_fpp_bytes[4]; // { 2, 4, 8, 2 }
 
 typedef cl_device_id ocl_device_id_t;
 typedef cl_mem       ocl_memory_t;
@@ -55,10 +59,11 @@ typedef struct ocl_device_s {
     int32_t c_version_major;  // OpenCL kernel .cl C language version
     int32_t c_version_minor;  // see: note ** below
     int64_t clock_frequency;  // MHz
+    int64_t address_bits;     // 32 or 64 for uintptr_t and intptr_t
     int64_t global_cache;     // size in bytes
-    int64_t global_cacheline; 
-    int64_t global_memory;    
-    int64_t local_memory;     
+    int64_t global_cacheline;
+    int64_t global_memory;
+    int64_t local_memory;
     int64_t max_const_args;   // maximum number of constant args
     int64_t compute_units;    // max compute units, see: *** below
     int64_t max_groups;       // max number of work groups, see: ** below
@@ -162,7 +167,7 @@ typedef struct ocl_if {
     // alloc() may return null, allocate() fatal if null
     void (*deallocate)(ocl_memory_t m);
     // CL_MEM_WRITE_ONLY -> CL_MAP_WRITE_INVALIDATE_REGION ...
-    int (*access_to_map)(int access); 
+    int (*access_to_map)(int access);
     // ocl_map_read  - host will read data written by GPU
     // ocl_map_write - host will write data that GPU will read
     void* (*map)(ocl_context_t* c, int mapping, ocl_memory_t m,

@@ -10,6 +10,8 @@ typedef struct dot_if {
     fp64_t (*fp32)(const fp32_t* v0, int64_t s0, const fp32_t* v1, int64_t s1, int64_t n);
     fp64_t (*fp64)(const fp64_t* v0, int64_t s0, const fp64_t* v1, int64_t s1, int64_t n);
     fp64_t (*bf16)(const bf16_t* v0, int64_t s0, const bf16_t* v1, int64_t s1, int64_t n);
+    fp64_t (*fp32x16)(const fp32_t* v0, int64_t s0, const fp16_t* v1, int64_t s1, int64_t n);
+    fp64_t (*bf32x16)(const fp32_t* v0, int64_t s0, const bf16_t* v1, int64_t s1, int64_t n);
     void   (*test)(void); // can be null
 } dot_if;
 
