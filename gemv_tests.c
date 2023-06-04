@@ -54,29 +54,29 @@ static void print(int fpp, int32_t n, int32_t m) { // performance measurements
     if (n > 64 && m > 64) {
         if (avx_time < DBL_MAX) {
             if (gpu_time < DBL_MAX) {
-                println("fp%d_t %5d x %-5d gpu: %9.3f (call: %9.3f) avx: %9.3f "
+                println("%s %5d x %-5d gpu: %9.3f (call: %9.3f) avx: %9.3f "
                     "ms %5.1fGFlops",
-                    ocl_fpp_bytes[fpp] * 8, n, m,
+                    ocl_fpp_names[fpp], n, m,
                     gpu_time * MSEC_IN_SEC, ocl_time * MSEC_IN_SEC,
                     avx_time * MSEC_IN_SEC, gpu_gfps);
             } else {
                 gpu_gfps = 3.0 * m * n / (ocl_time * NSEC_IN_SEC);
-                println("fp%d_t %5d x %-5d gpu: %9.3f avx: %9.3f ms %5.1fGFlops",
-                    ocl_fpp_bytes[fpp] * 8, n, m,
+                println("%s %5d x %-5d gpu: %9.3f avx: %9.3f ms %5.1fGFlops",
+                    ocl_fpp_names[fpp], n, m,
                     ocl_time * MSEC_IN_SEC,
                     avx_time * MSEC_IN_SEC, gpu_gfps);
             }
         } else {
             if (gpu_time < DBL_MAX) {
-                println("fp%d_t %5d x %-5d gpu: %9.3f (call: %9.3f) cpu: %9.3f ms "
+                println("%s %5d x %-5d gpu: %9.3f (call: %9.3f) cpu: %9.3f ms "
                     "%5.1fGFlops",
-                    ocl_fpp_bytes[fpp] * 8, n, m,
+                    ocl_fpp_names[fpp], n, m,
                     gpu_time * MSEC_IN_SEC, ocl_time * MSEC_IN_SEC,
                     cpu_time * MSEC_IN_SEC, gpu_gfps);
             } else {
                 gpu_gfps = 3.0 * m * n / (ocl_time * NSEC_IN_SEC);
-                println("fp%d_t %5d x %-5d gpu: %9.3f cpu: %9.3f ms %5.1fGFlops",
-                    ocl_fpp_bytes[fpp] * 8, n, m,
+                println("%s %5d x %-5d gpu: %9.3f cpu: %9.3f ms %5.1fGFlops",
+                    ocl_fpp_names[fpp], n, m,
                     ocl_time * MSEC_IN_SEC,
                     cpu_time * MSEC_IN_SEC, gpu_gfps);
             }
@@ -429,9 +429,8 @@ static void tests(bool profile) {
         gemv_t g = {0};
         gemv.init(&g, &c);
         permutations(&g);
-//if (&g) exit(1);
         // large matrix/vectors performance tests
-        for (int fpp = ocl_fpp16; fpp <= ocl_fpp64; fpp++) {
+        for (int fpp = ocl_fpp_first; fpp <= ocl_fpp_last; fpp++) {
             if (ocl.has_fpp(&c, fpp)) {
                 struct { int32_t n; int32_t m; } tests[] = {
                     {     1024,      1024},
