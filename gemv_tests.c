@@ -413,6 +413,39 @@ static void permutations(gemv_t* g) {
 #endif
 }
 
+static void performance(gemv_t* g) {
+    // large matrix/vectors performance tests
+    for (int fpp = ocl_fpp_first; fpp <= ocl_fpp_last; fpp++) {
+        if (ocl.has_fpp(g->c, fpp)) {
+            struct { int32_t n; int32_t m; } tests[] = {
+                {     1024,      1024},
+                { 4 * 1024,  4 * 1024},
+                { 4 * 1024, 16 * 1024}, // GPT-J 6b innermost gemv()
+                {16 * 1024, 48 * 1024}, // GPT-J 6b innermost x 8 layers
+                {16 * 1024, 64 * 1024},
+                {64 * 1024, 16 * 1024},
+            };
+            for (int k = 0; k < countof(tests); k++) {
+                const int64_t n = tests[k].n;
+                const int64_t m = tests[k].m;
+                const int64_t bytes = n * m * ocl_fpp_bytes[fpp];
+                const ocl_device_t* d = &ocl.devices[g->c->ix];
+                if (bytes < d->global_memory) {
+#if 0
+                    double gb = bytes / (double)GB;
+                    double dgb = d->global_memory / (double)GB;
+                    println("%d x %d %.3fGB of %.3fGB", n, m, gb, dgb);
+                    println("press any key to continue");
+                    while (_kbhit() == 0) { sleep(1.0 / 64); }
+                    getch();
+#endif
+                    test(g, fpp, tests[k].n, tests[k].m, init_mx1, init_vc1);
+                }
+            }
+        }
+    }
+}
+
 static void tests(bool profile) {
     for (int i = 0; i < ocl.count; i++) {
 //      ocl.dump(i);
@@ -429,36 +462,7 @@ static void tests(bool profile) {
         gemv_t g = {0};
         gemv.init(&g, &c);
         permutations(&g);
-        // large matrix/vectors performance tests
-        for (int fpp = ocl_fpp_first; fpp <= ocl_fpp_last; fpp++) {
-            if (ocl.has_fpp(&c, fpp)) {
-                struct { int32_t n; int32_t m; } tests[] = {
-                    {     1024,      1024},
-                    { 4 * 1024,  4 * 1024},
-                    { 4 * 1024, 16 * 1024}, // GPT-J 6b innermost gemv()
-                    {16 * 1024, 48 * 1024}, // GPT-J 6b innermost x 8 layers
-                    {16 * 1024, 64 * 1024},
-                    {64 * 1024, 16 * 1024},
-                };
-                for (int k = 0; k < countof(tests); k++) {
-                    const int64_t n = tests[k].n;
-                    const int64_t m = tests[k].m;
-                    const int64_t bytes = n * m * ocl_fpp_bytes[fpp];
-                    // 128MB is reserved inside most of modern GPUs
-                    if (bytes < d->global_memory) {
-#if 0
-                        double gb = bytes / (double)GB;
-                        double dgb = d->global_memory / (double)GB;
-                        println("%d x %d %.3fGB of %.3fGB", n, m, gb, dgb);
-                        println("press any key to continue");
-                        while (_kbhit() == 0) { sleep(1.0 / 64); }
-                        getch();
-#endif
-                        test(&g, fpp, tests[k].n, tests[k].m, init_mx1, init_vc1);
-                    }
-                }
-            }
-        }
+        performance(&g);
         gemv.fini(&g);
         ocl.close(&c);
     }
@@ -467,7 +471,6 @@ static void tests(bool profile) {
 int32_t main(int32_t argc, const char* argv[]) {
     (void)argc; (void)argv;
     if (dot.test != null) { dot.test(); }
-//  if (argc > 0) exit(0);
     ocl.init();
     if (argc > 1 && strcmp(argv[1], "compile") == 0) {
         if (argc >= 3) {

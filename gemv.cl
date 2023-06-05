@@ -2,8 +2,42 @@
 #pragma OPENCL EXTENSION cl_khr_fp64: enable
 #endif
 
-#if fpp == 16
+
+#if fpp == 16 && !defined(bfp16)
 #pragma OPENCL EXTENSION cl_khr_fp16: enable
+#endif
+
+// This code expects some compile time definitions:
+// fpp    -  float point precision 16,32,64
+// bfp16  -  "brain float 16" aka bfloat16 undefined or 1
+// fp_t   -  fp16_t fp32_t or fp64_t
+// fpv4_t -  fp16x4_t fp32x4_t or fp64x4_t for dot(vec4, vec4)
+// fpmx_t -  accumulator type for dot products.
+//           fp64_t for fpp==64 and fp32_t for all others.
+// fpmx4_t - float4|fp32x4_t or double4|fp64x4_t
+
+// #include <stdint.h>-like definitions:
+typedef short   int16_t;
+typedef ushort  uint16_t;
+typedef int     int32_t;
+typedef uint    uint32_t;
+typedef long    int64_t;
+typedef ulong   uint64_t;
+// OpenCL does have uintptr_t and intptr_t which
+// are expected to be 64 bits on modern GPUs.
+
+// Every GPU is expected to support float fp32_t and float4
+typedef float   fp32_t;
+typedef float4  fp32x4_t;
+
+#if fpp == 64
+typedef double   fp64_t;
+typedef double4  fp64x4_t;
+#elif fpp == 16 && !defined(bfp16)
+typedef half     fp16_t;
+typedef half4    fp16x4_t;
+#elif defined(bfp16)
+typedef struct __attribute__((packed)) { uint16_t bits; } bf16_t;
 #endif
 
 #define _concat_(first, last)  first ## last
@@ -41,7 +75,7 @@ inline void reduce_add(const uint lid, uint i, fpmx_t s,
     local_fence();
 }
 
-#if fpp != 16
+#if fpp != 16 && !defined(bfp16) //     *** fp32_t and fp64_t
 
 inline void concat(gemv_fp, fpp)(
         __global const fp_t* restrict mx,
@@ -64,8 +98,8 @@ inline void concat(gemv_fp, fpp)(
 }
 
 inline void concat(concat(gemv_fp, fpp), x4)(
-        __global const vec4_t* restrict mx,
-        __global const vec4_t* restrict vc,
+        __global const fpv4_t* restrict mx,
+        __global const fpv4_t* restrict vc,
         __global       fpmx_t* restrict rs,
         __local        fpmx_t* restrict sm,
         const int32_t n, const int32_t m) {
@@ -75,7 +109,7 @@ inline void concat(concat(gemv_fp, fpp), x4)(
     const uint items = get_local_size(0);
     const uint groups = get_num_groups(0);
     for (uint y = gid; y < m; y += groups) {
-        const __global vec4_t* row = mx + y * n;
+        const __global fpv4_t* row = mx + y * n;
         fpmx_t s = 0;
         for (uint x = lid; x < n; x += items) { s += dot(row[x], vc[x]); }
         reduce_add(lid, items, s, sm);
@@ -84,8 +118,8 @@ inline void concat(concat(gemv_fp, fpp), x4)(
 }
 
 inline void concat(concat(gemv_fp, fpp), x16)(
-        __global const vec4_t* restrict mx,
-        __global const vec4_t* restrict vc,
+        __global const fpv4_t* restrict mx,
+        __global const fpv4_t* restrict vc,
         __global       fpmx_t* restrict rs,
         __local        fpmx_t* restrict sm,
         const int32_t n, const int32_t m) {
@@ -95,7 +129,7 @@ inline void concat(concat(gemv_fp, fpp), x16)(
     const uint items = get_local_size(0);
     const uint groups = get_num_groups(0);
     for (uint y = gid; y < m; y += groups) {
-        const __global vec4_t* row = mx + y * n * 4;
+        const __global fpv4_t* row = mx + y * n * 4;
         fpmx_t s = 0;
         for (uint x = lid; x < n; x += items) {
             uint x4 = x << 2;
@@ -137,8 +171,8 @@ inline void concat(concat(gemv_fp, fpp), _subgroups)(
 }
 
 inline void concat(concat(gemv_fp, fpp), x4_subgroups)(
-        __global const vec4_t* restrict mx,
-        __global const vec4_t* restrict vc,
+        __global const fpv4_t* restrict mx,
+        __global const fpv4_t* restrict vc,
         __global     fpmx_t* restrict rs,
         __local      fpmx_t* restrict sm,
         const int32_t n, const int32_t m) {
@@ -150,7 +184,7 @@ inline void concat(concat(gemv_fp, fpp), x4_subgroups)(
     const uint sub_group_id = get_sub_group_id();
     const uint num_sub_groups = get_num_sub_groups();
     for (uint y = gid; y < m; y += groups) {
-        const __global vec4_t* row = mx + y * n;
+        const __global fpv4_t* row = mx + y * n;
         fpmx_t s = 0;
         for (uint x = lid; x < n; x += items) { s += dot(row[x], vc[x]); }
         subgroup_fence()
@@ -160,8 +194,8 @@ inline void concat(concat(gemv_fp, fpp), x4_subgroups)(
 }
 
 inline void concat(concat(gemv_fp, fpp), x16_subgroups)(
-        __global const vec4_t* restrict mx,
-        __global const vec4_t* restrict vc,
+        __global const fpv4_t* restrict mx,
+        __global const fpv4_t* restrict vc,
         __global     fpmx_t* restrict rs,
         __local      fpmx_t* restrict sm,
         const int32_t n, const int32_t m) {
@@ -173,7 +207,7 @@ inline void concat(concat(gemv_fp, fpp), x16_subgroups)(
     const uint sub_group_id = get_sub_group_id();
     const uint num_sub_groups = get_num_sub_groups();
     for (uint y = gid; y < m; y += groups) {
-        const __global vec4_t* row = mx + y * n * 4;
+        const __global fpv4_t* row = mx + y * n * 4;
         fpmx_t s = 0;
         for (uint x = lid; x < n; x += items) {
             uint x4 = x << 2;
@@ -212,8 +246,8 @@ void concat(gemv, fpp)( // gemv32 gemv16 gemv64; fpp float point precision
 
 __kernel
 void concat(concat(gemv, fpp), x4)( // gemv32x4 "float4" version
-        __global const vec4_t mx[/*m][n*/],
-        __global const vec4_t vc[/*n*/],
+        __global const fpv4_t mx[/*m][n*/],
+        __global const fpv4_t vc[/*n*/],
         __global       fp_t   rs[/*m*/],
         __local        fp_t   sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
@@ -226,8 +260,8 @@ void concat(concat(gemv, fpp), x4)( // gemv32x4 "float4" version
 
 __kernel
 void concat(concat(gemv, fpp), x16)( // gemv32x4 "float4" version
-        __global const vec4_t mx[/*m][n*/],
-        __global const vec4_t vc[/*n*/],
+        __global const fpv4_t mx[/*m][n*/],
+        __global const fpv4_t vc[/*n*/],
         __global       fp_t   rs[/*m*/],
         __local        fp_t   sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
@@ -238,10 +272,7 @@ void concat(concat(gemv, fpp), x16)( // gemv32x4 "float4" version
 #endif
 }
 
-#else // fp_t fp16_t and bf16_t
-
-typedef struct __attribute__((packed)) { uint16_t bits; } bf16_t;
-
+#elif defined(bfp16) //         *** bf16_t ***
 
 inline fp32_t read_bf(__global const bf16_t* a) {
     const __global uint16_t* pbf16 = (__global uint16_t*)a;
@@ -325,6 +356,41 @@ inline void gemv_bf16x16( // 16 elements of bf16_t
         if (lid == 0) { rs[y] = sm[0]; }
     }
 }
+
+__kernel
+void bfmv16(
+        __global const bf16_t mx[/*m][n*/],
+        __global const fpmx_t vc[/*n*/],
+        __global       fpmx_t rs[/*m*/],
+        __local        fpmx_t sm[/*work_group_items*/],
+        const int32_t n, const int32_t m) {
+//  printf("gemv_bf16\n");
+    gemv_bf16(mx, vc, rs, sm, n, m);
+}
+
+__kernel
+void bfmv16x4(
+        __global const bf16_t  mx[/*m][n*/],
+        __global const fpmx_t  vc[/*n*/],
+        __global       fpmx_t  rs[/*m*/],
+        __local        fpmx_t  sm[/*work_group_items*/],
+        const int32_t n, const int32_t m) {
+//  printf("gemv_bf16x4\n");
+    gemv_bf16x4(mx, vc, rs, sm, n, m);
+}
+
+__kernel
+void bfmv16x16(
+        __global const bf16_t  mx[/*m][n*/],
+        __global const fpmx_t  vc[/*n*/],
+        __global       fpmx_t  rs[/*m*/],
+        __local        fpmx_t  sm[/*work_group_items*/],
+        const int32_t n, const int32_t m) {
+ // printf("gemv_bf16x16\n");
+    gemv_bf16x16(mx, vc, rs, sm, n, m);
+}
+
+#else //                        *** fp_t fp16_t ***
 
 inline void gemv_fp16(
         __global const fp16_t* restrict mx,
@@ -426,40 +492,6 @@ void gemv16x16(
 //  printf("gemv_fp16x16\n");
     gemv_fp16x16(mx, vc, rs, sm, n, m);
 }
-
-__kernel
-void bfmv16(
-        __global const bf16_t mx[/*m][n*/],
-        __global const fpmx_t vc[/*n*/],
-        __global       fpmx_t rs[/*m*/],
-        __local        fpmx_t sm[/*work_group_items*/],
-        const int32_t n, const int32_t m) {
-//  printf("gemv_bf16\n");
-    gemv_bf16(mx, vc, rs, sm, n, m);
-}
-
-__kernel
-void bfmv16x4(
-        __global const bf16_t  mx[/*m][n*/],
-        __global const fpmx_t  vc[/*n*/],
-        __global       fpmx_t  rs[/*m*/],
-        __local        fpmx_t  sm[/*work_group_items*/],
-        const int32_t n, const int32_t m) {
-//  printf("gemv_bf16x4\n");
-    gemv_bf16x4(mx, vc, rs, sm, n, m);
-}
-
-__kernel
-void bfmv16x16(
-        __global const bf16_t  mx[/*m][n*/],
-        __global const fpmx_t  vc[/*n*/],
-        __global       fpmx_t  rs[/*m*/],
-        __local        fpmx_t  sm[/*work_group_items*/],
-        const int32_t n, const int32_t m) {
- // printf("gemv_bf16x16\n");
-    gemv_bf16x16(mx, vc, rs, sm, n, m);
-}
-
 
 #endif
 
