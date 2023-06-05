@@ -1,6 +1,7 @@
 # o`blast - Oh Basic Linear Algebra Subrotines/Subprograms/Functions TINY
 
-![Build](https://github.com/leok7v/oblast/workflows/build/badge.svg)
+[![build](https://github.com/leok7v/oblast/actions/workflows/build.yml/badge.svg)](https://github.com/leok7v/oblast/actions/workflows/build.yml)
+[![test](https://github.com/leok7v/oblast/actions/workflows/test.yml/badge.svg)](https://github.com/leok7v/oblast/actions/workflows/test.yml)
 
 ### goal
 
