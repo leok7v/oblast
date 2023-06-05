@@ -50,21 +50,23 @@ static const char* gemv_program_options(gemv_t* g, int fpp) {
         fatal_if(k <= 0, "options[%d] overflow", (int)countof(options)); \
         p += snprintf(p, k, "" __VA_ARGS__);                             \
     } while (0)
-    static const char* type_t[] = {"half",  "float", "double", "bf16_t"};
-    static const char* fpmx_t[] = {"float", "float", "double", "float"}; // fpmx_t sum += ...
-    static const int   fpmx_b[] = {32, 32, 64, 32}; // bits in fpmx_t type
-    append("-D fp_t=%s -D fpmx=%d -D fpmx_t=%s -D fpmx4_t=%s4 -D fpp=%d ",
-        type_t[fpp], fpmx_b[fpp], fpmx_t[fpp], fpmx_t[fpp], ocl_fpp_bytes[fpp] * 8);
-//  append("-D fp16x4_t=half4 -D fp32x4_t=float4 -D fp64x4_t=double4 ");
+    static const char* type_t[] = {"fp16_t", "fp32_t", "fp64_t", "bf16_t"};
+    static const char* vec4_t[] = {"fp16x4_t", "fp32x4_t", "fp64x4_t", "bf16x4_t"};
+    // accu_t sum += ...
+    static const char* accu_t[] = {"fp32_t", "fp32_t", "fp64_t", "fp32_t"};
+    static const char* acc4_t[] = {"fp32x4_t", "fp32x4_t", "fp64x5_t", "fp32x4_t"};
+    static const int   accu_b[] = {32, 32, 64, 32}; // bits in accu_t type
+    append("-D fp_t=%s -D accu=%d -D accu_t=%s -D acc4_t=%s -D fpp=%d ",
+        type_t[fpp], accu_b[fpp], accu_t[fpp], acc4_t[fpp], ocl_fpp_bytes[fpp] * 8);
     if (fpp == ocl_bfp16) {
         append("-D bfp16=1 ");
     } else { // (fpp != ocl_bfp16) bf16 does not have vec4
-        append("-D fpv4_t=%s4 ", type_t[fpp]);
+        append("-D fpv4_t=%s ", vec4_t[fpp]);
     }
-    append("-D max_subgroups=%lld ", d->max_subgroups); // Intel ext
+    append("-D max_subgroups=%lld ", d->max_subgroups); // Intel extension
     append("-cl-std=CL%d.%d ", d->c_version_major, d->c_version_minor);
     // https://man.opencl.org/clBuildProgram.html
-    append("-Werror "); // --warnings-as-errors
+    append("-Werror "); // --warnings-as-errors / does not work :(
     append("-cl-std=CL%d.%d ", d->c_version_major, d->c_version_minor);
     #pragma pop_macro("append")
     *p = 0;

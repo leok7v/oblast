@@ -6,14 +6,16 @@
 #pragma OPENCL EXTENSION cl_khr_fp16: enable
 #endif
 
-// This code expects some compile time definitions:
+// This .cl code expects some compile time definitions:
 // fpp    -  float point precision 16,32,64
 // bfp16  -  "brain float 16" aka bfloat16 undefined or 1
 // fp_t   -  fp16_t fp32_t or fp64_t
 // fpv4_t -  fp16x4_t fp32x4_t or fp64x4_t for dot(vec4, vec4)
-// fpmx_t -  accumulator type for dot products.
+// accumulator types:
+// accu   -  32|64 bits in accu_t
+// accu_t -  accumulator type for dot products.
 //           fp64_t for fpp==64 and fp32_t for all others.
-// fpmx4_t - float4|fp32x4_t or double4|fp64x4_t
+// acc4_t -  float4|fp32x4_t or double4|fp64x4_t
 
 // #include <stdint.h>-like definitions:
 typedef char    int8_t;
@@ -56,12 +58,12 @@ typedef struct __attribute__((packed)) { uint16_t bits; } bf16_t;
 #define local_fence()    barrier(CLK_LOCAL_MEM_FENCE)
 #define subgroup_fence() sub_group_barrier(CLK_LOCAL_MEM_FENCE);
 
-#define reduce_add concat(reduce_add, fpmx)
+#define reduce_add concat(reduce_add, accu)
 
 // work memory "sm" is accessible for all work items in a group
 
-inline void reduce_add(const uint lid, uint i, fpmx_t s,
-        work fpmx_t* restrict sm) {
+inline void reduce_add(const uint lid, uint i, accu_t s,
+        work accu_t* restrict sm) {
     sm[lid] = s; // (*1*)
     while (i > 1) {
         // this fence guarantees all (*1*) memory write are complete
@@ -90,8 +92,8 @@ inline void reduce_add(const uint lid, uint i, fpmx_t s,
 inline void concat(gemv_fp, fpp)(
         read  fp_t* restrict mx,
         read  fp_t* restrict vc,
-        write fpmx_t* restrict rs,
-        work fpmx_t* restrict sm, // "sm" work memory
+        write accu_t* restrict rs,
+        work accu_t* restrict sm, // "sm" work memory
         const int32_t n, const int32_t m) {
     // gemv_fp32|gemv_fp64
     const uint lid = get_local_id(0);
@@ -100,7 +102,7 @@ inline void concat(gemv_fp, fpp)(
     const uint groups = get_num_groups(0);
     for (uint y = gid; y < m; y += groups) {
         read fp_t* row = mx + y * n;
-        fpmx_t s = 0;
+        accu_t s = 0;
         for (uint x = lid; x < n; x += items) { s += row[x] * vc[x]; }
         reduce_add(lid, items, s, sm);
         if (lid == 0) { rs[y] = sm[0]; }
@@ -110,8 +112,8 @@ inline void concat(gemv_fp, fpp)(
 inline void concat(concat(gemv_fp, fpp), x4)(
         read  fpv4_t* restrict mx,
         read  fpv4_t* restrict vc,
-        write fpmx_t* restrict rs,
-        work  fpmx_t* restrict sm,
+        write accu_t* restrict rs,
+        work  accu_t* restrict sm,
         const int32_t n, const int32_t m) {
     // gemv_fp32x4 gemv_fp64x4. "n" is 1/4 of row width
     const uint lid = get_local_id(0);
@@ -120,7 +122,7 @@ inline void concat(concat(gemv_fp, fpp), x4)(
     const uint groups = get_num_groups(0);
     for (uint y = gid; y < m; y += groups) {
         read fpv4_t* row = mx + y * n;
-        fpmx_t s = 0;
+        accu_t s = 0;
         for (uint x = lid; x < n; x += items) { s += dot(row[x], vc[x]); }
         reduce_add(lid, items, s, sm);
         if (lid == 0) { rs[y] = sm[0]; }
@@ -130,8 +132,8 @@ inline void concat(concat(gemv_fp, fpp), x4)(
 inline void concat(concat(gemv_fp, fpp), x16)(
         read  fpv4_t* restrict mx,
         read  fpv4_t* restrict vc,
-        write fpmx_t* restrict rs,
-        work  fpmx_t* restrict sm,
+        write accu_t* restrict rs,
+        work  accu_t* restrict sm,
         const int32_t n, const int32_t m) {
     // gemv_fp32x16 gemv_fp64x16. "n" is 1/16 of row width
     const uint lid = get_local_id(0);
@@ -140,7 +142,7 @@ inline void concat(concat(gemv_fp, fpp), x16)(
     const uint groups = get_num_groups(0);
     for (uint y = gid; y < m; y += groups) {
         read fpv4_t* row = mx + y * n * 4;
-        fpmx_t s = 0;
+        accu_t s = 0;
         for (uint x = lid; x < n; x += items) {
             uint x4 = x << 2;
             s +=
@@ -159,8 +161,8 @@ inline void concat(concat(gemv_fp, fpp), x16)(
 inline void concat(concat(gemv_fp, fpp), _subgroups)(
         read  fp_t*   restrict mx,
         read  fp_t*   restrict vc,
-        write fpmx_t* restrict rs,
-        work  fpmx_t* restrict sm,
+        write accu_t* restrict rs,
+        work  accu_t* restrict sm,
         const int32_t n, const int32_t m) {
     // gemv_fp32_subgroups|gemv_fp64_subgroups
     const uint lid = get_local_id(0);
@@ -171,7 +173,7 @@ inline void concat(concat(gemv_fp, fpp), _subgroups)(
     const uint num_sub_groups = get_num_sub_groups();
     for (uint y = gid; y < m; y += groups) {
         read fp_t* row = mx + y * n;
-        fpmx_t s = 0;
+        accu_t s = 0;
         for (uint x = lid; x < n; x += items) { s += row[x] * vc[x]; }
         subgroup_fence()
         s = sub_group_reduce_add(s);
@@ -183,8 +185,8 @@ inline void concat(concat(gemv_fp, fpp), _subgroups)(
 inline void concat(concat(gemv_fp, fpp), x4_subgroups)(
         read fpv4_t*  restrict mx,
         read fpv4_t*  restrict vc,
-        write fpmx_t* restrict rs,
-        work fpmx_t*  restrict sm,
+        write accu_t* restrict rs,
+        work accu_t*  restrict sm,
         const int32_t n, const int32_t m) {
     // "n" is 1/16 or row width
     const uint lid = get_local_id(0);
@@ -195,7 +197,7 @@ inline void concat(concat(gemv_fp, fpp), x4_subgroups)(
     const uint num_sub_groups = get_num_sub_groups();
     for (uint y = gid; y < m; y += groups) {
         read fpv4_t* row = mx + y * n;
-        fpmx_t s = 0;
+        accu_t s = 0;
         for (uint x = lid; x < n; x += items) { s += dot(row[x], vc[x]); }
         subgroup_fence()
         reduce_add(sub_group_id, num_sub_groups, sub_group_reduce_add(s), sm);
@@ -206,8 +208,8 @@ inline void concat(concat(gemv_fp, fpp), x4_subgroups)(
 inline void concat(concat(gemv_fp, fpp), x16_subgroups)(
         read fpv4_t*  restrict mx,
         read fpv4_t*  restrict vc,
-        write fpmx_t* restrict rs,
-        work fpmx_t*  restrict sm,
+        write accu_t* restrict rs,
+        work accu_t*  restrict sm,
         const int32_t n, const int32_t m) {
     // "n" is 1/16 or row width
     const uint lid = get_local_id(0);
@@ -218,7 +220,7 @@ inline void concat(concat(gemv_fp, fpp), x16_subgroups)(
     const uint num_sub_groups = get_num_sub_groups();
     for (uint y = gid; y < m; y += groups) {
         read fpv4_t* row = mx + y * n * 4;
-        fpmx_t s = 0;
+        accu_t s = 0;
         for (uint x = lid; x < n; x += items) {
             uint x4 = x << 2;
             s +=
@@ -329,9 +331,9 @@ inline fp32_t load_bf(const intptr_t offset, read bf16_t* a) {
 
 inline void gemv_bf16( // bf16_t
         read  bf16_t* restrict mx,
-        read  fpmx_t* restrict vc,
-        write fpmx_t* restrict rs,
-        work  fpmx_t* restrict sm,
+        read  accu_t* restrict vc,
+        write accu_t* restrict rs,
+        work  accu_t* restrict sm,
         const  int32_t n, const int32_t m) {
     const uint lid = get_local_id(0);
     const uint gid = get_group_id(0);
@@ -339,7 +341,7 @@ inline void gemv_bf16( // bf16_t
     const uint groups = get_num_groups(0);
     for (uint y = gid; y < m; y += groups) {
         read bf16_t* row = mx + y * n;
-        fpmx_t s = 0;
+        accu_t s = 0;
         for (uint x = lid; x < n; x += items) { s += load_bf(x, row) * vc[x]; }
         reduce_add(lid, items, s, sm);
         if (lid == 0) { rs[y] = sm[0]; }
@@ -348,9 +350,9 @@ inline void gemv_bf16( // bf16_t
 
 inline void gemv_bf16x4( // vec4 of bf16_t
         read  bf16_t* restrict mx,
-        read  fpmx_t* restrict vc,
-        write fpmx_t* restrict rs,
-        work  fpmx_t* restrict sm,
+        read  accu_t* restrict vc,
+        write accu_t* restrict rs,
+        work  accu_t* restrict sm,
         const int32_t n, const int32_t m) {
     // "n" is 1/4 of row width
     const uint lid = get_local_id(0);
@@ -359,10 +361,10 @@ inline void gemv_bf16x4( // vec4 of bf16_t
     const uint groups = get_num_groups(0);
     for (uint y = gid; y < m; y += groups) {
         read bf16_t* row = mx + y * n * 4;
-        fpmx_t s = 0;
+        accu_t s = 0;
         for (uint x = lid; x < n; x += items) {
             read bf16_t* mp = row + (x << 2);
-            read fpmx_t* vp = vc  + (x << 2);
+            read accu_t* vp = vc  + (x << 2);
             #pragma unroll 4
             for (uint i = 0; i < 4; i++) {
                 s += read_bf(mp++) * *vp++;
@@ -375,9 +377,9 @@ inline void gemv_bf16x4( // vec4 of bf16_t
 
 inline void gemv_bf16x16( // 16 elements of bf16_t
         read  bf16_t* restrict mx,
-        read  fpmx_t* restrict vc,
-        write fpmx_t* restrict rs,
-        work  fpmx_t* restrict sm,
+        read  accu_t* restrict vc,
+        write accu_t* restrict rs,
+        work  accu_t* restrict sm,
         const int32_t n, const int32_t m) {
     // "n" is 1/16 of row width
     const uint lid = get_local_id(0);
@@ -386,10 +388,10 @@ inline void gemv_bf16x16( // 16 elements of bf16_t
     const uint groups = get_num_groups(0);
     for (uint y = gid; y < m; y += groups) {
         read bf16_t* row = mx + y * n * 16;
-        fpmx_t s = 0;
+        accu_t s = 0;
         for (uint x = lid; x < n; x += items) {
             read bf16_t* mp = row + (x << 4);
-            read fpmx_t* vp = vc  + (x << 4);
+            read accu_t* vp = vc  + (x << 4);
             #pragma unroll 16
             for (uint i = 0; i < 16; i++) {
                 s += read_bf(mp++) * *vp++;
@@ -405,16 +407,16 @@ void bfmv16(
         const int64_t mx_offset,
         read  bf16_t  mx[/*m][n*/],
         const int64_t vc_offset,
-        read  fpmx_t  vc[/*n*/],
+        read  accu_t  vc[/*n*/],
         const int64_t rs_offset,
-        write fpmx_t  rs[/*m*/],
-        work  fpmx_t  sm[/*work_group_items*/],
+        write accu_t  rs[/*m*/],
+        work  accu_t  sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
 //  printf("gemv_bf16\n");
     gemv_bf16(
         rd_offsetof(bf16_t, mx_offset, mx),
-        rd_offsetof(fpmx_t, vc_offset, vc),
-        wr_offsetof(fpmx_t, rs_offset, rs),
+        rd_offsetof(accu_t, vc_offset, vc),
+        wr_offsetof(accu_t, rs_offset, rs),
         sm, n, m);
 }
 
@@ -423,16 +425,16 @@ void bfmv16x4(
         const int64_t mx_offset,
         read  bf16_t  mx[/*m][n*/],
         const int64_t vc_offset,
-        read  fpmx_t  vc[/*n*/],
+        read  accu_t  vc[/*n*/],
         const int64_t rs_offset,
-        write fpmx_t  rs[/*m*/],
-        work  fpmx_t  sm[/*work_group_items*/],
+        write accu_t  rs[/*m*/],
+        work  accu_t  sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
 //  printf("gemv_bf16x4\n");
     gemv_bf16x4(
         rd_offsetof(bf16_t, mx_offset, mx),
-        rd_offsetof(fpmx_t, vc_offset, vc),
-        wr_offsetof(fpmx_t, rs_offset, rs),
+        rd_offsetof(accu_t, vc_offset, vc),
+        wr_offsetof(accu_t, rs_offset, rs),
         sm, n, m);
 }
 
@@ -441,16 +443,16 @@ void bfmv16x16(
         const int64_t mx_offset,
         read  bf16_t  mx[/*m][n*/],
         const int64_t vc_offset,
-        read  fpmx_t  vc[/*n*/],
+        read  accu_t  vc[/*n*/],
         const int64_t rs_offset,
-        write fpmx_t  rs[/*m*/],
-        work  fpmx_t  sm[/*work_group_items*/],
+        write accu_t  rs[/*m*/],
+        work  accu_t  sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
  // printf("gemv_bf16x16\n");
     gemv_bf16x16(
         rd_offsetof(bf16_t, mx_offset, mx),
-        rd_offsetof(fpmx_t, vc_offset, vc),
-        wr_offsetof(fpmx_t, rs_offset, rs),
+        rd_offsetof(accu_t, vc_offset, vc),
+        wr_offsetof(accu_t, rs_offset, rs),
         sm, n, m);
 }
 
@@ -458,9 +460,9 @@ void bfmv16x16(
 
 inline void gemv_fp16(
         read  fp16_t* restrict mx,
-        read  fpmx_t* restrict vc,
-        write fpmx_t* restrict rs,
-        work  fpmx_t* restrict sm,
+        read  accu_t* restrict vc,
+        write accu_t* restrict rs,
+        work  accu_t* restrict sm,
         const  int32_t n, const int32_t m) {
     const uint lid = get_local_id(0);
     const uint gid = get_group_id(0);
@@ -468,7 +470,7 @@ inline void gemv_fp16(
     const uint groups = get_num_groups(0);
     for (uint y = gid; y < m; y += groups) {
         read fp16_t* row = mx + y * n;
-        fpmx_t s = 0;
+        accu_t s = 0;
         for (uint x = lid; x < n; x += items) { s += vload_half(x, row) * vc[x]; }
         reduce_add(lid, items, s, sm);
         if (lid == 0) { rs[y] = sm[0]; }
@@ -477,9 +479,9 @@ inline void gemv_fp16(
 
 inline void gemv_fp16x4(
         read  fp16_t*  restrict mx,
-        read  fpmx4_t* restrict vc,
-        write fpmx_t*  restrict rs,
-        work  fpmx_t*  restrict sm,
+        read  acc4_t* restrict vc,
+        write accu_t*  restrict rs,
+        work  accu_t*  restrict sm,
         const int32_t n, const int32_t m) {
     // "n" is 1/4 of row width
     // vload_half4 reads sizeof(halfn) bytes of data from
@@ -490,7 +492,7 @@ inline void gemv_fp16x4(
     const uint groups = get_num_groups(0);
     for (uint y = gid; y < m; y += groups) {
         read fp16_t* row = mx + y * n * 4;
-        fpmx_t s = 0; // ^^^ * 4 because mx is fp16_t*
+        accu_t s = 0; // ^^^ * 4 because mx is fp16_t*
         for (uint x = lid; x < n; x += items) { s += dot(vload_half4(x, row), vc[x]); }
         reduce_add(lid, items, s, sm);
         if (lid == 0) { rs[y] = sm[0]; }
@@ -499,9 +501,9 @@ inline void gemv_fp16x4(
 
 inline void gemv_fp16x16(
         read  fp16_t*  restrict mx,
-        read  fpmx4_t* restrict vc,
-        write fpmx_t*  restrict rs,
-        work  fpmx_t*  restrict sm,
+        read  acc4_t* restrict vc,
+        write accu_t*  restrict rs,
+        work  accu_t*  restrict sm,
         const int32_t n, const int32_t m) {
     // "n" is 1/16 of row width
     const uint lid = get_local_id(0);
@@ -510,7 +512,7 @@ inline void gemv_fp16x16(
     const uint groups = get_num_groups(0);
     for (uint y = gid; y < m; y += groups) {
         read fp16_t* row = mx + y * n * 16;
-        fpmx_t s = 0; // ^^^ * 16 because mx is fp16_t*
+        accu_t s = 0; // ^^^ * 16 because mx is fp16_t*
         for (uint x = lid; x < n; x += items) {
             uint x4 = x << 2;
             s +=
@@ -529,16 +531,16 @@ void gemv16(
         const int64_t mx_offset,
         read  fp16_t  mx[/*m][n*/],
         const int64_t vc_offset,
-        read  fpmx_t  vc[/*n*/],
+        read  accu_t  vc[/*n*/],
         const int64_t rs_offset,
-        write fpmx_t  rs[/*m*/],
-        work  fpmx_t  sm[/*work_group_items*/],
+        write accu_t  rs[/*m*/],
+        work  accu_t  sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
 //  printf("gemv_fp16\n");
     gemv_fp16(
         rd_offsetof(fp16_t, mx_offset, mx),
-        rd_offsetof(fpmx_t, vc_offset, vc),
-        wr_offsetof(fpmx_t, rs_offset, rs),
+        rd_offsetof(accu_t, vc_offset, vc),
+        wr_offsetof(accu_t, rs_offset, rs),
         sm, n, m);
 }
 
@@ -547,16 +549,16 @@ void gemv16x4(
         const int64_t mx_offset,
         read  fp16_t  mx[/*m][n*/],
         const int64_t vc_offset,
-        read  fpmx4_t vc[/*n*/],
+        read  acc4_t vc[/*n*/],
         const int64_t rs_offset,
-        write fpmx_t  rs[/*m*/],
-        work  fpmx_t  sm[/*work_group_items*/],
+        write accu_t  rs[/*m*/],
+        work  accu_t  sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
 //  printf("gemv_fp16x4\n");
     gemv_fp16x4(
         rd_offsetof(fp16_t,  mx_offset, mx),
-        rd_offsetof(fpmx4_t, vc_offset, vc),
-        wr_offsetof(fpmx_t,  rs_offset, rs),
+        rd_offsetof(acc4_t, vc_offset, vc),
+        wr_offsetof(accu_t,  rs_offset, rs),
         sm, n, m);
 }
 
@@ -565,16 +567,16 @@ void gemv16x16(
         const int64_t mx_offset,
         read  fp16_t  mx[/*m][n*/],
         const int64_t vc_offset,
-        read  fpmx4_t vc[/*n*/],
+        read  acc4_t vc[/*n*/],
         const int64_t rs_offset,
-        write fpmx_t  rs[/*m*/],
-        work  fpmx_t  sm[/*work_group_items*/],
+        write accu_t  rs[/*m*/],
+        work  accu_t  sm[/*work_group_items*/],
         const  int32_t n, const int32_t m) {
 //  printf("gemv_fp16x16\n");
     gemv_fp16x16(
         rd_offsetof(fp16_t,  mx_offset, mx),
-        rd_offsetof(fpmx4_t, vc_offset, vc),
-        wr_offsetof(fpmx_t,  rs_offset, rs),
+        rd_offsetof(acc4_t, vc_offset, vc),
+        wr_offsetof(accu_t,  rs_offset, rs),
         sm, n, m);
 }
 
