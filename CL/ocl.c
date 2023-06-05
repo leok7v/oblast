@@ -495,7 +495,10 @@ static void ocl_check_fp16_support(int dix) {
     ocl.close(&c);
 }
 
-static void ocl_init(void) {
+static cl_platform_id cl_platforms[16];
+static cl_uint cl_platform_count;
+
+static void ocl_enumerate_devices() {
     #pragma push_macro("get_str")
     #pragma push_macro("get_val")
     #pragma push_macro("get_opt")
@@ -509,20 +512,17 @@ static void ocl_init(void) {
     #define get_opt(name, v) /*optional*/                     \
         (clGetDeviceInfo(id, name, sizeof(v), &v, null) == 0)
     #define ext(s) (strstr(d->extensions, (s)) != null)
-    // Get platform and device information
-    cl_platform_id platforms[16] = {0};
-    cl_uint platform_count = countof(platforms);
-	call(clGetPlatformIDs(countof(platforms), platforms, &platform_count));
-    for (cl_uint i = 0; i < platform_count; i++) {
+    // Get device information
+    for (cl_uint i = 0; i < cl_platform_count; i++) {
         cl_device_id device_ids[16] = {0};
         cl_uint devids_count = 0;
-	    if (clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, countof(device_ids),
+	    if (clGetDeviceIDs(cl_platforms[i], CL_DEVICE_TYPE_ALL, countof(device_ids),
                 device_ids, &devids_count) == 0) {
             for (cl_uint j = 0; j < devids_count; j++) {
                 ocl_device_t* d = &ocl.devices[ocl.count];
                 cl_device_id id = device_ids[j];
                 d->id = (ocl_device_id_t)id;
-                d->platform = platforms[i];
+                d->platform = cl_platforms[i];
                 get_str(CL_DEVICE_NAME, d->name);
                 get_str(CL_DEVICE_VENDOR, d->vendor);
                 char text[4096];
@@ -572,6 +572,17 @@ static void ocl_init(void) {
     #pragma pop_macro("get_opt")
     #pragma pop_macro("get_val")
     #pragma pop_macro("get_str")
+}
+
+static void ocl_init(void) {
+    // Get platforms ids
+    cl_platform_count = countof(cl_platforms);
+    int r = clGetPlatformIDs(countof(cl_platforms), cl_platforms, &cl_platform_count);
+	if (r == 0) {
+        ocl_enumerate_devices();
+    } else {
+        println("clGetPlatformIDs() failed: %s", ocl.error(r));
+    }
 }
 
 // Intel(R) UHD Graphics does not support ocl_fp64
