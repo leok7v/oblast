@@ -19,6 +19,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		..\.github\workflows\build.yml = ..\.github\workflows\build.yml
 		..\.github\workflows\graph.yml = ..\.github\workflows\graph.yml
 		..\.github\workflows\release.yml = ..\.github\workflows\release.yml
+		..\.github\workflows\test.yml = ..\.github\workflows\test.yml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "profile", "profile", "{2D64C5C8-AB27-49BE-9C6B-AAF9DECFCE5F}"
