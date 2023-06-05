@@ -124,6 +124,12 @@ static void test_avx(int fpp, void* mx, void* vc, void* avx,
                 ((fp32_t*)avx)[j] = (fp32_t)dot.fp32x16((fp32_t*)vc, 1, row, 1, n);
             }
             break;
+        case ocl_bfp16:
+            for (int32_t j = 0; j < m; j++) {
+                bf16_t* row = (bf16_t*)mx + j * n;
+                ((fp32_t*)avx)[j] = (fp32_t)dot.bf32x16((fp32_t*)vc, 1, row, 1, n);
+            }
+            break;
         case ocl_fpp32:
             for (int32_t j = 0; j < m; j++) {
                 fp32_t* row = (fp32_t*)mx + j * n;
@@ -134,12 +140,6 @@ static void test_avx(int fpp, void* mx, void* vc, void* avx,
             for (int64_t j = 0; j < m; j++) {
                 fp64_t* row = (fp64_t*)mx + j * n;
                 ((fp64_t*)avx)[j] = dot.fp64((fp64_t*)vc, 1, row, 1, n);
-            }
-            break;
-        case ocl_bfp16:
-            for (int32_t j = 0; j < m; j++) {
-                bf16_t* row = (bf16_t*)mx + j * n;
-                ((fp32_t*)avx)[j] = (fp32_t)dot.bf32x16((fp32_t*)vc, 1, row, 1, n);
             }
             break;
         default:

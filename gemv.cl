@@ -16,8 +16,6 @@
 
 // shared memory "sm" is accessible for all work items in a group
 
-// TODO: dot16bf
-
 inline void reduce_add(const uint lid, uint i, fpmx_t s,
         __local fpmx_t* restrict sm) {
     sm[lid] = s; // (*1*)
@@ -192,6 +190,11 @@ inline void concat(concat(gemv_fp, fpp), x16_subgroups)(
 }
 
 #endif
+
+// Kernels do not support "restrict" and inline functions do.
+// The untested belief is the "restrict" may help compiler
+// to generate code that can avoid unnecessary local/global
+// RAM access and cache values on the registers more freely.
 
 __kernel
 void concat(gemv, fpp)( // gemv32 gemv16 gemv64; fpp float point precision

@@ -34,24 +34,22 @@ typedef struct avx_if {
 
 typedef struct avx2_if {
     void   (*init)(void);
-    fp64_t (*dot16bf)(const bf16_t* restrict v0, const bf16_t* restrict v1, int64_t n);
     fp64_t (*dot16)(const fp16_t* restrict v0, const fp16_t* restrict v1, int64_t n);
+    fp64_t (*dot32x16)(const fp32_t* restrict v0, const fp16_t* restrict v1, int64_t n);
+    fp64_t (*dot16bf)(const bf16_t* restrict v0, const bf16_t* restrict v1, int64_t n);
+    fp64_t (*dot32x16bf)(const fp32_t* restrict v0, const bf16_t* restrict v1, int64_t n);
     fp64_t (*dot32)(const fp32_t* restrict v0, const fp32_t* restrict v1, int64_t n);
     fp64_t (*dot64)(const fp64_t* restrict v0, const fp64_t* restrict v1, int64_t n);
-    // TODO:
-    fp64_t (*dot32x16bf)(const fp32_t* restrict v0, const bf16_t* restrict v1, int64_t n);
-    fp64_t (*dot32x16)(const fp32_t* restrict v0, const fp16_t* restrict v1, int64_t n);
 } avx2_if;
 
 typedef struct avx512_if {
     void   (*init)(void);
-    fp64_t (*dot16bf)(const bf16_t* restrict v0, const bf16_t* restrict v1, int64_t n);
     fp64_t (*dot16)(const fp16_t* restrict v0, const fp16_t* restrict v1, int64_t n);
+    fp64_t (*dot32x16)(const fp32_t* restrict v0, const fp16_t* restrict v1, int64_t n);
+    fp64_t (*dot16bf)(const bf16_t* restrict v0, const bf16_t* restrict v1, int64_t n);
+    fp64_t (*dot32x16bf)(const fp32_t* restrict v0, const bf16_t* restrict v1, int64_t n);
     fp64_t (*dot32)(const fp32_t* restrict v0, const fp32_t* restrict v1, int64_t n);
     fp64_t (*dot64)(const fp64_t* restrict v0, const fp64_t* restrict v1, int64_t n);
-    // TODO:
-    fp64_t (*dot32x16bf)(const fp32_t* restrict v0, const bf16_t* restrict v1, int64_t n);
-    fp64_t (*dot32x16)(const fp32_t* restrict v0, const fp16_t* restrict v1, int64_t n);
 } avx512_if;
 
 // _MM_HINT_T0 (temporal data) — prefetch data into all levels of the caches.
@@ -355,6 +353,27 @@ static fp64_t avx2_dot16bf(const bf16_t* restrict v0, const bf16_t* restrict v1,
     return sum;
 }
 
+static fp64_t avx2_dot32x16bf(const fp32_t* restrict v0, const bf16_t* restrict v1,
+        int64_t n) {
+    fp64_t sum = 0;
+    if (n >= 8) {
+        f32x8_t mul_add_f32x8 = _mm256_setzero_ps();
+        while (n >= 8) {
+            f32x8_t a = _mm256_loadu_ps(v0);
+            f32x8_t b = avx2_expand_bf16_to_fp32(_mm_lddqu_si128((void*)v1));
+            n -= 8; v0 += 8; v1 += 8;
+            if (n > 0) { prefetch2_L1L2L3(v0, v1); }
+            mul_add_f32x8 = _mm256_fmadd_ps(a, b, mul_add_f32x8);
+        }
+        f32x4_t f32x4 = _mm_add_ps(
+            _mm256_extractf32x4_ps(mul_add_f32x8, 0),  // 0,1,2,3
+            _mm256_extractf32x4_ps(mul_add_f32x8, 1)); // 4,5,6,7
+        sum = f32x4.m128_f32[0] + f32x4.m128_f32[1] + f32x4.m128_f32[2] + f32x4.m128_f32[3];
+    }
+    if (n > 0) { sum += cpu_dot32x16bf_c(v0, v1, n); }
+    return sum;
+}
+
 static fp64_t avx2_dot16(const fp16_t* restrict v0, const fp16_t* restrict v1,
         int64_t n) {
     fp64_t sum = 0;
@@ -373,6 +392,27 @@ static fp64_t avx2_dot16(const fp16_t* restrict v0, const fp16_t* restrict v1,
         sum = f32x4.m128_f32[0] + f32x4.m128_f32[1] + f32x4.m128_f32[2] + f32x4.m128_f32[3];
     }
     if (n > 0) { sum += cpu_dot16_c(v0, v1, n); }
+    return sum;
+}
+
+static fp64_t avx2_dot32x16(const fp32_t* restrict v0, const fp16_t* restrict v1,
+        int64_t n) {
+    fp64_t sum = 0;
+    if (n >= 8) {
+        f32x8_t mul_add_f32x8 = _mm256_setzero_ps();
+        while (n >= 8) {
+            f32x8_t a = _mm256_loadu_ps(v0);
+            f32x8_t b = _mm256_cvtph_ps(_mm_lddqu_si128((void*)v1));
+            n -= 8; v0 += 8; v1 += 8;
+            if (n > 0) { prefetch2_L1L2L3(v0, v1); }
+            mul_add_f32x8 = _mm256_fmadd_ps(a, b, mul_add_f32x8);
+        }
+        f32x4_t f32x4 = _mm_add_ps(
+            _mm256_extractf32x4_ps(mul_add_f32x8, 0),  // 0,1,2,3
+            _mm256_extractf32x4_ps(mul_add_f32x8, 1)); // 4,5,6,7
+        sum = f32x4.m128_f32[0] + f32x4.m128_f32[1] + f32x4.m128_f32[2] + f32x4.m128_f32[3];
+    }
+    if (n > 0) { sum += cpu_dot32x16_c(v0, v1, n); }
     return sum;
 }
 
@@ -442,6 +482,24 @@ static fp64_t avx512_dot16bf(const bf16_t* restrict v0,
     return sum;
 }
 
+static fp64_t avx512_dot32x16bf(const fp32_t* restrict v0,
+        const bf16_t* restrict v1, int64_t n) {
+    fp64_t sum = 0;
+    if (n >= 16) {
+        f32x16_t mul_add_f32x16 = _mm512_setzero_ps(); // multiply and add
+        while (n >= 16) {
+            f32x16_t a = _mm512_loadu_ps(v0);
+            f32x16_t b = avx512_expand_bf16_to_fp32(_mm256_lddqu_si256((void*)v1));
+            n -= 16; v0 +=16; v1 += 16;
+            if (n > 0) { prefetch2_L1L2L3(v0, v1); }
+            mul_add_f32x16 = _mm512_fmadd_ps(a, b, mul_add_f32x16);
+        }
+        sum = _mm512_reduce_add_ps(mul_add_f32x16);
+    }
+    if (n > 0) { sum += cpu_dot32x16bf_c(v0, v1, n); }
+    return sum;
+}
+
 static fp64_t avx512_dot16(const fp16_t* restrict v0,
         const fp16_t* restrict v1, int64_t n) {
     fp64_t sum = 0;
@@ -457,6 +515,24 @@ static fp64_t avx512_dot16(const fp16_t* restrict v0,
         sum = _mm512_reduce_add_ps(mul_add_f32x16);
     }
     if (n > 0) { sum += cpu_dot16_c(v0, v1, n); }
+    return sum;
+}
+
+static fp64_t avx512_dot32x16(const fp32_t* restrict v0,
+        const fp16_t* restrict v1, int64_t n) {
+    fp64_t sum = 0;
+    if (n >= 16) {
+        f32x16_t mul_add_f32x16 = _mm512_setzero_ps(); // multiply and add
+        while (n >= 16) {
+            f32x16_t a = _mm512_loadu_ps(v0);
+            f32x16_t b = _mm512_cvtph_ps(_mm256_lddqu_si256((void*)v1));
+            n -= 16; v0 +=16; v1 += 16;
+            if (n > 0) { prefetch2_L1L2L3(v0, v1); }
+            mul_add_f32x16 = _mm512_fmadd_ps(a, b, mul_add_f32x16);
+        }
+        sum = _mm512_reduce_add_ps(mul_add_f32x16);
+    }
+    if (n > 0) { sum += cpu_dot32x16_c(v0, v1, n); }
     return sum;
 }
 
@@ -611,6 +687,8 @@ static void avx2_init(void) {
         avx_try_and_set(fp16_t, 8, avx2, dot16);
         avx_try_and_set(fp32_t, 8, avx2, dot32);
         avx_try_and_set(fp64_t, 8, avx2, dot64);
+        if (avx2.dot16   != null) { avx2.dot32x16   = avx2_dot32x16; }
+        if (avx2.dot16bf != null) { avx2.dot32x16bf = avx2_dot32x16bf; }
     }
 }
 
@@ -620,6 +698,8 @@ static void avx512_init(void) {
         avx_try_and_set(fp16_t, 8, avx512, dot16);
         avx_try_and_set(fp32_t, 8, avx512, dot32);
         avx_try_and_set(fp64_t, 8, avx512, dot64);
+        if (avx512.dot16   != null) { avx512.dot32x16   = avx2_dot32x16; }
+        if (avx512.dot16bf != null) { avx512.dot32x16bf = avx2_dot32x16bf; }
     }
 }
 
@@ -659,6 +739,35 @@ static void test_dot16bf_c() {
     }
 }
 
+static void test_dot32x16bf_c() {
+    fp32_t a[21];
+    bf16_t b[21];
+    for (int i = 0; i < countof(a); i++) {
+        a[i] = (fp32_t)(i + 1);
+        b[i] = bf32to16((fp32_t)(countof(a) - i));
+    }
+    for (int n = 1; n < countof(a); n++) {
+        fp64_t sum = 0;
+        for (int j = 0; j < n; j++) { sum += a[j] * bf16to32(b[j]); }
+        fp64_t sum0 = cpu_dot32x16bf_c(a, b, n);
+        fatal_if(fabs(sum - sum0) > FLT_EPSILON,
+            "cpu: %.16f expected: %.16f delta: %.16e FLT_EPSILON: %.16e",
+            sum0, sum, sum0 - sum, FLT_EPSILON);
+        if (avx2.dot16bf != null) {
+            fp64_t sum1 = avx2.dot32x16bf(a, b, n);
+            fatal_if(fabs(sum1 - sum0) > FLT_EPSILON,
+                "cpu: %.16f avx: %.16f delta: %.16e FLT_EPSILON: %.16e",
+                sum0, sum1, sum0 - sum1, FLT_EPSILON);
+        }
+        if (avx512.dot16bf != null) {
+            fp64_t sum2 = avx512.dot32x16bf(a, b, n);
+            fatal_if(fabs(sum2 - sum0) > FLT_EPSILON,
+                "cpu: %.16f avx: %.16f delta: %.16e FLT_EPSILON: %.16e",
+                sum0, sum2, sum0 - sum2, FLT_EPSILON);
+        }
+    }
+}
+
 static void test_dot16_c() {
     fp16_t a[21];
     fp16_t b[21];
@@ -681,6 +790,35 @@ static void test_dot16_c() {
         }
         if (avx512.dot16 != null) {
             fp64_t sum2 = avx512.dot16(a, b, n);
+            fatal_if(fabs(sum2 - sum0) > FLT_EPSILON,
+                "cpu: %.16f avx: %.16f delta: %.16e FLT_EPSILON: %.16e",
+                sum0, sum2, sum0 - sum2, FLT_EPSILON);
+        }
+    }
+}
+
+static void test_dot32x16_c() {
+    fp32_t a[21];
+    fp16_t b[21];
+    for (int i = 0; i < countof(a); i++) {
+        a[i] = (fp32_t)(i + 1);
+        b[i] = fp32to16((fp32_t)(countof(a) - i));
+    }
+    for (int n = 1; n < countof(a); n++) {
+        fp64_t sum = 0;
+        for (int j = 0; j < n; j++) { sum += a[j] * fp16to32(b[j]); }
+        fp64_t sum0 = cpu_dot32x16_c(a, b, n);
+        fatal_if(fabs(sum - sum0) > FLT_EPSILON,
+            "cpu: %.16f expected: %.16f delta: %.16e FLT_EPSILON: %.16e",
+            sum0, sum, sum0 - sum, FLT_EPSILON);
+        if (avx2.dot16 != null) {
+            fp64_t sum1 = avx2.dot32x16(a, b, n);
+            fatal_if(fabs(sum1 - sum0) > FLT_EPSILON,
+                "cpu: %.16f avx: %.16f delta: %.16e FLT_EPSILON: %.16e",
+                sum0, sum1, sum0 - sum1, FLT_EPSILON);
+        }
+        if (avx512.dot16 != null) {
+            fp64_t sum2 = avx512.dot32x16(a, b, n);
             fatal_if(fabs(sum2 - sum0) > FLT_EPSILON,
                 "cpu: %.16f avx: %.16f delta: %.16e FLT_EPSILON: %.16e",
                 sum0, sum2, sum0 - sum2, FLT_EPSILON);
@@ -808,6 +946,51 @@ static void measure_dot16(int n, dot_performance_t* p) {
     free(a);
 }
 
+static void measure_dot32x16(int n, dot_performance_t* p) {
+    enum { m = 128 * 1024 };
+    typedef fp32_t vector32_t[m];
+    typedef fp16_t vector16_t[m];
+    vector32_t* a = (vector32_t*)malloc(n * sizeof(vector32_t));
+    vector16_t* b = (vector16_t*)malloc(n * sizeof(vector16_t));
+    if (a != null && b != null) {
+        fp64_t t = 0;
+        uint32_t seed = 0;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                a[i][j] = random32(&seed) / (fp32_t)UINT32_MAX - 0.5f;
+                b[i][j] = fp32to16(random32(&seed) / (fp32_t)UINT32_MAX - 0.5f);
+            }
+        }
+        // flush caches for n > 1:
+        if (n > 1) { fatal_if(flushL1L2L3() == 0); }
+        // C
+        fp64_t ns_c = seconds() * NSEC_IN_SEC;
+        for (int i = 0; i < n; i++) { t += cpu_dot32x16_c(a[i], b[i], m); }
+        ns_c = seconds() * NSEC_IN_SEC - ns_c;
+        p->ns_c = ns_c / (n * m);
+        // AVX-2
+        if (avx2.dot32x16 != null) {
+            if (n > 1) { fatal_if(flushL1L2L3() == 0); }
+            fp64_t ns_avx2 = seconds() * NSEC_IN_SEC;
+            for (int i = 0; i < n; i++) { t += avx2.dot32x16(a[i], b[i], m); }
+            ns_avx2 = seconds() * NSEC_IN_SEC - ns_avx2;
+            p->ns_avx2 = ns_avx2 / (n * m);
+        }
+        // AVX-512
+        if (avx512.dot32x16 != null) {
+            if (n > 1) { fatal_if(flushL1L2L3() == 0); }
+            fp64_t ns_avx512 = seconds() * NSEC_IN_SEC;
+            for (int i = 0; i < n; i++) { t += avx512.dot32x16(a[i], b[i], m); }
+            ns_avx512 = seconds() * NSEC_IN_SEC - ns_avx512;
+            p->ns_avx512 = ns_avx512 / (n * m);
+        }
+        // t referenced to prevent compiler from optimizing out
+        fatal_if(t == 0); // what are the odds of that?!
+    }
+    free(b); // free(null) is OK
+    free(a);
+}
+
 static void measure_dot16bf(int n, dot_performance_t* p) {
     enum { m = 128 * 1024 };
     typedef bf16_t vector_t[m];
@@ -842,6 +1025,51 @@ static void measure_dot16bf(int n, dot_performance_t* p) {
             if (n > 1) { fatal_if(flushL1L2L3() == 0); }
             fp64_t ns_avx512 = seconds() * NSEC_IN_SEC;
             for (int i = 0; i < n; i++) { t += avx512.dot16bf(a[i], b[i], m); }
+            ns_avx512 = seconds() * NSEC_IN_SEC - ns_avx512;
+            p->ns_avx512 = ns_avx512 / (n * m);
+        }
+        // t referenced to prevent compiler from optimizing out
+        fatal_if(t == 0); // what are the odds of that?!
+    }
+    free(b); // free(null) is OK
+    free(a);
+}
+
+static void measure_dot32x16bf(int n, dot_performance_t* p) {
+    enum { m = 128 * 1024 };
+    typedef fp32_t vector32_t[m];
+    typedef bf16_t vector16_t[m];
+    vector32_t* a = (vector32_t*)malloc(n * sizeof(vector32_t));
+    vector16_t* b = (vector16_t*)malloc(n * sizeof(vector16_t));
+    if (a != null && b != null) {
+        fp64_t t = 0;
+        uint32_t seed = 0;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                a[i][j] = random32(&seed) / (fp32_t)UINT32_MAX - 0.5f;
+                b[i][j] = bf32to16(random32(&seed) / (fp32_t)UINT32_MAX - 0.5f);
+            }
+        }
+        // flush caches for n > 1:
+        if (n > 1) { fatal_if(flushL1L2L3() == 0); }
+        // C
+        fp64_t ns_c = seconds() * NSEC_IN_SEC;
+        for (int i = 0; i < n; i++) { t += cpu_dot32x16bf_c(a[i], b[i], m); }
+        ns_c = seconds() * NSEC_IN_SEC - ns_c;
+        p->ns_c = ns_c / (n * m);
+        // AVX-2
+        if (avx2.dot32x16bf != null) {
+            if (n > 1) { fatal_if(flushL1L2L3() == 0); }
+            fp64_t ns_avx2 = seconds() * NSEC_IN_SEC;
+            for (int i = 0; i < n; i++) { t += avx2.dot32x16bf(a[i], b[i], m); }
+            ns_avx2 = seconds() * NSEC_IN_SEC - ns_avx2;
+            p->ns_avx2 = ns_avx2 / (n * m);
+        }
+        // AVX-512
+        if (avx512.dot32x16bf != null) {
+            if (n > 1) { fatal_if(flushL1L2L3() == 0); }
+            fp64_t ns_avx512 = seconds() * NSEC_IN_SEC;
+            for (int i = 0; i < n; i++) { t += avx512.dot32x16bf(a[i], b[i], m); }
             ns_avx512 = seconds() * NSEC_IN_SEC - ns_avx512;
             p->ns_avx512 = ns_avx512 / (n * m);
         }
@@ -967,20 +1195,26 @@ static void report_preformance(dot_performance_t* p, const char* label) {
 
 static void dot_test_performance() {
     dot_performance_t p = {0};
-    performance(1,   100, &p, measure_dot16bf); report_preformance(&p, "bf16 L1");
-    performance(128,  25, &p, measure_dot16bf); report_preformance(&p, "bf16 RAM");
-    performance(1,   100, &p, measure_dot16);   report_preformance(&p, "fp16 L1");
-    performance(128,  25, &p, measure_dot16);   report_preformance(&p, "fp16 RAM");
-    performance(1,   100, &p, measure_dot32);   report_preformance(&p, "fp32 L1");
-    performance(128,  25, &p, measure_dot32);   report_preformance(&p, "fp32 RAM");
-    performance(1,   100, &p, measure_dot64);   report_preformance(&p, "fp64 L1");
-    performance(128,  25, &p, measure_dot64);   report_preformance(&p, "fp64 RAM");
+    performance(1,   100, &p, measure_dot16bf);    report_preformance(&p, "bf16 L1");
+    performance(128,  25, &p, measure_dot16bf);    report_preformance(&p, "bf16 RAM");
+    performance(1,   100, &p, measure_dot32x16bf); report_preformance(&p, "bf32x16 L1");
+    performance(128,  25, &p, measure_dot32x16bf); report_preformance(&p, "bf32x16 RAM");
+    performance(1,   100, &p, measure_dot16);      report_preformance(&p, "fp16 L1");
+    performance(128,  25, &p, measure_dot16);      report_preformance(&p, "fp16 RAM");
+    performance(1,   100, &p, measure_dot32x16);   report_preformance(&p, "fp32x16 L1");
+    performance(128,  25, &p, measure_dot32x16);   report_preformance(&p, "fp32x16 RAM");
+    performance(1,   100, &p, measure_dot32);      report_preformance(&p, "fp32 L1");
+    performance(128,  25, &p, measure_dot32);      report_preformance(&p, "fp32 RAM");
+    performance(1,   100, &p, measure_dot64);      report_preformance(&p, "fp64 L1");
+    performance(128,  25, &p, measure_dot64);      report_preformance(&p, "fp64 RAM");
 }
 
 static void dot_test(void) {
     dot_init(); // needed here because tests are using internal calls
-    test_dot16bf_c();
     test_dot16_c();
+    test_dot32x16_c();
+    test_dot16bf_c();
+    test_dot32x16bf_c();
     test_dot32_c();
     test_dot64_c();
     dot_test_performance();
