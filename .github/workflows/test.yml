@@ -12,10 +12,14 @@ jobs:
           submodules: recursive
       - name: setup msbuild
         uses: microsoft/setup-msbuild@v1.3.1
+        with:
+          msbuild-architecture: x64
+          vs-version: '[17.6.2)'
+          vs-prerelease: true
       - name: build release
         run:  msbuild msvc2022\oblast.sln -t:rebuild -verbosity:quiet -property:Configuration=Release
       - name: test
-        run:  bin/Release/gemv.exe >bin/Release/gemv.test.txt 2>&1
+        run:  bin/Release/gemv.exe
       - name: upload test result
         uses: actions/upload-artifact@v3
         with:
