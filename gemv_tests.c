@@ -292,7 +292,7 @@ static void run(gemv_t* g, int fpp,
     assert(best_of >= 1);
     for (int repeat = 0; repeat < best_of; repeat++) {
         fp64_t user = seconds();
-        gemv.gemv(g, fpp, 0, matrix, vector, result, n, m);
+        gemv.gemv(g, fpp, 0, matrix, 0, vector, 0, result, n, m);
         user = seconds() - user;
         ocl_time = min(ocl_time, user);
         if (ocl.is_profiling(g->c)) {
@@ -462,7 +462,7 @@ static void tests(bool profile) {
         gemv_t g = {0};
         gemv.init(&g, &c);
         permutations(&g);
-        performance(&g);
+//      performance(&g);
         gemv.fini(&g);
         ocl.close(&c);
     }
@@ -470,7 +470,6 @@ static void tests(bool profile) {
 
 int32_t main(int32_t argc, const char* argv[]) {
     (void)argc; (void)argv;
-    if (dot.test != null) { dot.test(); }
     ocl.init();
     if (argc > 1 && strcmp(argv[1], "compile") == 0) {
         if (argc >= 3) {
@@ -482,6 +481,7 @@ int32_t main(int32_t argc, const char* argv[]) {
         tests(true);  // with profiling
         tests(false); // w/o  profiling
     }
+    if (dot.test != null) { dot.test(); }
 }
 
 #if 0

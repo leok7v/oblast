@@ -1,10 +1,10 @@
 #include "gemv.h"
 
-static void ocl_gemv(gemv_t* g, int fpp, int64_t offset,
-        ocl_memory_t mx, ocl_memory_t vc,
-        ocl_memory_t rs, int64_t n, int64_t m) {
-    assert(offset == 0, "Not implemented yet");
-    (void) offset; // TODO: use it
+static void ocl_gemv(gemv_t* g, int fpp,
+        intptr_t mx_offset, ocl_memory_t mx/*[m][n]*/,
+        intptr_t vc_offset, ocl_memory_t vc/*[n]*/,
+        intptr_t rs_offset, ocl_memory_t rs/*[m]*/,
+        int64_t n, int64_t m) {
     if (ocl.is_profiling(g->c)) { g->c->ov->profiling_count = 0; }
     ocl_device_t* d = &ocl.devices[g->c->ix];
     // if n > max items per group GPU will run multiple groups:
@@ -17,12 +17,15 @@ static void ocl_gemv(gemv_t* g, int fpp, int64_t offset,
     int64_t local_bytes = ocl_fpp_bytes[fpp] * items_per_group *
         max(d->max_subgroups, 1);
     ocl_event_t done = ocl.enqueue(g->c, k, rw,
-        &mx,  sizeof(ocl_memory_t),
-        &vc,  sizeof(ocl_memory_t),
-        &rs,  sizeof(ocl_memory_t),
-        null, local_bytes, // shared memory for all work-items inside group
-        &rw,  sizeof(int32_t),
-        &m,   sizeof(int32_t),
+        &mx_offset, sizeof(intptr_t),
+        &mx,        sizeof(ocl_memory_t),
+        &vc_offset, sizeof(intptr_t),
+        &vc,        sizeof(ocl_memory_t),
+        &rs_offset, sizeof(intptr_t),
+        &rs,        sizeof(ocl_memory_t),
+        null,       local_bytes, // shared memory for all work-items inside group
+        &rw,        sizeof(int32_t),
+        &m,         sizeof(int32_t),
         null, 0
     );
     if (ocl.is_profiling(g->c)) { ocl.profile_add(g->c, done); }
@@ -123,43 +126,8 @@ static void gemv_fini(gemv_t* g) {
     g->c = null;
 }
 
-#pragma warning(disable: 4100) // TODO: remove me
-
-// TODO: implement or remove?
-
-void ocl_gemv16(gemv_t* g, int64_t offset, ocl_memory_t mx,
-    ocl_memory_t vc, ocl_memory_t rs, int64_t n, int64_t m) {
-    ocl_gemv(g, ocl_fpp16, offset, mx, vc, rs, n, m);
-}
-
-void ocl_gemv32(gemv_t* g, int64_t offset, ocl_memory_t mx,
-    ocl_memory_t vc, ocl_memory_t rs, int64_t n, int64_t m) {
-    ocl_gemv(g, ocl_fpp32, offset, mx, vc, rs, n, m);
-}
-
-void ocl_gemv64(gemv_t* g, int64_t offset, ocl_memory_t mx,
-    ocl_memory_t vc, ocl_memory_t rs, int64_t n, int64_t m) {
-    ocl_gemv(g, ocl_fpp64, offset, mx, vc, rs, n, m);
-}
-
-// testing convenience (slow performs copy to/from GPU memory):
-void gemv16(gemv_t* g, fp16_t mx[/*m][n*/], fp32_t vc[/*n*/], fp32_t rs[/*n*/],
-    int64_t n, int64_t m) {
-}
-
-void gemv32(gemv_t* g, fp32_t mx[/*m][n*/], fp32_t vc[/*n*/], fp32_t rs[/*n*/],
-    int64_t n, int64_t m) {
-}
-
-void gemv64(gemv_t* g, fp64_t mx[/*m][n*/], fp64_t vc[/*n*/], fp64_t rs[/*n*/],
-    int64_t n, int64_t m) {
-}
-
 gemv_if gemv = {
     .init = gemv_init,
     .gemv = ocl_gemv,
-    .gemv16 = gemv16,
-    .gemv32 = gemv32,
-    .gemv64 = gemv64,
     .fini = gemv_fini
 };
