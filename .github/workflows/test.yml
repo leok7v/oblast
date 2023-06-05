@@ -1,10 +1,14 @@
 name: test
 
 on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  build:
+  build_and_test:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
@@ -18,11 +22,11 @@ jobs:
       - name: build release
         run:  msbuild msvc2022\oblast.sln -t:rebuild -verbosity:quiet -property:Configuration=Release
       - name: test
-        run:  bin/Release/gemv.exe
+        run:  bin/Release/gemv.exe >gemv.test.txt 2>&1 | type gemv.test.txt
       - name: upload test result
         uses: actions/upload-artifact@v3
         with:
           name: test results
           path: |
-            bin\Release\gem.test.txt
-          retention-days: 14
+            gem.test.txt
+          retention-days: 90
