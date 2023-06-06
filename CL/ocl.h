@@ -174,16 +174,12 @@ typedef struct ocl_if {
         size_t offset, size_t bytes); // may return null
     // memory must be unmapped before the kernel is executed
     void (*unmap)(ocl_context_t* c, ocl_memory_t m, const void* address);
-    void (*migrate)(ocl_context_t* c, ocl_memory_t m);
-    void (*migrate_undefined)(ocl_context_t* c, ocl_memory_t m);
     // device/host shared memory (w/o fine-grained access/atomics)
     // alloc_shared().a and .m will be null if failed
     // experimentally NVIDIA GPU only allows 1GB mapping... :(
     ocl_shared_t (*alloc_shared)(ocl_context_t* c, int access, size_t bytes);
     void* (*map_shared)(ocl_shared_t* sm);
     void (*unmap_shared)(ocl_shared_t* sm);
-    void (*migrate_shared)(ocl_shared_t* sm);
-    void (*migrate_shared_undefined)(ocl_shared_t* sm);
     void (*free_shared)(ocl_shared_t* sm);
     // compile() with log != null may return null, with log == null
     // any error is fatal.

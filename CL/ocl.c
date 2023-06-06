@@ -190,39 +190,10 @@ static void ocl_unmap_shared(ocl_shared_t* s) {
     s->p = null;
 }
 
-static void ocl_migrate_shared_with_flags(ocl_shared_t* s, int flags) {
-    ocl_event_t done = null;
-    call(clEnqueueSVMMigrateMem(s->c->q, 1, &s->a, (size_t*)&s->bytes, flags,
-        /* wait count: */0, /*wait list:*/null, &done));
-    ocl.wait(&done, 1);
-}
-
-static void ocl_migrate_shared(ocl_shared_t* s) {
-    ocl_migrate_shared_with_flags(s, 0);
-}
-
-static void ocl_migrate_shared_undefined(ocl_shared_t* s) {
-    ocl_migrate_shared_with_flags(s, CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED);
-}
-
 static void ocl_free_shared(ocl_shared_t* s) {
     if (s->m != null) { call(clReleaseMemObject(s->m)); }
     if (s->a != null) { clSVMFree(s->c->c, s->a); }
     memset(s, 0, sizeof(*s));
-}
-
-static void ocl_migrate_with_flags(ocl_context_t* c, int f, ocl_memory_t m) {
-    ocl_event_t e = null;
-    call(clEnqueueMigrateMemObjects(c->q, 1, &m, f, 0, null, &e));
-    ocl.wait(&e, 1);
-}
-
-static void ocl_migrate(ocl_context_t* c, ocl_memory_t m) {
-    ocl_migrate_with_flags(c, 0, m);
-}
-
-void ocl_migrate_undefined(ocl_context_t* c, ocl_memory_t m) {
-    ocl_migrate_with_flags(c, CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED, m);
 }
 
 static ocl_program_t ocl_compile(ocl_context_t* c,
@@ -758,13 +729,9 @@ ocl_if ocl = {
     .access_to_map = ocl_access_to_map,
     .map = ocl_map,
     .unmap = ocl_unmap,
-    .migrate = ocl_migrate,
-    .migrate_undefined = ocl_migrate_undefined,
     .alloc_shared = ocl_alloc_shared,
     .map_shared = ocl_map_shared,
     .unmap_shared = ocl_unmap_shared,
-    .migrate_shared = ocl_migrate_shared,
-    .migrate_shared_undefined = ocl_migrate_shared_undefined,
     .free_shared = ocl_free_shared,
     .compile = ocl_compile,
     .create_kernel = ocl_create_kernel,

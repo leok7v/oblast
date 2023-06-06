@@ -11,6 +11,7 @@ typedef struct gemv_s {
 
 typedef struct gemv_if {
     void (*init)(gemv_t* g, ocl_context_t* c);
+    // except fpp: ocl_fpp_fp64 vc must be fp32_t[n]!
     void (*gemv)(gemv_t* g, int fpp,
         intptr_t mx_offset, ocl_memory_t mx/*[m][n]*/,
         intptr_t vc_offset, ocl_memory_t vc/*[n]*/,

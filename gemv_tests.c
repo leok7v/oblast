@@ -52,40 +52,25 @@ static void m64println(const fp64_t* mx, const int32_t n, const int32_t m) {
 
 static void print(int fpp, int32_t n, int32_t m) { // performance measurements
     if (n > 64 && m > 64) {
-        if (avx_time < DBL_MAX) {
-            if (gpu_time < DBL_MAX) {
-                println("%s %5d x %-5d gpu: %9.3f (call: %9.3f) avx: %9.3f "
-                    "ms %5.1fGFlops",
-                    ocl_fpp_names[fpp], n, m,
-                    gpu_time * MSEC_IN_SEC, ocl_time * MSEC_IN_SEC,
-                    avx_time * MSEC_IN_SEC, gpu_gfps);
-            } else {
-                gpu_gfps = 3.0 * m * n / (ocl_time * NSEC_IN_SEC);
-                println("%s %5d x %-5d gpu: %9.3f avx: %9.3f ms %5.1fGFlops",
-                    ocl_fpp_names[fpp], n, m,
-                    ocl_time * MSEC_IN_SEC,
-                    avx_time * MSEC_IN_SEC, gpu_gfps);
-            }
-        } else {
-            if (gpu_time < DBL_MAX) {
-                println("%s %5d x %-5d gpu: %9.3f (call: %9.3f) cpu: %9.3f ms "
-                    "%5.1fGFlops",
-                    ocl_fpp_names[fpp], n, m,
-                    gpu_time * MSEC_IN_SEC, ocl_time * MSEC_IN_SEC,
-                    cpu_time * MSEC_IN_SEC, gpu_gfps);
-            } else {
-                gpu_gfps = 3.0 * m * n / (ocl_time * NSEC_IN_SEC);
-                println("%s %5d x %-5d gpu: %9.3f cpu: %9.3f ms %5.1fGFlops",
-                    ocl_fpp_names[fpp], n, m,
-                    ocl_time * MSEC_IN_SEC,
-                    cpu_time * MSEC_IN_SEC, gpu_gfps);
-            }
+        if (gpu_time < DBL_MAX) { // when PROFILING
+            println("%s %5d x %-5d gpu: %9.3f (call: %9.3f) avx: %9.3f "
+                "ms %5.1fGFlops",
+                ocl_fpp_names[fpp], n, m,
+                gpu_time * MSEC_IN_SEC, ocl_time * MSEC_IN_SEC,
+                avx_time * MSEC_IN_SEC, gpu_gfps);
+        } else { // user land time instead of gpu profiling time
+            gpu_gfps = 3.0 * m * n / (ocl_time * NSEC_IN_SEC);
+            println("%s %5d x %-5d gpu: %9.3f avx: %9.3f ms %5.1fGFlops",
+                ocl_fpp_names[fpp], n, m,
+                ocl_time * MSEC_IN_SEC,
+                avx_time * MSEC_IN_SEC, gpu_gfps);
         }
     }
 }
 
 static void init_mx_vc(int fpp,
                  void* mx, void* vc,
+                 int32_t o0, int32_t o1,
                  int32_t n, int32_t m,
                  fp64_t (*init_mx)(int32_t j, int32_t i, int32_t n),
                  fp64_t (*init_vc)(int32_t i)) {
@@ -94,12 +79,12 @@ static void init_mx_vc(int fpp,
         switch (fpp) {
             case ocl_bfp16:
             case ocl_fpp16:
-            case ocl_fpp32: ((fp32_t*)vc)[i] = (fp32_t)init_vc(i); break;
-            case ocl_fpp64: ((fp64_t*)vc)[i] = init_vc(i); break;
+            case ocl_fpp32: ((fp32_t*)vc)[o1 + i] = (fp32_t)init_vc(i); break;
+            case ocl_fpp64: ((fp64_t*)vc)[o1 + i] = init_vc(i); break;
             default: fatal_if("fpp?", "fpp: %d", fpp);
         }
     }
-    byte_t* p = (byte_t*)mx;
+    byte_t* p = o0 + (byte_t*)mx;
     for (int32_t j = 0; j < m; j++) {
         for (int32_t i = 0; i < n; i++) {
             switch (fpp) {
@@ -235,7 +220,9 @@ static void dump_result(int fpp, void* rs, int32_t m) {
     }
 }
 
-static void verify(int fpp, void* avx, void* cpu, void* rs, int32_t n, int32_t m) {
+static void verify(int fpp, void* avx, void* cpu,
+        int32_t offset, const void* result, int32_t n, int32_t m) {
+    byte_t* rs = (byte_t*)result + offset;
     const fp64_t epsilon = CL_FLT_EPSILON * n * m;
     for (int32_t j = 0; j < m; j++) {
         fp64_t delta_cpu_gpu = 0;
@@ -285,14 +272,15 @@ static void verify(int fpp, void* avx, void* cpu, void* rs, int32_t n, int32_t m
 }
 
 static void run(gemv_t* g, int fpp,
-        ocl_memory_t matrix,
-        ocl_memory_t vector,
-        ocl_memory_t result,
+        int64_t mx_offset, ocl_memory_t matrix,
+        int64_t vc_offset, ocl_memory_t vector,
+        int64_t rs_offset, ocl_memory_t result,
         int32_t n, int32_t m) {
     assert(best_of >= 1);
     for (int repeat = 0; repeat < best_of; repeat++) {
         fp64_t user = seconds();
-        gemv.gemv(g, fpp, 0, matrix, 0, vector, 0, result, n, m);
+        gemv.gemv(g, fpp, mx_offset, matrix, vc_offset, vector,
+            rs_offset, result, n, m);
         user = seconds() - user;
         ocl_time = min(ocl_time, user);
         if (ocl.is_profiling(g->c)) {
@@ -320,6 +308,7 @@ ocl_memory_t alloc(ocl_context_t* c, int access, size_t bytes) {
 }
 
 static void test(gemv_t* g, int fpp,
+                 int32_t o0, int32_t o1, int32_t o2,
                  int32_t n, int32_t m,
                  fp64_t (*init_mx)(int32_t j, int32_t i, int32_t n),
                  fp64_t (*init_vc)(int32_t i)) {
@@ -334,34 +323,31 @@ static void test(gemv_t* g, int fpp,
     const size_t veb = fpp == ocl_fpp16 ? 4 : 8; // vector bytes
     enum { write_only = CL_MEM_WRITE_ONLY|CL_MEM_HOST_WRITE_ONLY };
     enum { read_only  = CL_MEM_READ_ONLY|CL_MEM_HOST_READ_ONLY };
-    ocl_memory_t matrix = alloc(c, write_only, (size_t)m * n * meb);
-    ocl_memory_t vector = alloc(c, write_only, (size_t)n * veb);
-    ocl_memory_t result = alloc(c, read_only,  (size_t)m * veb);
+    ocl_memory_t matrix = alloc(c, write_only, (size_t)m * n * meb + o0);
+    ocl_memory_t vector = alloc(c, write_only, (size_t)n * veb + o1);
+    ocl_memory_t result = alloc(c, read_only,  (size_t)m * veb + o2);
     if (matrix != null && vector != null && result != null) {
-        void* mx = ocl.map(c, CL_MAP_WRITE, matrix, 0, (size_t)m * n * meb);
-        void* vc = ocl.map(c, CL_MAP_WRITE, vector, 0, n * veb);
-        init_mx_vc(fpp, mx, vc, n, m, init_mx, init_vc);
+        byte_t* mx = ocl.map(c, CL_MAP_WRITE, matrix, 0, (size_t)m * n * meb + o0);
+        byte_t* vc = ocl.map(c, CL_MAP_WRITE, vector, 0, n * veb + o1);
+        init_mx_vc(fpp, mx, vc, o0, o1, n, m, init_mx, init_vc);
         void* avx = alloca(m * veb);
         fatal_if(avx == null);
-        test_avx(fpp, mx, vc, avx, n, m);
+        test_avx(fpp, mx + o0, vc + o1, avx, n, m);
         void* cpu = alloca(m * veb);
         fatal_if(cpu == null);
-        test_cpu(fpp, mx, vc, cpu, n, m);
+        test_cpu(fpp, mx + o0, vc + o1, cpu, n, m);
         if (verbose && n <= 64 && m <= 64) {
-            dump_mx_vc(fpp, mx, vc, avx, cpu, n, m);
+            dump_mx_vc(fpp, mx + o0, vc + o1, avx, cpu, n, m);
         }
         ocl.unmap(c, vector, vc);
         ocl.unmap(c, matrix, mx);
-        fp64_t user = seconds();
-//      ocl.migrate(c, matrix); // migrate is a "hint" to move memory
-//      ocl.migrate(c, vector); // to the GPU dedicated fater access region
-//      ocl.migrate_undefined(c, result);
-        user = seconds() - user;
-    //  println("migrate: %.6f ms", user * 1000.0);
-        run(g, fpp, matrix, vector, result, n, m);
-        void* rs = ocl.map(c, CL_MAP_READ, result, 0, m * veb);
-        if (verbose && m <= 64) { dump_result(fpp, rs, m); }
-        verify(fpp, avx, cpu, rs, n, m);
+        if (verbose) {
+            println("%s [%d %d %d] %d x %d", ocl_fpp_names[fpp], o0, o1, o2, n, m);
+        }
+        run(g, fpp, o0, matrix, o1, vector, o2, result, n, m);
+        byte_t* rs = ocl.map(c, CL_MAP_READ, result, 0, m * veb + o2);
+        if (verbose && m <= 64) { dump_result(fpp, rs + o2, m); }
+        verify(fpp, avx, cpu, o2, rs, n, m);
         // cleanup
         ocl.unmap(c, result, rs);
     }
@@ -389,19 +375,32 @@ static fp64_t init_mx1(int32_t r, int32_t c, int32_t n) {
     return (fp32_t)(1.0 / pow(2.0, (ix % 9)));
 }
 
+// TODO test with offsets 1..65
+
 static void permutations(gemv_t* g) {
 #ifndef PERMUTATIONS_DEBUG_SINGLE_CASE
-    // all 1..33 x 1..33 permutations of all precisions
-    println("33x33...");
+    // all 1..17 x 1..17 permutations of all precisions
+    println("17x17... (will take a minute or two)");
     verbose = false; // set to true if crashes
     for (int fpp = ocl_fpp_first; fpp <= ocl_fpp_last; fpp++) {
         if (ocl.has_fpp(g->c, fpp)) {
-            for (int n = 1; n <= 33; n++) {
-                for (int m = 1; m <= 33; m++) {
-//                  if (_isatty(_fileno(stdout))) {
-//                      printf("%2dx%-2d: %s\r", n, m, ocl_fpp_names[fpp]);
-//                  }
-                    test(g, fpp, n, m, init_mx0, init_vc0);
+            for (int n = 1; n <= 17; n++) {
+                for (int m = 1; m <= 17; m++) {
+                    if (_isatty(_fileno(stdout))) {
+                        printf("%s: %2dx%-2d\r", ocl_fpp_names[fpp], n, m);
+                    }
+                    // fp16_t and bf16_t must be alligned to fp32_t boundaries
+                    // because of mixed fp32_t x fp16_t and fp32_t x bf16_t dot
+                    // products:
+                    int a = max(ocl_fpp_bytes[fpp], 4); // alignment
+                    for (int o0 = 0; o0 <= 2; o0++) {
+                        for (int o1 = 0; o1 <= 2; o1++) {
+                            for (int o2 = 0; o2 <= 2; o2++) {
+                                test(g, fpp, o0 * a, o1 * a, o2 * a,
+                                    n, m, init_mx0, init_vc0);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -409,7 +408,7 @@ static void permutations(gemv_t* g) {
 #else
     // debug and trace a single failing case from permutaions above
     verbose = true;
-    test(g, ocl_fpp16, 4, 1, init_mx0, init_vc0);
+    test(g, ocl_fpp16, 0, 4, 0, 4, 1, init_mx0, init_vc0);
 #endif
 }
 
@@ -439,7 +438,8 @@ static void performance(gemv_t* g) {
                     while (_kbhit() == 0) { sleep(1.0 / 64); }
                     getch();
 #endif
-                    test(g, fpp, tests[k].n, tests[k].m, init_mx1, init_vc1);
+                    test(g, fpp, 0, 0, 0, tests[k].n, tests[k].m,
+                        init_mx1, init_vc1);
                 }
             }
         }
@@ -461,8 +461,8 @@ static void tests(bool profile) {
             d->global_memory / (double)GB, profile ? "PROFILING" : "");
         gemv_t g = {0};
         gemv.init(&g, &c);
-        permutations(&g);
-//      performance(&g);
+        if (profile) { permutations(&g); } // only once on the first pass
+        performance(&g);
         gemv.fini(&g);
         ocl.close(&c);
     }

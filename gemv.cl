@@ -62,8 +62,9 @@ typedef struct __attribute__((packed)) { uint16_t bits; } bf16_t;
 
 // work memory "sm" is accessible for all work items in a group
 
-inline void reduce_add(const uint lid, uint i, accu_t s,
-        work accu_t* restrict sm) {
+static inline
+void reduce_add(const uint lid, uint i,
+        accu_t s, work accu_t* restrict sm) {
     sm[lid] = s; // (*1*)
     while (i > 1) {
         // this fence guarantees all (*1*) memory write are complete
@@ -89,11 +90,12 @@ inline void reduce_add(const uint lid, uint i, accu_t s,
 
 #if fpp != 16 && !defined(bfp16) //     *** fp32_t and fp64_t
 
-inline void concat(gemv_fp, fpp)(
-        read  fp_t* restrict mx,
-        read  fp_t* restrict vc,
+static inline
+void concat(gemv_fp, fpp)(
+        read  fp_t*   restrict mx,
+        read  fp_t*   restrict vc,
         write accu_t* restrict rs,
-        work accu_t* restrict sm, // "sm" work memory
+        work  accu_t* restrict sm, // "sm" work memory
         const int32_t n, const int32_t m) {
     // gemv_fp32|gemv_fp64
     const uint lid = get_local_id(0);
@@ -109,7 +111,8 @@ inline void concat(gemv_fp, fpp)(
     }
 }
 
-inline void concat(concat(gemv_fp, fpp), x4)(
+static inline
+void concat(concat(gemv_fp, fpp), x4)(
         read  fpv4_t* restrict mx,
         read  fpv4_t* restrict vc,
         write accu_t* restrict rs,
@@ -129,7 +132,8 @@ inline void concat(concat(gemv_fp, fpp), x4)(
     }
 }
 
-inline void concat(concat(gemv_fp, fpp), x16)(
+static inline
+void concat(concat(gemv_fp, fpp), x16)(
         read  fpv4_t* restrict mx,
         read  fpv4_t* restrict vc,
         write accu_t* restrict rs,
@@ -158,7 +162,8 @@ inline void concat(concat(gemv_fp, fpp), x16)(
 
 #if max_subgroups > 0
 
-inline void concat(concat(gemv_fp, fpp), _subgroups)(
+static inline
+void concat(concat(gemv_fp, fpp), _subgroups)(
         read  fp_t*   restrict mx,
         read  fp_t*   restrict vc,
         write accu_t* restrict rs,
@@ -182,11 +187,12 @@ inline void concat(concat(gemv_fp, fpp), _subgroups)(
     }
 }
 
-inline void concat(concat(gemv_fp, fpp), x4_subgroups)(
-        read fpv4_t*  restrict mx,
-        read fpv4_t*  restrict vc,
+static inline
+void concat(concat(gemv_fp, fpp), x4_subgroups)(
+        read  fpv4_t* restrict mx,
+        read  fpv4_t* restrict vc,
         write accu_t* restrict rs,
-        work accu_t*  restrict sm,
+        work  accu_t* restrict sm,
         const int32_t n, const int32_t m) {
     // "n" is 1/16 or row width
     const uint lid = get_local_id(0);
@@ -205,11 +211,12 @@ inline void concat(concat(gemv_fp, fpp), x4_subgroups)(
     }
 }
 
-inline void concat(concat(gemv_fp, fpp), x16_subgroups)(
-        read fpv4_t*  restrict mx,
-        read fpv4_t*  restrict vc,
+static inline
+void concat(concat(gemv_fp, fpp), x16_subgroups)(
+        read  fpv4_t* restrict mx,
+        read  fpv4_t* restrict vc,
         write accu_t* restrict rs,
-        work accu_t*  restrict sm,
+        work  accu_t* restrict sm,
         const int32_t n, const int32_t m) {
     // "n" is 1/16 or row width
     const uint lid = get_local_id(0);
@@ -319,17 +326,20 @@ void concat(concat(gemv, fpp), x16)( // gemv32x4 "float4" version
 
 #elif defined(bfp16) //         *** bf16_t ***
 
-inline fp32_t read_bf(read bf16_t* a) {
+static inline
+fp32_t read_bf(read bf16_t* a) {
     read uint16_t* pbf16 = (__global uint16_t*)a;
     uint32_t v = ((uint32_t)*pbf16) << 16;
     return *(fp32_t*)&v;
 }
 
-inline fp32_t load_bf(const intptr_t offset, read bf16_t* a) {
+static inline
+fp32_t load_bf(const intptr_t offset, read bf16_t* a) {
     return read_bf(a + offset);
 }
 
-inline void gemv_bf16( // bf16_t
+static inline
+void gemv_bf16( // bf16_t
         read  bf16_t* restrict mx,
         read  accu_t* restrict vc,
         write accu_t* restrict rs,
@@ -348,7 +358,8 @@ inline void gemv_bf16( // bf16_t
     }
 }
 
-inline void gemv_bf16x4( // vec4 of bf16_t
+static inline
+void gemv_bf16x4( // vec4 of bf16_t
         read  bf16_t* restrict mx,
         read  accu_t* restrict vc,
         write accu_t* restrict rs,
@@ -375,7 +386,8 @@ inline void gemv_bf16x4( // vec4 of bf16_t
     }
 }
 
-inline void gemv_bf16x16( // 16 elements of bf16_t
+static inline
+void gemv_bf16x16( // 16 elements of bf16_t
         read  bf16_t* restrict mx,
         read  accu_t* restrict vc,
         write accu_t* restrict rs,
@@ -412,7 +424,6 @@ void bfmv16(
         write accu_t  rs[/*m*/],
         work  accu_t  sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
-//  printf("gemv_bf16\n");
     gemv_bf16(
         rd_offsetof(bf16_t, mx_offset, mx),
         rd_offsetof(accu_t, vc_offset, vc),
@@ -430,7 +441,6 @@ void bfmv16x4(
         write accu_t  rs[/*m*/],
         work  accu_t  sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
-//  printf("gemv_bf16x4\n");
     gemv_bf16x4(
         rd_offsetof(bf16_t, mx_offset, mx),
         rd_offsetof(accu_t, vc_offset, vc),
@@ -448,7 +458,6 @@ void bfmv16x16(
         write accu_t  rs[/*m*/],
         work  accu_t  sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
- // printf("gemv_bf16x16\n");
     gemv_bf16x16(
         rd_offsetof(bf16_t, mx_offset, mx),
         rd_offsetof(accu_t, vc_offset, vc),
@@ -458,7 +467,8 @@ void bfmv16x16(
 
 #else //                        *** fp_t fp16_t ***
 
-inline void gemv_fp16(
+static inline
+void gemv_fp16(
         read  fp16_t* restrict mx,
         read  accu_t* restrict vc,
         write accu_t* restrict rs,
@@ -477,11 +487,12 @@ inline void gemv_fp16(
     }
 }
 
-inline void gemv_fp16x4(
-        read  fp16_t*  restrict mx,
+static inline
+void gemv_fp16x4(
+        read  fp16_t* restrict mx,
         read  acc4_t* restrict vc,
-        write accu_t*  restrict rs,
-        work  accu_t*  restrict sm,
+        write accu_t* restrict rs,
+        work  accu_t* restrict sm,
         const int32_t n, const int32_t m) {
     // "n" is 1/4 of row width
     // vload_half4 reads sizeof(halfn) bytes of data from
@@ -499,11 +510,12 @@ inline void gemv_fp16x4(
     }
 }
 
-inline void gemv_fp16x16(
-        read  fp16_t*  restrict mx,
+static inline
+void gemv_fp16x16(
+        read  fp16_t* restrict mx,
         read  acc4_t* restrict vc,
-        write accu_t*  restrict rs,
-        work  accu_t*  restrict sm,
+        write accu_t* restrict rs,
+        work  accu_t* restrict sm,
         const int32_t n, const int32_t m) {
     // "n" is 1/16 of row width
     const uint lid = get_local_id(0);
@@ -536,7 +548,7 @@ void gemv16(
         write accu_t  rs[/*m*/],
         work  accu_t  sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
-//  printf("gemv_fp16\n");
+//  printf("gemv16 %ld %ld %ld\n", mx_offset, vc_offset, rs_offset);
     gemv_fp16(
         rd_offsetof(fp16_t, mx_offset, mx),
         rd_offsetof(accu_t, vc_offset, vc),
@@ -549,16 +561,16 @@ void gemv16x4(
         const int64_t mx_offset,
         read  fp16_t  mx[/*m][n*/],
         const int64_t vc_offset,
-        read  acc4_t vc[/*n*/],
+        read  acc4_t  vc[/*n*/],
         const int64_t rs_offset,
         write accu_t  rs[/*m*/],
         work  accu_t  sm[/*work_group_items*/],
         const int32_t n, const int32_t m) {
-//  printf("gemv_fp16x4\n");
+//  printf("gemv16x4 %ld %ld %ld\n", mx_offset, vc_offset, rs_offset);
     gemv_fp16x4(
-        rd_offsetof(fp16_t,  mx_offset, mx),
+        rd_offsetof(fp16_t, mx_offset, mx),
         rd_offsetof(acc4_t, vc_offset, vc),
-        wr_offsetof(accu_t,  rs_offset, rs),
+        wr_offsetof(accu_t, rs_offset, rs),
         sm, n, m);
 }
 
@@ -567,16 +579,16 @@ void gemv16x16(
         const int64_t mx_offset,
         read  fp16_t  mx[/*m][n*/],
         const int64_t vc_offset,
-        read  acc4_t vc[/*n*/],
+        read  acc4_t  vc[/*n*/],
         const int64_t rs_offset,
         write accu_t  rs[/*m*/],
         work  accu_t  sm[/*work_group_items*/],
         const  int32_t n, const int32_t m) {
-//  printf("gemv_fp16x16\n");
+//  printf("gemv16x16 %ld %ld %ld\n", mx_offset, vc_offset, rs_offset);
     gemv_fp16x16(
-        rd_offsetof(fp16_t,  mx_offset, mx),
+        rd_offsetof(fp16_t, mx_offset, mx),
         rd_offsetof(acc4_t, vc_offset, vc),
-        wr_offsetof(accu_t,  rs_offset, rs),
+        wr_offsetof(accu_t, rs_offset, rs),
         sm, n, m);
 }
 

@@ -7,8 +7,15 @@ static void ocl_gemv(gemv_t* g, int fpp,
         int64_t n, int64_t m) {
     if (ocl.is_profiling(g->c)) { g->c->ov->profiling_count = 0; }
     ocl_device_t* d = &ocl.devices[g->c->ix];
-    // if n > max items per group GPU will run multiple groups:
-    const int xn = n % 16 == 0 ? 16 : (n % 4 == 0) ? 4 : 1;
+    int xn = n % 16 == 0 ? 16 : (n % 4 == 0) ? 4 : 1;
+    const int accu = fpp == ocl_fpp64 ? 8 : 4; // accumulator vc[] element
+    // OpenCL requires half4, float4, double4 to be aligned to
+    // 4 x sizeof(type) boundary. Using xn == 1 severely affects performance.
+    // Modern GPU have up to 256/512 bit memory buses.
+    // Aligment 32 or 64 or even 128 will guarantee much better results.
+    if (mx_offset % (xn * ocl_fpp_bytes[fpp]) != 0) { xn = 1; }
+    if (vc_offset % (xn * accu) != 0) { xn = 1; }
+    if (rs_offset % (xn * accu) != 0) { xn = 1; }
     // row width in fp_t or vec4 of fpXX_t elements
     const int64_t rw = n / xn; // row[] width
     ocl_kernel_t k = xn == 16 ? g->kernel16x[fpp] :
@@ -16,6 +23,7 @@ static void ocl_gemv(gemv_t* g, int fpp,
     int64_t items_per_group = min(d->max_items[0], rw);
     int64_t local_bytes = ocl_fpp_bytes[fpp] * items_per_group *
         max(d->max_subgroups, 1);
+    // if n > max items per group GPU will run multiple groups:
     ocl_event_t done = ocl.enqueue(g->c, k, rw,
         &mx_offset, sizeof(intptr_t),
         &mx,        sizeof(ocl_memory_t),
