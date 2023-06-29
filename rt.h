@@ -16,7 +16,7 @@
 
 // tiny Windows runtime for missing stuff
 
-#ifdef cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -242,6 +242,6 @@ void sleep(double seconds) {
 
 #endif // RT_IMPLEMENTATION
 
-#ifdef cplusplus
+#ifdef __cplusplus
 } // extern "C"
 #endif

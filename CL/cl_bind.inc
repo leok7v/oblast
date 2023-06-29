@@ -4,14 +4,22 @@
 
 extern void* clBindFunction(const char* name);
 
+#ifndef null
+#define null ((void*)0) // like nullptr a bit better than (0)
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 cl_int clGetPlatformIDs(cl_uint          num_entries,
                  cl_platform_id * platforms,
                  cl_uint *        num_platforms) {
-    typedef cl_int (*clGetPlatformIDs_t)(cl_uint          num_entries,
+    typedef cl_int (*clGetPlatformIDs_t_)(cl_uint          num_entries,
                  cl_platform_id * platforms,
                  cl_uint *        num_platforms);
-    static clGetPlatformIDs_t f;
-    if (f == null) { f = (clGetPlatformIDs_t)clBindFunction("clGetPlatformIDs"); }
+    static clGetPlatformIDs_t_ f;
+    if (f == null) { f = (clGetPlatformIDs_t_)clBindFunction("clGetPlatformIDs"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(num_entries, platforms, num_platforms);
 }
@@ -21,13 +29,13 @@ cl_int clGetPlatformInfo(cl_platform_id   platform,
                   size_t           param_value_size,
                   void *           param_value,
                   size_t *         param_value_size_ret) {
-    typedef cl_int (*clGetPlatformInfo_t)(cl_platform_id   platform,
+    typedef cl_int (*clGetPlatformInfo_t_)(cl_platform_id   platform,
                   cl_platform_info param_name,
                   size_t           param_value_size,
                   void *           param_value,
                   size_t *         param_value_size_ret);
-    static clGetPlatformInfo_t f;
-    if (f == null) { f = (clGetPlatformInfo_t)clBindFunction("clGetPlatformInfo"); }
+    static clGetPlatformInfo_t_ f;
+    if (f == null) { f = (clGetPlatformInfo_t_)clBindFunction("clGetPlatformInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(platform, param_name, param_value_size, param_value, param_value_size_ret);
 }
@@ -37,13 +45,13 @@ cl_int clGetDeviceIDs(cl_platform_id   platform,
                cl_uint          num_entries,
                cl_device_id *   devices,
                cl_uint *        num_devices) {
-    typedef cl_int (*clGetDeviceIDs_t)(cl_platform_id   platform,
+    typedef cl_int (*clGetDeviceIDs_t_)(cl_platform_id   platform,
                cl_device_type   device_type,
                cl_uint          num_entries,
                cl_device_id *   devices,
                cl_uint *        num_devices);
-    static clGetDeviceIDs_t f;
-    if (f == null) { f = (clGetDeviceIDs_t)clBindFunction("clGetDeviceIDs"); }
+    static clGetDeviceIDs_t_ f;
+    if (f == null) { f = (clGetDeviceIDs_t_)clBindFunction("clGetDeviceIDs"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(platform, device_type, num_entries, devices, num_devices);
 }
@@ -53,13 +61,13 @@ cl_int clGetDeviceInfo(cl_device_id    device,
                 size_t          param_value_size,
                 void *          param_value,
                 size_t *        param_value_size_ret) {
-    typedef cl_int (*clGetDeviceInfo_t)(cl_device_id    device,
+    typedef cl_int (*clGetDeviceInfo_t_)(cl_device_id    device,
                 cl_device_info  param_name,
                 size_t          param_value_size,
                 void *          param_value,
                 size_t *        param_value_size_ret);
-    static clGetDeviceInfo_t f;
-    if (f == null) { f = (clGetDeviceInfo_t)clBindFunction("clGetDeviceInfo"); }
+    static clGetDeviceInfo_t_ f;
+    if (f == null) { f = (clGetDeviceInfo_t_)clBindFunction("clGetDeviceInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(device, param_name, param_value_size, param_value, param_value_size_ret);
 }
@@ -69,29 +77,29 @@ cl_int clCreateSubDevices(cl_device_id                         in_device,
                    cl_uint                              num_devices,
                    cl_device_id *                       out_devices,
                    cl_uint *                            num_devices_ret) {
-    typedef cl_int (*clCreateSubDevices_t)(cl_device_id                         in_device,
+    typedef cl_int (*clCreateSubDevices_t_)(cl_device_id                         in_device,
                    const cl_device_partition_property * properties,
                    cl_uint                              num_devices,
                    cl_device_id *                       out_devices,
                    cl_uint *                            num_devices_ret);
-    static clCreateSubDevices_t f;
-    if (f == null) { f = (clCreateSubDevices_t)clBindFunction("clCreateSubDevices"); }
+    static clCreateSubDevices_t_ f;
+    if (f == null) { f = (clCreateSubDevices_t_)clBindFunction("clCreateSubDevices"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(in_device, properties, num_devices, out_devices, num_devices_ret);
 }
 
 cl_int clRetainDevice(cl_device_id device) {
-    typedef cl_int (*clRetainDevice_t)(cl_device_id device);
-    static clRetainDevice_t f;
-    if (f == null) { f = (clRetainDevice_t)clBindFunction("clRetainDevice"); }
+    typedef cl_int (*clRetainDevice_t_)(cl_device_id device);
+    static clRetainDevice_t_ f;
+    if (f == null) { f = (clRetainDevice_t_)clBindFunction("clRetainDevice"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(device);
 }
 
 cl_int clReleaseDevice(cl_device_id device) {
-    typedef cl_int (*clReleaseDevice_t)(cl_device_id device);
-    static clReleaseDevice_t f;
-    if (f == null) { f = (clReleaseDevice_t)clBindFunction("clReleaseDevice"); }
+    typedef cl_int (*clReleaseDevice_t_)(cl_device_id device);
+    static clReleaseDevice_t_ f;
+    if (f == null) { f = (clReleaseDevice_t_)clBindFunction("clReleaseDevice"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(device);
 }
@@ -99,11 +107,11 @@ cl_int clReleaseDevice(cl_device_id device) {
 cl_int clSetDefaultDeviceCommandQueue(cl_context           context,
                                cl_device_id         device,
                                cl_command_queue     command_queue) {
-    typedef cl_int (*clSetDefaultDeviceCommandQueue_t)(cl_context           context,
+    typedef cl_int (*clSetDefaultDeviceCommandQueue_t_)(cl_context           context,
                                cl_device_id         device,
                                cl_command_queue     command_queue);
-    static clSetDefaultDeviceCommandQueue_t f;
-    if (f == null) { f = (clSetDefaultDeviceCommandQueue_t)clBindFunction("clSetDefaultDeviceCommandQueue"); }
+    static clSetDefaultDeviceCommandQueue_t_ f;
+    if (f == null) { f = (clSetDefaultDeviceCommandQueue_t_)clBindFunction("clSetDefaultDeviceCommandQueue"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(context, device, command_queue);
 }
@@ -111,21 +119,21 @@ cl_int clSetDefaultDeviceCommandQueue(cl_context           context,
 cl_int clGetDeviceAndHostTimer(cl_device_id    device,
                         cl_ulong*       device_timestamp,
                         cl_ulong*       host_timestamp) {
-    typedef cl_int (*clGetDeviceAndHostTimer_t)(cl_device_id    device,
+    typedef cl_int (*clGetDeviceAndHostTimer_t_)(cl_device_id    device,
                         cl_ulong*       device_timestamp,
                         cl_ulong*       host_timestamp);
-    static clGetDeviceAndHostTimer_t f;
-    if (f == null) { f = (clGetDeviceAndHostTimer_t)clBindFunction("clGetDeviceAndHostTimer"); }
+    static clGetDeviceAndHostTimer_t_ f;
+    if (f == null) { f = (clGetDeviceAndHostTimer_t_)clBindFunction("clGetDeviceAndHostTimer"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(device, device_timestamp, host_timestamp);
 }
 
 cl_int clGetHostTimer(cl_device_id device,
                cl_ulong *   host_timestamp) {
-    typedef cl_int (*clGetHostTimer_t)(cl_device_id device,
+    typedef cl_int (*clGetHostTimer_t_)(cl_device_id device,
                cl_ulong *   host_timestamp);
-    static clGetHostTimer_t f;
-    if (f == null) { f = (clGetHostTimer_t)clBindFunction("clGetHostTimer"); }
+    static clGetHostTimer_t_ f;
+    if (f == null) { f = (clGetHostTimer_t_)clBindFunction("clGetHostTimer"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(device, host_timestamp);
 }
@@ -139,7 +147,7 @@ cl_context clCreateContext(const cl_context_properties * properties,
                                                 void *       user_data),
                 void *               user_data,
                 cl_int *             errcode_ret) {
-    typedef cl_context (*clCreateContext_t)(const cl_context_properties * properties,
+    typedef cl_context (*clCreateContext_t_)(const cl_context_properties * properties,
                 cl_uint              num_devices,
                 const cl_device_id * devices,
                 void (CL_CALLBACK * pfn_notify)(const char * errinfo,
@@ -148,9 +156,9 @@ cl_context clCreateContext(const cl_context_properties * properties,
                                                 void *       user_data),
                 void *               user_data,
                 cl_int *             errcode_ret);
-    static clCreateContext_t f;
-    if (f == null) { f = (clCreateContext_t)clBindFunction("clCreateContext"); }
-    return f == null ? ((void*)0) :
+    static clCreateContext_t_ f;
+    if (f == null) { f = (clCreateContext_t_)clBindFunction("clCreateContext"); }
+    return f == null ? (cl_context)null :
         f(properties, num_devices, devices, pfn_notify, user_data, errcode_ret);
 }
 
@@ -162,7 +170,7 @@ cl_context clCreateContextFromType(const cl_context_properties * properties,
                                                         void *       user_data),
                         void *              user_data,
                         cl_int *            errcode_ret) {
-    typedef cl_context (*clCreateContextFromType_t)(const cl_context_properties * properties,
+    typedef cl_context (*clCreateContextFromType_t_)(const cl_context_properties * properties,
                         cl_device_type      device_type,
                         void (CL_CALLBACK * pfn_notify)(const char * errinfo,
                                                         const void * private_info,
@@ -170,24 +178,24 @@ cl_context clCreateContextFromType(const cl_context_properties * properties,
                                                         void *       user_data),
                         void *              user_data,
                         cl_int *            errcode_ret);
-    static clCreateContextFromType_t f;
-    if (f == null) { f = (clCreateContextFromType_t)clBindFunction("clCreateContextFromType"); }
-    return f == null ? ((void*)0) :
+    static clCreateContextFromType_t_ f;
+    if (f == null) { f = (clCreateContextFromType_t_)clBindFunction("clCreateContextFromType"); }
+    return f == null ? (cl_context)null :
         f(properties, device_type, pfn_notify, user_data, errcode_ret);
 }
 
 cl_int clRetainContext(cl_context context) {
-    typedef cl_int (*clRetainContext_t)(cl_context context);
-    static clRetainContext_t f;
-    if (f == null) { f = (clRetainContext_t)clBindFunction("clRetainContext"); }
+    typedef cl_int (*clRetainContext_t_)(cl_context context);
+    static clRetainContext_t_ f;
+    if (f == null) { f = (clRetainContext_t_)clBindFunction("clRetainContext"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(context);
 }
 
 cl_int clReleaseContext(cl_context context) {
-    typedef cl_int (*clReleaseContext_t)(cl_context context);
-    static clReleaseContext_t f;
-    if (f == null) { f = (clReleaseContext_t)clBindFunction("clReleaseContext"); }
+    typedef cl_int (*clReleaseContext_t_)(cl_context context);
+    static clReleaseContext_t_ f;
+    if (f == null) { f = (clReleaseContext_t_)clBindFunction("clReleaseContext"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(context);
 }
@@ -197,13 +205,13 @@ cl_int clGetContextInfo(cl_context         context,
                  size_t             param_value_size,
                  void *             param_value,
                  size_t *           param_value_size_ret) {
-    typedef cl_int (*clGetContextInfo_t)(cl_context         context,
+    typedef cl_int (*clGetContextInfo_t_)(cl_context         context,
                  cl_context_info    param_name,
                  size_t             param_value_size,
                  void *             param_value,
                  size_t *           param_value_size_ret);
-    static clGetContextInfo_t f;
-    if (f == null) { f = (clGetContextInfo_t)clBindFunction("clGetContextInfo"); }
+    static clGetContextInfo_t_ f;
+    if (f == null) { f = (clGetContextInfo_t_)clBindFunction("clGetContextInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(context, param_name, param_value_size, param_value, param_value_size_ret);
 }
@@ -212,12 +220,12 @@ cl_int clSetContextDestructorCallback(cl_context         context,
                                void (CL_CALLBACK* pfn_notify)(cl_context context,
                                                               void* user_data),
                                void*              user_data) {
-    typedef cl_int (*clSetContextDestructorCallback_t)(cl_context         context,
+    typedef cl_int (*clSetContextDestructorCallback_t_)(cl_context         context,
                                void (CL_CALLBACK* pfn_notify)(cl_context context,
                                                               void* user_data),
                                void*              user_data);
-    static clSetContextDestructorCallback_t f;
-    if (f == null) { f = (clSetContextDestructorCallback_t)clBindFunction("clSetContextDestructorCallback"); }
+    static clSetContextDestructorCallback_t_ f;
+    if (f == null) { f = (clSetContextDestructorCallback_t_)clBindFunction("clSetContextDestructorCallback"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(context, pfn_notify, user_data);
 }
@@ -226,28 +234,28 @@ cl_command_queue clCreateCommandQueueWithProperties(cl_context               con
                                    cl_device_id             device,
                                    const cl_queue_properties *    properties,
                                    cl_int *                 errcode_ret) {
-    typedef cl_command_queue (*clCreateCommandQueueWithProperties_t)(cl_context               context,
+    typedef cl_command_queue (*clCreateCommandQueueWithProperties_t_)(cl_context               context,
                                    cl_device_id             device,
                                    const cl_queue_properties *    properties,
                                    cl_int *                 errcode_ret);
-    static clCreateCommandQueueWithProperties_t f;
-    if (f == null) { f = (clCreateCommandQueueWithProperties_t)clBindFunction("clCreateCommandQueueWithProperties"); }
-    return f == null ? ((void*)0) :
+    static clCreateCommandQueueWithProperties_t_ f;
+    if (f == null) { f = (clCreateCommandQueueWithProperties_t_)clBindFunction("clCreateCommandQueueWithProperties"); }
+    return f == null ? (cl_command_queue)null :
         f(context, device, properties, errcode_ret);
 }
 
 cl_int clRetainCommandQueue(cl_command_queue command_queue) {
-    typedef cl_int (*clRetainCommandQueue_t)(cl_command_queue command_queue);
-    static clRetainCommandQueue_t f;
-    if (f == null) { f = (clRetainCommandQueue_t)clBindFunction("clRetainCommandQueue"); }
+    typedef cl_int (*clRetainCommandQueue_t_)(cl_command_queue command_queue);
+    static clRetainCommandQueue_t_ f;
+    if (f == null) { f = (clRetainCommandQueue_t_)clBindFunction("clRetainCommandQueue"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue);
 }
 
 cl_int clReleaseCommandQueue(cl_command_queue command_queue) {
-    typedef cl_int (*clReleaseCommandQueue_t)(cl_command_queue command_queue);
-    static clReleaseCommandQueue_t f;
-    if (f == null) { f = (clReleaseCommandQueue_t)clBindFunction("clReleaseCommandQueue"); }
+    typedef cl_int (*clReleaseCommandQueue_t_)(cl_command_queue command_queue);
+    static clReleaseCommandQueue_t_ f;
+    if (f == null) { f = (clReleaseCommandQueue_t_)clBindFunction("clReleaseCommandQueue"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue);
 }
@@ -257,13 +265,13 @@ cl_int clGetCommandQueueInfo(cl_command_queue      command_queue,
                       size_t                param_value_size,
                       void *                param_value,
                       size_t *              param_value_size_ret) {
-    typedef cl_int (*clGetCommandQueueInfo_t)(cl_command_queue      command_queue,
+    typedef cl_int (*clGetCommandQueueInfo_t_)(cl_command_queue      command_queue,
                       cl_command_queue_info param_name,
                       size_t                param_value_size,
                       void *                param_value,
                       size_t *              param_value_size_ret);
-    static clGetCommandQueueInfo_t f;
-    if (f == null) { f = (clGetCommandQueueInfo_t)clBindFunction("clGetCommandQueueInfo"); }
+    static clGetCommandQueueInfo_t_ f;
+    if (f == null) { f = (clGetCommandQueueInfo_t_)clBindFunction("clGetCommandQueueInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, param_name, param_value_size, param_value, param_value_size_ret);
 }
@@ -273,14 +281,14 @@ cl_mem clCreateBuffer(cl_context   context,
                size_t       size,
                void *       host_ptr,
                cl_int *     errcode_ret) {
-    typedef cl_mem (*clCreateBuffer_t)(cl_context   context,
+    typedef cl_mem (*clCreateBuffer_t_)(cl_context   context,
                cl_mem_flags flags,
                size_t       size,
                void *       host_ptr,
                cl_int *     errcode_ret);
-    static clCreateBuffer_t f;
-    if (f == null) { f = (clCreateBuffer_t)clBindFunction("clCreateBuffer"); }
-    return f == null ? ((void*)0) :
+    static clCreateBuffer_t_ f;
+    if (f == null) { f = (clCreateBuffer_t_)clBindFunction("clCreateBuffer"); }
+    return f == null ? (cl_mem)null :
         f(context, flags, size, host_ptr, errcode_ret);
 }
 
@@ -289,14 +297,14 @@ cl_mem clCreateSubBuffer(cl_mem                   buffer,
                   cl_buffer_create_type    buffer_create_type,
                   const void *             buffer_create_info,
                   cl_int *                 errcode_ret) {
-    typedef cl_mem (*clCreateSubBuffer_t)(cl_mem                   buffer,
+    typedef cl_mem (*clCreateSubBuffer_t_)(cl_mem                   buffer,
                   cl_mem_flags             flags,
                   cl_buffer_create_type    buffer_create_type,
                   const void *             buffer_create_info,
                   cl_int *                 errcode_ret);
-    static clCreateSubBuffer_t f;
-    if (f == null) { f = (clCreateSubBuffer_t)clBindFunction("clCreateSubBuffer"); }
-    return f == null ? ((void*)0) :
+    static clCreateSubBuffer_t_ f;
+    if (f == null) { f = (clCreateSubBuffer_t_)clBindFunction("clCreateSubBuffer"); }
+    return f == null ? (cl_mem)null :
         f(buffer, flags, buffer_create_type, buffer_create_info, errcode_ret);
 }
 
@@ -306,15 +314,15 @@ cl_mem clCreateImage(cl_context              context,
               const cl_image_desc *   image_desc,
               void *                  host_ptr,
               cl_int *                errcode_ret) {
-    typedef cl_mem (*clCreateImage_t)(cl_context              context,
+    typedef cl_mem (*clCreateImage_t_)(cl_context              context,
               cl_mem_flags            flags,
               const cl_image_format * image_format,
               const cl_image_desc *   image_desc,
               void *                  host_ptr,
               cl_int *                errcode_ret);
-    static clCreateImage_t f;
-    if (f == null) { f = (clCreateImage_t)clBindFunction("clCreateImage"); }
-    return f == null ? ((void*)0) :
+    static clCreateImage_t_ f;
+    if (f == null) { f = (clCreateImage_t_)clBindFunction("clCreateImage"); }
+    return f == null ? (cl_mem)null :
         f(context, flags, image_format, image_desc, host_ptr, errcode_ret);
 }
 
@@ -324,15 +332,15 @@ cl_mem clCreatePipe(cl_context                 context,
              cl_uint                    pipe_max_packets,
              const cl_pipe_properties * properties,
              cl_int *                   errcode_ret) {
-    typedef cl_mem (*clCreatePipe_t)(cl_context                 context,
+    typedef cl_mem (*clCreatePipe_t_)(cl_context                 context,
              cl_mem_flags               flags,
              cl_uint                    pipe_packet_size,
              cl_uint                    pipe_max_packets,
              const cl_pipe_properties * properties,
              cl_int *                   errcode_ret);
-    static clCreatePipe_t f;
-    if (f == null) { f = (clCreatePipe_t)clBindFunction("clCreatePipe"); }
-    return f == null ? ((void*)0) :
+    static clCreatePipe_t_ f;
+    if (f == null) { f = (clCreatePipe_t_)clBindFunction("clCreatePipe"); }
+    return f == null ? (cl_mem)null :
         f(context, flags, pipe_packet_size, pipe_max_packets, properties, errcode_ret);
 }
 
@@ -342,15 +350,15 @@ cl_mem clCreateBufferWithProperties(cl_context                context,
                              size_t                    size,
                              void *                    host_ptr,
                              cl_int *                  errcode_ret) {
-    typedef cl_mem (*clCreateBufferWithProperties_t)(cl_context                context,
+    typedef cl_mem (*clCreateBufferWithProperties_t_)(cl_context                context,
                              const cl_mem_properties * properties,
                              cl_mem_flags              flags,
                              size_t                    size,
                              void *                    host_ptr,
                              cl_int *                  errcode_ret);
-    static clCreateBufferWithProperties_t f;
-    if (f == null) { f = (clCreateBufferWithProperties_t)clBindFunction("clCreateBufferWithProperties"); }
-    return f == null ? ((void*)0) :
+    static clCreateBufferWithProperties_t_ f;
+    if (f == null) { f = (clCreateBufferWithProperties_t_)clBindFunction("clCreateBufferWithProperties"); }
+    return f == null ? (cl_mem)null :
         f(context, properties, flags, size, host_ptr, errcode_ret);
 }
 
@@ -361,31 +369,31 @@ cl_mem clCreateImageWithProperties(cl_context                context,
                             const cl_image_desc *     image_desc,
                             void *                    host_ptr,
                             cl_int *                  errcode_ret) {
-    typedef cl_mem (*clCreateImageWithProperties_t)(cl_context                context,
+    typedef cl_mem (*clCreateImageWithProperties_t_)(cl_context                context,
                             const cl_mem_properties * properties,
                             cl_mem_flags              flags,
                             const cl_image_format *   image_format,
                             const cl_image_desc *     image_desc,
                             void *                    host_ptr,
                             cl_int *                  errcode_ret);
-    static clCreateImageWithProperties_t f;
-    if (f == null) { f = (clCreateImageWithProperties_t)clBindFunction("clCreateImageWithProperties"); }
-    return f == null ? ((void*)0) :
+    static clCreateImageWithProperties_t_ f;
+    if (f == null) { f = (clCreateImageWithProperties_t_)clBindFunction("clCreateImageWithProperties"); }
+    return f == null ? (cl_mem)null :
         f(context, properties, flags, image_format, image_desc, host_ptr, errcode_ret);
 }
 
 cl_int clRetainMemObject(cl_mem memobj) {
-    typedef cl_int (*clRetainMemObject_t)(cl_mem memobj);
-    static clRetainMemObject_t f;
-    if (f == null) { f = (clRetainMemObject_t)clBindFunction("clRetainMemObject"); }
+    typedef cl_int (*clRetainMemObject_t_)(cl_mem memobj);
+    static clRetainMemObject_t_ f;
+    if (f == null) { f = (clRetainMemObject_t_)clBindFunction("clRetainMemObject"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(memobj);
 }
 
 cl_int clReleaseMemObject(cl_mem memobj) {
-    typedef cl_int (*clReleaseMemObject_t)(cl_mem memobj);
-    static clReleaseMemObject_t f;
-    if (f == null) { f = (clReleaseMemObject_t)clBindFunction("clReleaseMemObject"); }
+    typedef cl_int (*clReleaseMemObject_t_)(cl_mem memobj);
+    static clReleaseMemObject_t_ f;
+    if (f == null) { f = (clReleaseMemObject_t_)clBindFunction("clReleaseMemObject"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(memobj);
 }
@@ -396,14 +404,14 @@ cl_int clGetSupportedImageFormats(cl_context           context,
                            cl_uint              num_entries,
                            cl_image_format *    image_formats,
                            cl_uint *            num_image_formats) {
-    typedef cl_int (*clGetSupportedImageFormats_t)(cl_context           context,
+    typedef cl_int (*clGetSupportedImageFormats_t_)(cl_context           context,
                            cl_mem_flags         flags,
                            cl_mem_object_type   image_type,
                            cl_uint              num_entries,
                            cl_image_format *    image_formats,
                            cl_uint *            num_image_formats);
-    static clGetSupportedImageFormats_t f;
-    if (f == null) { f = (clGetSupportedImageFormats_t)clBindFunction("clGetSupportedImageFormats"); }
+    static clGetSupportedImageFormats_t_ f;
+    if (f == null) { f = (clGetSupportedImageFormats_t_)clBindFunction("clGetSupportedImageFormats"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(context, flags, image_type, num_entries, image_formats, num_image_formats);
 }
@@ -413,13 +421,13 @@ cl_int clGetMemObjectInfo(cl_mem           memobj,
                    size_t           param_value_size,
                    void *           param_value,
                    size_t *         param_value_size_ret) {
-    typedef cl_int (*clGetMemObjectInfo_t)(cl_mem           memobj,
+    typedef cl_int (*clGetMemObjectInfo_t_)(cl_mem           memobj,
                    cl_mem_info      param_name,
                    size_t           param_value_size,
                    void *           param_value,
                    size_t *         param_value_size_ret);
-    static clGetMemObjectInfo_t f;
-    if (f == null) { f = (clGetMemObjectInfo_t)clBindFunction("clGetMemObjectInfo"); }
+    static clGetMemObjectInfo_t_ f;
+    if (f == null) { f = (clGetMemObjectInfo_t_)clBindFunction("clGetMemObjectInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(memobj, param_name, param_value_size, param_value, param_value_size_ret);
 }
@@ -429,13 +437,13 @@ cl_int clGetImageInfo(cl_mem           image,
                size_t           param_value_size,
                void *           param_value,
                size_t *         param_value_size_ret) {
-    typedef cl_int (*clGetImageInfo_t)(cl_mem           image,
+    typedef cl_int (*clGetImageInfo_t_)(cl_mem           image,
                cl_image_info    param_name,
                size_t           param_value_size,
                void *           param_value,
                size_t *         param_value_size_ret);
-    static clGetImageInfo_t f;
-    if (f == null) { f = (clGetImageInfo_t)clBindFunction("clGetImageInfo"); }
+    static clGetImageInfo_t_ f;
+    if (f == null) { f = (clGetImageInfo_t_)clBindFunction("clGetImageInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(image, param_name, param_value_size, param_value, param_value_size_ret);
 }
@@ -445,13 +453,13 @@ cl_int clGetPipeInfo(cl_mem           pipe,
               size_t           param_value_size,
               void *           param_value,
               size_t *         param_value_size_ret) {
-    typedef cl_int (*clGetPipeInfo_t)(cl_mem           pipe,
+    typedef cl_int (*clGetPipeInfo_t_)(cl_mem           pipe,
               cl_pipe_info     param_name,
               size_t           param_value_size,
               void *           param_value,
               size_t *         param_value_size_ret);
-    static clGetPipeInfo_t f;
-    if (f == null) { f = (clGetPipeInfo_t)clBindFunction("clGetPipeInfo"); }
+    static clGetPipeInfo_t_ f;
+    if (f == null) { f = (clGetPipeInfo_t_)clBindFunction("clGetPipeInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(pipe, param_name, param_value_size, param_value, param_value_size_ret);
 }
@@ -460,12 +468,12 @@ cl_int clSetMemObjectDestructorCallback(cl_mem memobj,
                                  void (CL_CALLBACK * pfn_notify)(cl_mem memobj,
                                                                  void * user_data),
                                  void * user_data) {
-    typedef cl_int (*clSetMemObjectDestructorCallback_t)(cl_mem memobj,
+    typedef cl_int (*clSetMemObjectDestructorCallback_t_)(cl_mem memobj,
                                  void (CL_CALLBACK * pfn_notify)(cl_mem memobj,
                                                                  void * user_data),
                                  void * user_data);
-    static clSetMemObjectDestructorCallback_t f;
-    if (f == null) { f = (clSetMemObjectDestructorCallback_t)clBindFunction("clSetMemObjectDestructorCallback"); }
+    static clSetMemObjectDestructorCallback_t_ f;
+    if (f == null) { f = (clSetMemObjectDestructorCallback_t_)clBindFunction("clSetMemObjectDestructorCallback"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(memobj, pfn_notify, user_data);
 }
@@ -474,49 +482,49 @@ void * clSVMAlloc(cl_context       context,
            cl_svm_mem_flags flags,
            size_t           size,
            cl_uint          alignment) {
-    typedef void * (*clSVMAlloc_t)(cl_context       context,
+    typedef void * (*clSVMAlloc_t_)(cl_context       context,
            cl_svm_mem_flags flags,
            size_t           size,
            cl_uint          alignment);
-    static clSVMAlloc_t f;
-    if (f == null) { f = (clSVMAlloc_t)clBindFunction("clSVMAlloc"); }
-    return f == null ? ((void*)0) :
+    static clSVMAlloc_t_ f;
+    if (f == null) { f = (clSVMAlloc_t_)clBindFunction("clSVMAlloc"); }
+    return f == null ? (void *)null :
         f(context, flags, size, alignment);
 }
 
 void clSVMFree(cl_context        context,
           void *            svm_pointer) {
-    typedef void (*clSVMFree_t)(cl_context        context,
+    typedef void (*clSVMFree_t_)(cl_context        context,
           void *            svm_pointer);
-    static clSVMFree_t f;
-    if (f == null) { f = (clSVMFree_t)clBindFunction("clSVMFree"); }
+    static clSVMFree_t_ f;
+    if (f == null) { f = (clSVMFree_t_)clBindFunction("clSVMFree"); }
     f(context, svm_pointer);
 }
 
 cl_sampler clCreateSamplerWithProperties(cl_context                     context,
                               const cl_sampler_properties *  sampler_properties,
                               cl_int *                       errcode_ret) {
-    typedef cl_sampler (*clCreateSamplerWithProperties_t)(cl_context                     context,
+    typedef cl_sampler (*clCreateSamplerWithProperties_t_)(cl_context                     context,
                               const cl_sampler_properties *  sampler_properties,
                               cl_int *                       errcode_ret);
-    static clCreateSamplerWithProperties_t f;
-    if (f == null) { f = (clCreateSamplerWithProperties_t)clBindFunction("clCreateSamplerWithProperties"); }
-    return f == null ? ((void*)0) :
+    static clCreateSamplerWithProperties_t_ f;
+    if (f == null) { f = (clCreateSamplerWithProperties_t_)clBindFunction("clCreateSamplerWithProperties"); }
+    return f == null ? (cl_sampler)null :
         f(context, sampler_properties, errcode_ret);
 }
 
 cl_int clRetainSampler(cl_sampler sampler) {
-    typedef cl_int (*clRetainSampler_t)(cl_sampler sampler);
-    static clRetainSampler_t f;
-    if (f == null) { f = (clRetainSampler_t)clBindFunction("clRetainSampler"); }
+    typedef cl_int (*clRetainSampler_t_)(cl_sampler sampler);
+    static clRetainSampler_t_ f;
+    if (f == null) { f = (clRetainSampler_t_)clBindFunction("clRetainSampler"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(sampler);
 }
 
 cl_int clReleaseSampler(cl_sampler sampler) {
-    typedef cl_int (*clReleaseSampler_t)(cl_sampler sampler);
-    static clReleaseSampler_t f;
-    if (f == null) { f = (clReleaseSampler_t)clBindFunction("clReleaseSampler"); }
+    typedef cl_int (*clReleaseSampler_t_)(cl_sampler sampler);
+    static clReleaseSampler_t_ f;
+    if (f == null) { f = (clReleaseSampler_t_)clBindFunction("clReleaseSampler"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(sampler);
 }
@@ -526,13 +534,13 @@ cl_int clGetSamplerInfo(cl_sampler         sampler,
                  size_t             param_value_size,
                  void *             param_value,
                  size_t *           param_value_size_ret) {
-    typedef cl_int (*clGetSamplerInfo_t)(cl_sampler         sampler,
+    typedef cl_int (*clGetSamplerInfo_t_)(cl_sampler         sampler,
                  cl_sampler_info    param_name,
                  size_t             param_value_size,
                  void *             param_value,
                  size_t *           param_value_size_ret);
-    static clGetSamplerInfo_t f;
-    if (f == null) { f = (clGetSamplerInfo_t)clBindFunction("clGetSamplerInfo"); }
+    static clGetSamplerInfo_t_ f;
+    if (f == null) { f = (clGetSamplerInfo_t_)clBindFunction("clGetSamplerInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(sampler, param_name, param_value_size, param_value, param_value_size_ret);
 }
@@ -542,14 +550,14 @@ cl_program clCreateProgramWithSource(cl_context        context,
                           const char **     strings,
                           const size_t *    lengths,
                           cl_int *          errcode_ret) {
-    typedef cl_program (*clCreateProgramWithSource_t)(cl_context        context,
+    typedef cl_program (*clCreateProgramWithSource_t_)(cl_context        context,
                           cl_uint           count,
                           const char **     strings,
                           const size_t *    lengths,
                           cl_int *          errcode_ret);
-    static clCreateProgramWithSource_t f;
-    if (f == null) { f = (clCreateProgramWithSource_t)clBindFunction("clCreateProgramWithSource"); }
-    return f == null ? ((void*)0) :
+    static clCreateProgramWithSource_t_ f;
+    if (f == null) { f = (clCreateProgramWithSource_t_)clBindFunction("clCreateProgramWithSource"); }
+    return f == null ? (cl_program)null :
         f(context, count, strings, lengths, errcode_ret);
 }
 
@@ -560,16 +568,16 @@ cl_program clCreateProgramWithBinary(cl_context                     context,
                           const unsigned char **         binaries,
                           cl_int *                       binary_status,
                           cl_int *                       errcode_ret) {
-    typedef cl_program (*clCreateProgramWithBinary_t)(cl_context                     context,
+    typedef cl_program (*clCreateProgramWithBinary_t_)(cl_context                     context,
                           cl_uint                        num_devices,
                           const cl_device_id *           device_list,
                           const size_t *                 lengths,
                           const unsigned char **         binaries,
                           cl_int *                       binary_status,
                           cl_int *                       errcode_ret);
-    static clCreateProgramWithBinary_t f;
-    if (f == null) { f = (clCreateProgramWithBinary_t)clBindFunction("clCreateProgramWithBinary"); }
-    return f == null ? ((void*)0) :
+    static clCreateProgramWithBinary_t_ f;
+    if (f == null) { f = (clCreateProgramWithBinary_t_)clBindFunction("clCreateProgramWithBinary"); }
+    return f == null ? (cl_program)null :
         f(context, num_devices, device_list, lengths, binaries, binary_status, errcode_ret);
 }
 
@@ -578,14 +586,14 @@ cl_program clCreateProgramWithBuiltInKernels(cl_context            context,
                                   const cl_device_id *  device_list,
                                   const char *          kernel_names,
                                   cl_int *              errcode_ret) {
-    typedef cl_program (*clCreateProgramWithBuiltInKernels_t)(cl_context            context,
+    typedef cl_program (*clCreateProgramWithBuiltInKernels_t_)(cl_context            context,
                                   cl_uint               num_devices,
                                   const cl_device_id *  device_list,
                                   const char *          kernel_names,
                                   cl_int *              errcode_ret);
-    static clCreateProgramWithBuiltInKernels_t f;
-    if (f == null) { f = (clCreateProgramWithBuiltInKernels_t)clBindFunction("clCreateProgramWithBuiltInKernels"); }
-    return f == null ? ((void*)0) :
+    static clCreateProgramWithBuiltInKernels_t_ f;
+    if (f == null) { f = (clCreateProgramWithBuiltInKernels_t_)clBindFunction("clCreateProgramWithBuiltInKernels"); }
+    return f == null ? (cl_program)null :
         f(context, num_devices, device_list, kernel_names, errcode_ret);
 }
 
@@ -593,28 +601,28 @@ cl_program clCreateProgramWithIL(cl_context    context,
                      const void*    il,
                      size_t         length,
                      cl_int*        errcode_ret) {
-    typedef cl_program (*clCreateProgramWithIL_t)(cl_context    context,
+    typedef cl_program (*clCreateProgramWithIL_t_)(cl_context    context,
                      const void*    il,
                      size_t         length,
                      cl_int*        errcode_ret);
-    static clCreateProgramWithIL_t f;
-    if (f == null) { f = (clCreateProgramWithIL_t)clBindFunction("clCreateProgramWithIL"); }
-    return f == null ? ((void*)0) :
+    static clCreateProgramWithIL_t_ f;
+    if (f == null) { f = (clCreateProgramWithIL_t_)clBindFunction("clCreateProgramWithIL"); }
+    return f == null ? (cl_program)null :
         f(context, il, length, errcode_ret);
 }
 
 cl_int clRetainProgram(cl_program program) {
-    typedef cl_int (*clRetainProgram_t)(cl_program program);
-    static clRetainProgram_t f;
-    if (f == null) { f = (clRetainProgram_t)clBindFunction("clRetainProgram"); }
+    typedef cl_int (*clRetainProgram_t_)(cl_program program);
+    static clRetainProgram_t_ f;
+    if (f == null) { f = (clRetainProgram_t_)clBindFunction("clRetainProgram"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(program);
 }
 
 cl_int clReleaseProgram(cl_program program) {
-    typedef cl_int (*clReleaseProgram_t)(cl_program program);
-    static clReleaseProgram_t f;
-    if (f == null) { f = (clReleaseProgram_t)clBindFunction("clReleaseProgram"); }
+    typedef cl_int (*clReleaseProgram_t_)(cl_program program);
+    static clReleaseProgram_t_ f;
+    if (f == null) { f = (clReleaseProgram_t_)clBindFunction("clReleaseProgram"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(program);
 }
@@ -626,15 +634,15 @@ cl_int clBuildProgram(cl_program           program,
                void (CL_CALLBACK *  pfn_notify)(cl_program program,
                                                 void * user_data),
                void *               user_data) {
-    typedef cl_int (*clBuildProgram_t)(cl_program           program,
+    typedef cl_int (*clBuildProgram_t_)(cl_program           program,
                cl_uint              num_devices,
                const cl_device_id * device_list,
                const char *         options,
                void (CL_CALLBACK *  pfn_notify)(cl_program program,
                                                 void * user_data),
                void *               user_data);
-    static clBuildProgram_t f;
-    if (f == null) { f = (clBuildProgram_t)clBindFunction("clBuildProgram"); }
+    static clBuildProgram_t_ f;
+    if (f == null) { f = (clBuildProgram_t_)clBindFunction("clBuildProgram"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(program, num_devices, device_list, options, pfn_notify, user_data);
 }
@@ -649,7 +657,7 @@ cl_int clCompileProgram(cl_program           program,
                  void (CL_CALLBACK *  pfn_notify)(cl_program program,
                                                   void * user_data),
                  void *               user_data) {
-    typedef cl_int (*clCompileProgram_t)(cl_program           program,
+    typedef cl_int (*clCompileProgram_t_)(cl_program           program,
                  cl_uint              num_devices,
                  const cl_device_id * device_list,
                  const char *         options,
@@ -659,8 +667,8 @@ cl_int clCompileProgram(cl_program           program,
                  void (CL_CALLBACK *  pfn_notify)(cl_program program,
                                                   void * user_data),
                  void *               user_data);
-    static clCompileProgram_t f;
-    if (f == null) { f = (clCompileProgram_t)clBindFunction("clCompileProgram"); }
+    static clCompileProgram_t_ f;
+    if (f == null) { f = (clCompileProgram_t_)clBindFunction("clCompileProgram"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(program, num_devices, device_list, options, num_input_headers, input_headers, header_include_names, pfn_notify, user_data);
 }
@@ -675,7 +683,7 @@ cl_program clLinkProgram(cl_context           context,
                                                void * user_data),
               void *               user_data,
               cl_int *             errcode_ret) {
-    typedef cl_program (*clLinkProgram_t)(cl_context           context,
+    typedef cl_program (*clLinkProgram_t_)(cl_context           context,
               cl_uint              num_devices,
               const cl_device_id * device_list,
               const char *         options,
@@ -685,30 +693,44 @@ cl_program clLinkProgram(cl_context           context,
                                                void * user_data),
               void *               user_data,
               cl_int *             errcode_ret);
-    static clLinkProgram_t f;
-    if (f == null) { f = (clLinkProgram_t)clBindFunction("clLinkProgram"); }
-    return f == null ? ((void*)0) :
+    static clLinkProgram_t_ f;
+    if (f == null) { f = (clLinkProgram_t_)clBindFunction("clLinkProgram"); }
+    return f == null ? (cl_program)null :
         f(context, num_devices, device_list, options, num_input_programs, input_programs, pfn_notify, user_data, errcode_ret);
+}
+
+cl_int clSetProgramReleaseCallback(cl_program          program,
+                            void (CL_CALLBACK * pfn_notify)(cl_program program,
+                                                            void * user_data),
+                            void *              user_data) {
+    typedef cl_int (*clSetProgramReleaseCallback_t_)(cl_program          program,
+                            void (CL_CALLBACK * pfn_notify)(cl_program program,
+                                                            void * user_data),
+                            void *              user_data);
+    static clSetProgramReleaseCallback_t_ f;
+    if (f == null) { f = (clSetProgramReleaseCallback_t_)clBindFunction("clSetProgramReleaseCallback"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(program, pfn_notify, user_data);
 }
 
 cl_int clSetProgramSpecializationConstant(cl_program  program,
                                    cl_uint     spec_id,
                                    size_t      spec_size,
                                    const void* spec_value) {
-    typedef cl_int (*clSetProgramSpecializationConstant_t)(cl_program  program,
+    typedef cl_int (*clSetProgramSpecializationConstant_t_)(cl_program  program,
                                    cl_uint     spec_id,
                                    size_t      spec_size,
                                    const void* spec_value);
-    static clSetProgramSpecializationConstant_t f;
-    if (f == null) { f = (clSetProgramSpecializationConstant_t)clBindFunction("clSetProgramSpecializationConstant"); }
+    static clSetProgramSpecializationConstant_t_ f;
+    if (f == null) { f = (clSetProgramSpecializationConstant_t_)clBindFunction("clSetProgramSpecializationConstant"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(program, spec_id, spec_size, spec_value);
 }
 
 cl_int clUnloadPlatformCompiler(cl_platform_id platform) {
-    typedef cl_int (*clUnloadPlatformCompiler_t)(cl_platform_id platform);
-    static clUnloadPlatformCompiler_t f;
-    if (f == null) { f = (clUnloadPlatformCompiler_t)clBindFunction("clUnloadPlatformCompiler"); }
+    typedef cl_int (*clUnloadPlatformCompiler_t_)(cl_platform_id platform);
+    static clUnloadPlatformCompiler_t_ f;
+    if (f == null) { f = (clUnloadPlatformCompiler_t_)clBindFunction("clUnloadPlatformCompiler"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(platform);
 }
@@ -718,13 +740,13 @@ cl_int clGetProgramInfo(cl_program         program,
                  size_t             param_value_size,
                  void *             param_value,
                  size_t *           param_value_size_ret) {
-    typedef cl_int (*clGetProgramInfo_t)(cl_program         program,
+    typedef cl_int (*clGetProgramInfo_t_)(cl_program         program,
                  cl_program_info    param_name,
                  size_t             param_value_size,
                  void *             param_value,
                  size_t *           param_value_size_ret);
-    static clGetProgramInfo_t f;
-    if (f == null) { f = (clGetProgramInfo_t)clBindFunction("clGetProgramInfo"); }
+    static clGetProgramInfo_t_ f;
+    if (f == null) { f = (clGetProgramInfo_t_)clBindFunction("clGetProgramInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(program, param_name, param_value_size, param_value, param_value_size_ret);
 }
@@ -735,14 +757,14 @@ cl_int clGetProgramBuildInfo(cl_program            program,
                       size_t                param_value_size,
                       void *                param_value,
                       size_t *              param_value_size_ret) {
-    typedef cl_int (*clGetProgramBuildInfo_t)(cl_program            program,
+    typedef cl_int (*clGetProgramBuildInfo_t_)(cl_program            program,
                       cl_device_id          device,
                       cl_program_build_info param_name,
                       size_t                param_value_size,
                       void *                param_value,
                       size_t *              param_value_size_ret);
-    static clGetProgramBuildInfo_t f;
-    if (f == null) { f = (clGetProgramBuildInfo_t)clBindFunction("clGetProgramBuildInfo"); }
+    static clGetProgramBuildInfo_t_ f;
+    if (f == null) { f = (clGetProgramBuildInfo_t_)clBindFunction("clGetProgramBuildInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(program, device, param_name, param_value_size, param_value, param_value_size_ret);
 }
@@ -750,12 +772,12 @@ cl_int clGetProgramBuildInfo(cl_program            program,
 cl_kernel clCreateKernel(cl_program      program,
                const char *    kernel_name,
                cl_int *        errcode_ret) {
-    typedef cl_kernel (*clCreateKernel_t)(cl_program      program,
+    typedef cl_kernel (*clCreateKernel_t_)(cl_program      program,
                const char *    kernel_name,
                cl_int *        errcode_ret);
-    static clCreateKernel_t f;
-    if (f == null) { f = (clCreateKernel_t)clBindFunction("clCreateKernel"); }
-    return f == null ? ((void*)0) :
+    static clCreateKernel_t_ f;
+    if (f == null) { f = (clCreateKernel_t_)clBindFunction("clCreateKernel"); }
+    return f == null ? (cl_kernel)null :
         f(program, kernel_name, errcode_ret);
 }
 
@@ -763,38 +785,38 @@ cl_int clCreateKernelsInProgram(cl_program     program,
                          cl_uint        num_kernels,
                          cl_kernel *    kernels,
                          cl_uint *      num_kernels_ret) {
-    typedef cl_int (*clCreateKernelsInProgram_t)(cl_program     program,
+    typedef cl_int (*clCreateKernelsInProgram_t_)(cl_program     program,
                          cl_uint        num_kernels,
                          cl_kernel *    kernels,
                          cl_uint *      num_kernels_ret);
-    static clCreateKernelsInProgram_t f;
-    if (f == null) { f = (clCreateKernelsInProgram_t)clBindFunction("clCreateKernelsInProgram"); }
+    static clCreateKernelsInProgram_t_ f;
+    if (f == null) { f = (clCreateKernelsInProgram_t_)clBindFunction("clCreateKernelsInProgram"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(program, num_kernels, kernels, num_kernels_ret);
 }
 
 cl_kernel clCloneKernel(cl_kernel     source_kernel,
               cl_int*       errcode_ret) {
-    typedef cl_kernel (*clCloneKernel_t)(cl_kernel     source_kernel,
+    typedef cl_kernel (*clCloneKernel_t_)(cl_kernel     source_kernel,
               cl_int*       errcode_ret);
-    static clCloneKernel_t f;
-    if (f == null) { f = (clCloneKernel_t)clBindFunction("clCloneKernel"); }
-    return f == null ? ((void*)0) :
+    static clCloneKernel_t_ f;
+    if (f == null) { f = (clCloneKernel_t_)clBindFunction("clCloneKernel"); }
+    return f == null ? (cl_kernel)null :
         f(source_kernel, errcode_ret);
 }
 
 cl_int clRetainKernel(cl_kernel    kernel) {
-    typedef cl_int (*clRetainKernel_t)(cl_kernel    kernel);
-    static clRetainKernel_t f;
-    if (f == null) { f = (clRetainKernel_t)clBindFunction("clRetainKernel"); }
+    typedef cl_int (*clRetainKernel_t_)(cl_kernel    kernel);
+    static clRetainKernel_t_ f;
+    if (f == null) { f = (clRetainKernel_t_)clBindFunction("clRetainKernel"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(kernel);
 }
 
 cl_int clReleaseKernel(cl_kernel   kernel) {
-    typedef cl_int (*clReleaseKernel_t)(cl_kernel   kernel);
-    static clReleaseKernel_t f;
-    if (f == null) { f = (clReleaseKernel_t)clBindFunction("clReleaseKernel"); }
+    typedef cl_int (*clReleaseKernel_t_)(cl_kernel   kernel);
+    static clReleaseKernel_t_ f;
+    if (f == null) { f = (clReleaseKernel_t_)clBindFunction("clReleaseKernel"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(kernel);
 }
@@ -803,12 +825,12 @@ cl_int clSetKernelArg(cl_kernel    kernel,
                cl_uint      arg_index,
                size_t       arg_size,
                const void * arg_value) {
-    typedef cl_int (*clSetKernelArg_t)(cl_kernel    kernel,
+    typedef cl_int (*clSetKernelArg_t_)(cl_kernel    kernel,
                cl_uint      arg_index,
                size_t       arg_size,
                const void * arg_value);
-    static clSetKernelArg_t f;
-    if (f == null) { f = (clSetKernelArg_t)clBindFunction("clSetKernelArg"); }
+    static clSetKernelArg_t_ f;
+    if (f == null) { f = (clSetKernelArg_t_)clBindFunction("clSetKernelArg"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(kernel, arg_index, arg_size, arg_value);
 }
@@ -816,11 +838,11 @@ cl_int clSetKernelArg(cl_kernel    kernel,
 cl_int clSetKernelArgSVMPointer(cl_kernel    kernel,
                          cl_uint      arg_index,
                          const void * arg_value) {
-    typedef cl_int (*clSetKernelArgSVMPointer_t)(cl_kernel    kernel,
+    typedef cl_int (*clSetKernelArgSVMPointer_t_)(cl_kernel    kernel,
                          cl_uint      arg_index,
                          const void * arg_value);
-    static clSetKernelArgSVMPointer_t f;
-    if (f == null) { f = (clSetKernelArgSVMPointer_t)clBindFunction("clSetKernelArgSVMPointer"); }
+    static clSetKernelArgSVMPointer_t_ f;
+    if (f == null) { f = (clSetKernelArgSVMPointer_t_)clBindFunction("clSetKernelArgSVMPointer"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(kernel, arg_index, arg_value);
 }
@@ -829,12 +851,12 @@ cl_int clSetKernelExecInfo(cl_kernel            kernel,
                     cl_kernel_exec_info  param_name,
                     size_t               param_value_size,
                     const void *         param_value) {
-    typedef cl_int (*clSetKernelExecInfo_t)(cl_kernel            kernel,
+    typedef cl_int (*clSetKernelExecInfo_t_)(cl_kernel            kernel,
                     cl_kernel_exec_info  param_name,
                     size_t               param_value_size,
                     const void *         param_value);
-    static clSetKernelExecInfo_t f;
-    if (f == null) { f = (clSetKernelExecInfo_t)clBindFunction("clSetKernelExecInfo"); }
+    static clSetKernelExecInfo_t_ f;
+    if (f == null) { f = (clSetKernelExecInfo_t_)clBindFunction("clSetKernelExecInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(kernel, param_name, param_value_size, param_value);
 }
@@ -844,13 +866,13 @@ cl_int clGetKernelInfo(cl_kernel       kernel,
                 size_t          param_value_size,
                 void *          param_value,
                 size_t *        param_value_size_ret) {
-    typedef cl_int (*clGetKernelInfo_t)(cl_kernel       kernel,
+    typedef cl_int (*clGetKernelInfo_t_)(cl_kernel       kernel,
                 cl_kernel_info  param_name,
                 size_t          param_value_size,
                 void *          param_value,
                 size_t *        param_value_size_ret);
-    static clGetKernelInfo_t f;
-    if (f == null) { f = (clGetKernelInfo_t)clBindFunction("clGetKernelInfo"); }
+    static clGetKernelInfo_t_ f;
+    if (f == null) { f = (clGetKernelInfo_t_)clBindFunction("clGetKernelInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(kernel, param_name, param_value_size, param_value, param_value_size_ret);
 }
@@ -861,14 +883,14 @@ cl_int clGetKernelArgInfo(cl_kernel       kernel,
                    size_t          param_value_size,
                    void *          param_value,
                    size_t *        param_value_size_ret) {
-    typedef cl_int (*clGetKernelArgInfo_t)(cl_kernel       kernel,
+    typedef cl_int (*clGetKernelArgInfo_t_)(cl_kernel       kernel,
                    cl_uint         arg_indx,
                    cl_kernel_arg_info  param_name,
                    size_t          param_value_size,
                    void *          param_value,
                    size_t *        param_value_size_ret);
-    static clGetKernelArgInfo_t f;
-    if (f == null) { f = (clGetKernelArgInfo_t)clBindFunction("clGetKernelArgInfo"); }
+    static clGetKernelArgInfo_t_ f;
+    if (f == null) { f = (clGetKernelArgInfo_t_)clBindFunction("clGetKernelArgInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(kernel, arg_indx, param_name, param_value_size, param_value, param_value_size_ret);
 }
@@ -879,14 +901,14 @@ cl_int clGetKernelWorkGroupInfo(cl_kernel                  kernel,
                          size_t                     param_value_size,
                          void *                     param_value,
                          size_t *                   param_value_size_ret) {
-    typedef cl_int (*clGetKernelWorkGroupInfo_t)(cl_kernel                  kernel,
+    typedef cl_int (*clGetKernelWorkGroupInfo_t_)(cl_kernel                  kernel,
                          cl_device_id               device,
                          cl_kernel_work_group_info  param_name,
                          size_t                     param_value_size,
                          void *                     param_value,
                          size_t *                   param_value_size_ret);
-    static clGetKernelWorkGroupInfo_t f;
-    if (f == null) { f = (clGetKernelWorkGroupInfo_t)clBindFunction("clGetKernelWorkGroupInfo"); }
+    static clGetKernelWorkGroupInfo_t_ f;
+    if (f == null) { f = (clGetKernelWorkGroupInfo_t_)clBindFunction("clGetKernelWorkGroupInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(kernel, device, param_name, param_value_size, param_value, param_value_size_ret);
 }
@@ -899,7 +921,7 @@ cl_int clGetKernelSubGroupInfo(cl_kernel                   kernel,
                         size_t                      param_value_size,
                         void*                       param_value,
                         size_t*                     param_value_size_ret) {
-    typedef cl_int (*clGetKernelSubGroupInfo_t)(cl_kernel                   kernel,
+    typedef cl_int (*clGetKernelSubGroupInfo_t_)(cl_kernel                   kernel,
                         cl_device_id                device,
                         cl_kernel_sub_group_info    param_name,
                         size_t                      input_value_size,
@@ -907,18 +929,18 @@ cl_int clGetKernelSubGroupInfo(cl_kernel                   kernel,
                         size_t                      param_value_size,
                         void*                       param_value,
                         size_t*                     param_value_size_ret);
-    static clGetKernelSubGroupInfo_t f;
-    if (f == null) { f = (clGetKernelSubGroupInfo_t)clBindFunction("clGetKernelSubGroupInfo"); }
+    static clGetKernelSubGroupInfo_t_ f;
+    if (f == null) { f = (clGetKernelSubGroupInfo_t_)clBindFunction("clGetKernelSubGroupInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(kernel, device, param_name, input_value_size, input_value, param_value_size, param_value, param_value_size_ret);
 }
 
 cl_int clWaitForEvents(cl_uint             num_events,
                 const cl_event *    event_list) {
-    typedef cl_int (*clWaitForEvents_t)(cl_uint             num_events,
+    typedef cl_int (*clWaitForEvents_t_)(cl_uint             num_events,
                 const cl_event *    event_list);
-    static clWaitForEvents_t f;
-    if (f == null) { f = (clWaitForEvents_t)clBindFunction("clWaitForEvents"); }
+    static clWaitForEvents_t_ f;
+    if (f == null) { f = (clWaitForEvents_t_)clBindFunction("clWaitForEvents"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(num_events, event_list);
 }
@@ -928,49 +950,49 @@ cl_int clGetEventInfo(cl_event         event,
                size_t           param_value_size,
                void *           param_value,
                size_t *         param_value_size_ret) {
-    typedef cl_int (*clGetEventInfo_t)(cl_event         event,
+    typedef cl_int (*clGetEventInfo_t_)(cl_event         event,
                cl_event_info    param_name,
                size_t           param_value_size,
                void *           param_value,
                size_t *         param_value_size_ret);
-    static clGetEventInfo_t f;
-    if (f == null) { f = (clGetEventInfo_t)clBindFunction("clGetEventInfo"); }
+    static clGetEventInfo_t_ f;
+    if (f == null) { f = (clGetEventInfo_t_)clBindFunction("clGetEventInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(event, param_name, param_value_size, param_value, param_value_size_ret);
 }
 
 cl_event clCreateUserEvent(cl_context    context,
                   cl_int *      errcode_ret) {
-    typedef cl_event (*clCreateUserEvent_t)(cl_context    context,
+    typedef cl_event (*clCreateUserEvent_t_)(cl_context    context,
                   cl_int *      errcode_ret);
-    static clCreateUserEvent_t f;
-    if (f == null) { f = (clCreateUserEvent_t)clBindFunction("clCreateUserEvent"); }
-    return f == null ? ((void*)0) :
+    static clCreateUserEvent_t_ f;
+    if (f == null) { f = (clCreateUserEvent_t_)clBindFunction("clCreateUserEvent"); }
+    return f == null ? (cl_event)null :
         f(context, errcode_ret);
 }
 
 cl_int clRetainEvent(cl_event event) {
-    typedef cl_int (*clRetainEvent_t)(cl_event event);
-    static clRetainEvent_t f;
-    if (f == null) { f = (clRetainEvent_t)clBindFunction("clRetainEvent"); }
+    typedef cl_int (*clRetainEvent_t_)(cl_event event);
+    static clRetainEvent_t_ f;
+    if (f == null) { f = (clRetainEvent_t_)clBindFunction("clRetainEvent"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(event);
 }
 
 cl_int clReleaseEvent(cl_event event) {
-    typedef cl_int (*clReleaseEvent_t)(cl_event event);
-    static clReleaseEvent_t f;
-    if (f == null) { f = (clReleaseEvent_t)clBindFunction("clReleaseEvent"); }
+    typedef cl_int (*clReleaseEvent_t_)(cl_event event);
+    static clReleaseEvent_t_ f;
+    if (f == null) { f = (clReleaseEvent_t_)clBindFunction("clReleaseEvent"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(event);
 }
 
 cl_int clSetUserEventStatus(cl_event   event,
                      cl_int     execution_status) {
-    typedef cl_int (*clSetUserEventStatus_t)(cl_event   event,
+    typedef cl_int (*clSetUserEventStatus_t_)(cl_event   event,
                      cl_int     execution_status);
-    static clSetUserEventStatus_t f;
-    if (f == null) { f = (clSetUserEventStatus_t)clBindFunction("clSetUserEventStatus"); }
+    static clSetUserEventStatus_t_ f;
+    if (f == null) { f = (clSetUserEventStatus_t_)clBindFunction("clSetUserEventStatus"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(event, execution_status);
 }
@@ -981,14 +1003,14 @@ cl_int clSetEventCallback(cl_event    event,
                                                    cl_int   event_command_status,
                                                    void *   user_data),
                    void *      user_data) {
-    typedef cl_int (*clSetEventCallback_t)(cl_event    event,
+    typedef cl_int (*clSetEventCallback_t_)(cl_event    event,
                    cl_int      command_exec_callback_type,
                    void (CL_CALLBACK * pfn_notify)(cl_event event,
                                                    cl_int   event_command_status,
                                                    void *   user_data),
                    void *      user_data);
-    static clSetEventCallback_t f;
-    if (f == null) { f = (clSetEventCallback_t)clBindFunction("clSetEventCallback"); }
+    static clSetEventCallback_t_ f;
+    if (f == null) { f = (clSetEventCallback_t_)clBindFunction("clSetEventCallback"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(event, command_exec_callback_type, pfn_notify, user_data);
 }
@@ -998,29 +1020,29 @@ cl_int clGetEventProfilingInfo(cl_event            event,
                         size_t              param_value_size,
                         void *              param_value,
                         size_t *            param_value_size_ret) {
-    typedef cl_int (*clGetEventProfilingInfo_t)(cl_event            event,
+    typedef cl_int (*clGetEventProfilingInfo_t_)(cl_event            event,
                         cl_profiling_info   param_name,
                         size_t              param_value_size,
                         void *              param_value,
                         size_t *            param_value_size_ret);
-    static clGetEventProfilingInfo_t f;
-    if (f == null) { f = (clGetEventProfilingInfo_t)clBindFunction("clGetEventProfilingInfo"); }
+    static clGetEventProfilingInfo_t_ f;
+    if (f == null) { f = (clGetEventProfilingInfo_t_)clBindFunction("clGetEventProfilingInfo"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(event, param_name, param_value_size, param_value, param_value_size_ret);
 }
 
 cl_int clFlush(cl_command_queue command_queue) {
-    typedef cl_int (*clFlush_t)(cl_command_queue command_queue);
-    static clFlush_t f;
-    if (f == null) { f = (clFlush_t)clBindFunction("clFlush"); }
+    typedef cl_int (*clFlush_t_)(cl_command_queue command_queue);
+    static clFlush_t_ f;
+    if (f == null) { f = (clFlush_t_)clBindFunction("clFlush"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue);
 }
 
 cl_int clFinish(cl_command_queue command_queue) {
-    typedef cl_int (*clFinish_t)(cl_command_queue command_queue);
-    static clFinish_t f;
-    if (f == null) { f = (clFinish_t)clBindFunction("clFinish"); }
+    typedef cl_int (*clFinish_t_)(cl_command_queue command_queue);
+    static clFinish_t_ f;
+    if (f == null) { f = (clFinish_t_)clBindFunction("clFinish"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue);
 }
@@ -1034,7 +1056,7 @@ cl_int clEnqueueReadBuffer(cl_command_queue    command_queue,
                     cl_uint             num_events_in_wait_list,
                     const cl_event *    event_wait_list,
                     cl_event *          event) {
-    typedef cl_int (*clEnqueueReadBuffer_t)(cl_command_queue    command_queue,
+    typedef cl_int (*clEnqueueReadBuffer_t_)(cl_command_queue    command_queue,
                     cl_mem              buffer,
                     cl_bool             blocking_read,
                     size_t              offset,
@@ -1043,8 +1065,8 @@ cl_int clEnqueueReadBuffer(cl_command_queue    command_queue,
                     cl_uint             num_events_in_wait_list,
                     const cl_event *    event_wait_list,
                     cl_event *          event);
-    static clEnqueueReadBuffer_t f;
-    if (f == null) { f = (clEnqueueReadBuffer_t)clBindFunction("clEnqueueReadBuffer"); }
+    static clEnqueueReadBuffer_t_ f;
+    if (f == null) { f = (clEnqueueReadBuffer_t_)clBindFunction("clEnqueueReadBuffer"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, buffer, blocking_read, offset, size, ptr, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1063,7 +1085,7 @@ cl_int clEnqueueReadBufferRect(cl_command_queue    command_queue,
                         cl_uint             num_events_in_wait_list,
                         const cl_event *    event_wait_list,
                         cl_event *          event) {
-    typedef cl_int (*clEnqueueReadBufferRect_t)(cl_command_queue    command_queue,
+    typedef cl_int (*clEnqueueReadBufferRect_t_)(cl_command_queue    command_queue,
                         cl_mem              buffer,
                         cl_bool             blocking_read,
                         const size_t *      buffer_origin,
@@ -1077,8 +1099,8 @@ cl_int clEnqueueReadBufferRect(cl_command_queue    command_queue,
                         cl_uint             num_events_in_wait_list,
                         const cl_event *    event_wait_list,
                         cl_event *          event);
-    static clEnqueueReadBufferRect_t f;
-    if (f == null) { f = (clEnqueueReadBufferRect_t)clBindFunction("clEnqueueReadBufferRect"); }
+    static clEnqueueReadBufferRect_t_ f;
+    if (f == null) { f = (clEnqueueReadBufferRect_t_)clBindFunction("clEnqueueReadBufferRect"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, buffer, blocking_read, buffer_origin, host_origin, region, buffer_row_pitch, buffer_slice_pitch, host_row_pitch, host_slice_pitch, ptr, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1092,7 +1114,7 @@ cl_int clEnqueueWriteBuffer(cl_command_queue   command_queue,
                      cl_uint            num_events_in_wait_list,
                      const cl_event *   event_wait_list,
                      cl_event *         event) {
-    typedef cl_int (*clEnqueueWriteBuffer_t)(cl_command_queue   command_queue,
+    typedef cl_int (*clEnqueueWriteBuffer_t_)(cl_command_queue   command_queue,
                      cl_mem             buffer,
                      cl_bool            blocking_write,
                      size_t             offset,
@@ -1101,8 +1123,8 @@ cl_int clEnqueueWriteBuffer(cl_command_queue   command_queue,
                      cl_uint            num_events_in_wait_list,
                      const cl_event *   event_wait_list,
                      cl_event *         event);
-    static clEnqueueWriteBuffer_t f;
-    if (f == null) { f = (clEnqueueWriteBuffer_t)clBindFunction("clEnqueueWriteBuffer"); }
+    static clEnqueueWriteBuffer_t_ f;
+    if (f == null) { f = (clEnqueueWriteBuffer_t_)clBindFunction("clEnqueueWriteBuffer"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, buffer, blocking_write, offset, size, ptr, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1121,7 +1143,7 @@ cl_int clEnqueueWriteBufferRect(cl_command_queue    command_queue,
                          cl_uint             num_events_in_wait_list,
                          const cl_event *    event_wait_list,
                          cl_event *          event) {
-    typedef cl_int (*clEnqueueWriteBufferRect_t)(cl_command_queue    command_queue,
+    typedef cl_int (*clEnqueueWriteBufferRect_t_)(cl_command_queue    command_queue,
                          cl_mem              buffer,
                          cl_bool             blocking_write,
                          const size_t *      buffer_origin,
@@ -1135,8 +1157,8 @@ cl_int clEnqueueWriteBufferRect(cl_command_queue    command_queue,
                          cl_uint             num_events_in_wait_list,
                          const cl_event *    event_wait_list,
                          cl_event *          event);
-    static clEnqueueWriteBufferRect_t f;
-    if (f == null) { f = (clEnqueueWriteBufferRect_t)clBindFunction("clEnqueueWriteBufferRect"); }
+    static clEnqueueWriteBufferRect_t_ f;
+    if (f == null) { f = (clEnqueueWriteBufferRect_t_)clBindFunction("clEnqueueWriteBufferRect"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, buffer, blocking_write, buffer_origin, host_origin, region, buffer_row_pitch, buffer_slice_pitch, host_row_pitch, host_slice_pitch, ptr, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1150,7 +1172,7 @@ cl_int clEnqueueFillBuffer(cl_command_queue   command_queue,
                     cl_uint            num_events_in_wait_list,
                     const cl_event *   event_wait_list,
                     cl_event *         event) {
-    typedef cl_int (*clEnqueueFillBuffer_t)(cl_command_queue   command_queue,
+    typedef cl_int (*clEnqueueFillBuffer_t_)(cl_command_queue   command_queue,
                     cl_mem             buffer,
                     const void *       pattern,
                     size_t             pattern_size,
@@ -1159,8 +1181,8 @@ cl_int clEnqueueFillBuffer(cl_command_queue   command_queue,
                     cl_uint            num_events_in_wait_list,
                     const cl_event *   event_wait_list,
                     cl_event *         event);
-    static clEnqueueFillBuffer_t f;
-    if (f == null) { f = (clEnqueueFillBuffer_t)clBindFunction("clEnqueueFillBuffer"); }
+    static clEnqueueFillBuffer_t_ f;
+    if (f == null) { f = (clEnqueueFillBuffer_t_)clBindFunction("clEnqueueFillBuffer"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, buffer, pattern, pattern_size, offset, size, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1174,7 +1196,7 @@ cl_int clEnqueueCopyBuffer(cl_command_queue    command_queue,
                     cl_uint             num_events_in_wait_list,
                     const cl_event *    event_wait_list,
                     cl_event *          event) {
-    typedef cl_int (*clEnqueueCopyBuffer_t)(cl_command_queue    command_queue,
+    typedef cl_int (*clEnqueueCopyBuffer_t_)(cl_command_queue    command_queue,
                     cl_mem              src_buffer,
                     cl_mem              dst_buffer,
                     size_t              src_offset,
@@ -1183,8 +1205,8 @@ cl_int clEnqueueCopyBuffer(cl_command_queue    command_queue,
                     cl_uint             num_events_in_wait_list,
                     const cl_event *    event_wait_list,
                     cl_event *          event);
-    static clEnqueueCopyBuffer_t f;
-    if (f == null) { f = (clEnqueueCopyBuffer_t)clBindFunction("clEnqueueCopyBuffer"); }
+    static clEnqueueCopyBuffer_t_ f;
+    if (f == null) { f = (clEnqueueCopyBuffer_t_)clBindFunction("clEnqueueCopyBuffer"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, src_buffer, dst_buffer, src_offset, dst_offset, size, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1202,7 +1224,7 @@ cl_int clEnqueueCopyBufferRect(cl_command_queue    command_queue,
                         cl_uint             num_events_in_wait_list,
                         const cl_event *    event_wait_list,
                         cl_event *          event) {
-    typedef cl_int (*clEnqueueCopyBufferRect_t)(cl_command_queue    command_queue,
+    typedef cl_int (*clEnqueueCopyBufferRect_t_)(cl_command_queue    command_queue,
                         cl_mem              src_buffer,
                         cl_mem              dst_buffer,
                         const size_t *      src_origin,
@@ -1215,8 +1237,8 @@ cl_int clEnqueueCopyBufferRect(cl_command_queue    command_queue,
                         cl_uint             num_events_in_wait_list,
                         const cl_event *    event_wait_list,
                         cl_event *          event);
-    static clEnqueueCopyBufferRect_t f;
-    if (f == null) { f = (clEnqueueCopyBufferRect_t)clBindFunction("clEnqueueCopyBufferRect"); }
+    static clEnqueueCopyBufferRect_t_ f;
+    if (f == null) { f = (clEnqueueCopyBufferRect_t_)clBindFunction("clEnqueueCopyBufferRect"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, src_buffer, dst_buffer, src_origin, dst_origin, region, src_row_pitch, src_slice_pitch, dst_row_pitch, dst_slice_pitch, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1232,7 +1254,7 @@ cl_int clEnqueueReadImage(cl_command_queue     command_queue,
                    cl_uint              num_events_in_wait_list,
                    const cl_event *     event_wait_list,
                    cl_event *           event) {
-    typedef cl_int (*clEnqueueReadImage_t)(cl_command_queue     command_queue,
+    typedef cl_int (*clEnqueueReadImage_t_)(cl_command_queue     command_queue,
                    cl_mem               image,
                    cl_bool              blocking_read,
                    const size_t *       origin,
@@ -1243,8 +1265,8 @@ cl_int clEnqueueReadImage(cl_command_queue     command_queue,
                    cl_uint              num_events_in_wait_list,
                    const cl_event *     event_wait_list,
                    cl_event *           event);
-    static clEnqueueReadImage_t f;
-    if (f == null) { f = (clEnqueueReadImage_t)clBindFunction("clEnqueueReadImage"); }
+    static clEnqueueReadImage_t_ f;
+    if (f == null) { f = (clEnqueueReadImage_t_)clBindFunction("clEnqueueReadImage"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, image, blocking_read, origin, region, row_pitch, slice_pitch, ptr, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1260,7 +1282,7 @@ cl_int clEnqueueWriteImage(cl_command_queue    command_queue,
                     cl_uint             num_events_in_wait_list,
                     const cl_event *    event_wait_list,
                     cl_event *          event) {
-    typedef cl_int (*clEnqueueWriteImage_t)(cl_command_queue    command_queue,
+    typedef cl_int (*clEnqueueWriteImage_t_)(cl_command_queue    command_queue,
                     cl_mem              image,
                     cl_bool             blocking_write,
                     const size_t *      origin,
@@ -1271,8 +1293,8 @@ cl_int clEnqueueWriteImage(cl_command_queue    command_queue,
                     cl_uint             num_events_in_wait_list,
                     const cl_event *    event_wait_list,
                     cl_event *          event);
-    static clEnqueueWriteImage_t f;
-    if (f == null) { f = (clEnqueueWriteImage_t)clBindFunction("clEnqueueWriteImage"); }
+    static clEnqueueWriteImage_t_ f;
+    if (f == null) { f = (clEnqueueWriteImage_t_)clBindFunction("clEnqueueWriteImage"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, image, blocking_write, origin, region, input_row_pitch, input_slice_pitch, ptr, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1285,7 +1307,7 @@ cl_int clEnqueueFillImage(cl_command_queue   command_queue,
                    cl_uint            num_events_in_wait_list,
                    const cl_event *   event_wait_list,
                    cl_event *         event) {
-    typedef cl_int (*clEnqueueFillImage_t)(cl_command_queue   command_queue,
+    typedef cl_int (*clEnqueueFillImage_t_)(cl_command_queue   command_queue,
                    cl_mem             image,
                    const void *       fill_color,
                    const size_t *     origin,
@@ -1293,8 +1315,8 @@ cl_int clEnqueueFillImage(cl_command_queue   command_queue,
                    cl_uint            num_events_in_wait_list,
                    const cl_event *   event_wait_list,
                    cl_event *         event);
-    static clEnqueueFillImage_t f;
-    if (f == null) { f = (clEnqueueFillImage_t)clBindFunction("clEnqueueFillImage"); }
+    static clEnqueueFillImage_t_ f;
+    if (f == null) { f = (clEnqueueFillImage_t_)clBindFunction("clEnqueueFillImage"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, image, fill_color, origin, region, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1308,7 +1330,7 @@ cl_int clEnqueueCopyImage(cl_command_queue     command_queue,
                    cl_uint              num_events_in_wait_list,
                    const cl_event *     event_wait_list,
                    cl_event *           event) {
-    typedef cl_int (*clEnqueueCopyImage_t)(cl_command_queue     command_queue,
+    typedef cl_int (*clEnqueueCopyImage_t_)(cl_command_queue     command_queue,
                    cl_mem               src_image,
                    cl_mem               dst_image,
                    const size_t *       src_origin,
@@ -1317,8 +1339,8 @@ cl_int clEnqueueCopyImage(cl_command_queue     command_queue,
                    cl_uint              num_events_in_wait_list,
                    const cl_event *     event_wait_list,
                    cl_event *           event);
-    static clEnqueueCopyImage_t f;
-    if (f == null) { f = (clEnqueueCopyImage_t)clBindFunction("clEnqueueCopyImage"); }
+    static clEnqueueCopyImage_t_ f;
+    if (f == null) { f = (clEnqueueCopyImage_t_)clBindFunction("clEnqueueCopyImage"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, src_image, dst_image, src_origin, dst_origin, region, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1332,7 +1354,7 @@ cl_int clEnqueueCopyImageToBuffer(cl_command_queue command_queue,
                            cl_uint          num_events_in_wait_list,
                            const cl_event * event_wait_list,
                            cl_event *       event) {
-    typedef cl_int (*clEnqueueCopyImageToBuffer_t)(cl_command_queue command_queue,
+    typedef cl_int (*clEnqueueCopyImageToBuffer_t_)(cl_command_queue command_queue,
                            cl_mem           src_image,
                            cl_mem           dst_buffer,
                            const size_t *   src_origin,
@@ -1341,8 +1363,8 @@ cl_int clEnqueueCopyImageToBuffer(cl_command_queue command_queue,
                            cl_uint          num_events_in_wait_list,
                            const cl_event * event_wait_list,
                            cl_event *       event);
-    static clEnqueueCopyImageToBuffer_t f;
-    if (f == null) { f = (clEnqueueCopyImageToBuffer_t)clBindFunction("clEnqueueCopyImageToBuffer"); }
+    static clEnqueueCopyImageToBuffer_t_ f;
+    if (f == null) { f = (clEnqueueCopyImageToBuffer_t_)clBindFunction("clEnqueueCopyImageToBuffer"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, src_image, dst_buffer, src_origin, region, dst_offset, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1356,7 +1378,7 @@ cl_int clEnqueueCopyBufferToImage(cl_command_queue command_queue,
                            cl_uint          num_events_in_wait_list,
                            const cl_event * event_wait_list,
                            cl_event *       event) {
-    typedef cl_int (*clEnqueueCopyBufferToImage_t)(cl_command_queue command_queue,
+    typedef cl_int (*clEnqueueCopyBufferToImage_t_)(cl_command_queue command_queue,
                            cl_mem           src_buffer,
                            cl_mem           dst_image,
                            size_t           src_offset,
@@ -1365,8 +1387,8 @@ cl_int clEnqueueCopyBufferToImage(cl_command_queue command_queue,
                            cl_uint          num_events_in_wait_list,
                            const cl_event * event_wait_list,
                            cl_event *       event);
-    static clEnqueueCopyBufferToImage_t f;
-    if (f == null) { f = (clEnqueueCopyBufferToImage_t)clBindFunction("clEnqueueCopyBufferToImage"); }
+    static clEnqueueCopyBufferToImage_t_ f;
+    if (f == null) { f = (clEnqueueCopyBufferToImage_t_)clBindFunction("clEnqueueCopyBufferToImage"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, src_buffer, dst_image, src_offset, dst_origin, region, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1381,7 +1403,7 @@ void * clEnqueueMapBuffer(cl_command_queue command_queue,
                    const cl_event * event_wait_list,
                    cl_event *       event,
                    cl_int *         errcode_ret) {
-    typedef void * (*clEnqueueMapBuffer_t)(cl_command_queue command_queue,
+    typedef void * (*clEnqueueMapBuffer_t_)(cl_command_queue command_queue,
                    cl_mem           buffer,
                    cl_bool          blocking_map,
                    cl_map_flags     map_flags,
@@ -1391,9 +1413,9 @@ void * clEnqueueMapBuffer(cl_command_queue command_queue,
                    const cl_event * event_wait_list,
                    cl_event *       event,
                    cl_int *         errcode_ret);
-    static clEnqueueMapBuffer_t f;
-    if (f == null) { f = (clEnqueueMapBuffer_t)clBindFunction("clEnqueueMapBuffer"); }
-    return f == null ? ((void*)0) :
+    static clEnqueueMapBuffer_t_ f;
+    if (f == null) { f = (clEnqueueMapBuffer_t_)clBindFunction("clEnqueueMapBuffer"); }
+    return f == null ? (void *)null :
         f(command_queue, buffer, blocking_map, map_flags, offset, size, num_events_in_wait_list, event_wait_list, event, errcode_ret);
 }
 
@@ -1409,7 +1431,7 @@ void * clEnqueueMapImage(cl_command_queue  command_queue,
                   const cl_event *  event_wait_list,
                   cl_event *        event,
                   cl_int *          errcode_ret) {
-    typedef void * (*clEnqueueMapImage_t)(cl_command_queue  command_queue,
+    typedef void * (*clEnqueueMapImage_t_)(cl_command_queue  command_queue,
                   cl_mem            image,
                   cl_bool           blocking_map,
                   cl_map_flags      map_flags,
@@ -1421,9 +1443,9 @@ void * clEnqueueMapImage(cl_command_queue  command_queue,
                   const cl_event *  event_wait_list,
                   cl_event *        event,
                   cl_int *          errcode_ret);
-    static clEnqueueMapImage_t f;
-    if (f == null) { f = (clEnqueueMapImage_t)clBindFunction("clEnqueueMapImage"); }
-    return f == null ? ((void*)0) :
+    static clEnqueueMapImage_t_ f;
+    if (f == null) { f = (clEnqueueMapImage_t_)clBindFunction("clEnqueueMapImage"); }
+    return f == null ? (void *)null :
         f(command_queue, image, blocking_map, map_flags, origin, region, image_row_pitch, image_slice_pitch, num_events_in_wait_list, event_wait_list, event, errcode_ret);
 }
 
@@ -1433,14 +1455,14 @@ cl_int clEnqueueUnmapMemObject(cl_command_queue command_queue,
                         cl_uint          num_events_in_wait_list,
                         const cl_event * event_wait_list,
                         cl_event *       event) {
-    typedef cl_int (*clEnqueueUnmapMemObject_t)(cl_command_queue command_queue,
+    typedef cl_int (*clEnqueueUnmapMemObject_t_)(cl_command_queue command_queue,
                         cl_mem           memobj,
                         void *           mapped_ptr,
                         cl_uint          num_events_in_wait_list,
                         const cl_event * event_wait_list,
                         cl_event *       event);
-    static clEnqueueUnmapMemObject_t f;
-    if (f == null) { f = (clEnqueueUnmapMemObject_t)clBindFunction("clEnqueueUnmapMemObject"); }
+    static clEnqueueUnmapMemObject_t_ f;
+    if (f == null) { f = (clEnqueueUnmapMemObject_t_)clBindFunction("clEnqueueUnmapMemObject"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, memobj, mapped_ptr, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1452,15 +1474,15 @@ cl_int clEnqueueMigrateMemObjects(cl_command_queue       command_queue,
                            cl_uint                num_events_in_wait_list,
                            const cl_event *       event_wait_list,
                            cl_event *             event) {
-    typedef cl_int (*clEnqueueMigrateMemObjects_t)(cl_command_queue       command_queue,
+    typedef cl_int (*clEnqueueMigrateMemObjects_t_)(cl_command_queue       command_queue,
                            cl_uint                num_mem_objects,
                            const cl_mem *         mem_objects,
                            cl_mem_migration_flags flags,
                            cl_uint                num_events_in_wait_list,
                            const cl_event *       event_wait_list,
                            cl_event *             event);
-    static clEnqueueMigrateMemObjects_t f;
-    if (f == null) { f = (clEnqueueMigrateMemObjects_t)clBindFunction("clEnqueueMigrateMemObjects"); }
+    static clEnqueueMigrateMemObjects_t_ f;
+    if (f == null) { f = (clEnqueueMigrateMemObjects_t_)clBindFunction("clEnqueueMigrateMemObjects"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, num_mem_objects, mem_objects, flags, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1474,7 +1496,7 @@ cl_int clEnqueueNDRangeKernel(cl_command_queue command_queue,
                        cl_uint          num_events_in_wait_list,
                        const cl_event * event_wait_list,
                        cl_event *       event) {
-    typedef cl_int (*clEnqueueNDRangeKernel_t)(cl_command_queue command_queue,
+    typedef cl_int (*clEnqueueNDRangeKernel_t_)(cl_command_queue command_queue,
                        cl_kernel        kernel,
                        cl_uint          work_dim,
                        const size_t *   global_work_offset,
@@ -1483,8 +1505,8 @@ cl_int clEnqueueNDRangeKernel(cl_command_queue command_queue,
                        cl_uint          num_events_in_wait_list,
                        const cl_event * event_wait_list,
                        cl_event *       event);
-    static clEnqueueNDRangeKernel_t f;
-    if (f == null) { f = (clEnqueueNDRangeKernel_t)clBindFunction("clEnqueueNDRangeKernel"); }
+    static clEnqueueNDRangeKernel_t_ f;
+    if (f == null) { f = (clEnqueueNDRangeKernel_t_)clBindFunction("clEnqueueNDRangeKernel"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, kernel, work_dim, global_work_offset, global_work_size, local_work_size, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1499,7 +1521,7 @@ cl_int clEnqueueNativeKernel(cl_command_queue  command_queue,
                       cl_uint           num_events_in_wait_list,
                       const cl_event *  event_wait_list,
                       cl_event *        event) {
-    typedef cl_int (*clEnqueueNativeKernel_t)(cl_command_queue  command_queue,
+    typedef cl_int (*clEnqueueNativeKernel_t_)(cl_command_queue  command_queue,
                       void (CL_CALLBACK * user_func)(void *),
                       void *            args,
                       size_t            cb_args,
@@ -1509,8 +1531,8 @@ cl_int clEnqueueNativeKernel(cl_command_queue  command_queue,
                       cl_uint           num_events_in_wait_list,
                       const cl_event *  event_wait_list,
                       cl_event *        event);
-    static clEnqueueNativeKernel_t f;
-    if (f == null) { f = (clEnqueueNativeKernel_t)clBindFunction("clEnqueueNativeKernel"); }
+    static clEnqueueNativeKernel_t_ f;
+    if (f == null) { f = (clEnqueueNativeKernel_t_)clBindFunction("clEnqueueNativeKernel"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, user_func, args, cb_args, num_mem_objects, mem_list, args_mem_loc, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1519,12 +1541,12 @@ cl_int clEnqueueMarkerWithWaitList(cl_command_queue  command_queue,
                             cl_uint           num_events_in_wait_list,
                             const cl_event *  event_wait_list,
                             cl_event *        event) {
-    typedef cl_int (*clEnqueueMarkerWithWaitList_t)(cl_command_queue  command_queue,
+    typedef cl_int (*clEnqueueMarkerWithWaitList_t_)(cl_command_queue  command_queue,
                             cl_uint           num_events_in_wait_list,
                             const cl_event *  event_wait_list,
                             cl_event *        event);
-    static clEnqueueMarkerWithWaitList_t f;
-    if (f == null) { f = (clEnqueueMarkerWithWaitList_t)clBindFunction("clEnqueueMarkerWithWaitList"); }
+    static clEnqueueMarkerWithWaitList_t_ f;
+    if (f == null) { f = (clEnqueueMarkerWithWaitList_t_)clBindFunction("clEnqueueMarkerWithWaitList"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1533,12 +1555,12 @@ cl_int clEnqueueBarrierWithWaitList(cl_command_queue  command_queue,
                              cl_uint           num_events_in_wait_list,
                              const cl_event *  event_wait_list,
                              cl_event *        event) {
-    typedef cl_int (*clEnqueueBarrierWithWaitList_t)(cl_command_queue  command_queue,
+    typedef cl_int (*clEnqueueBarrierWithWaitList_t_)(cl_command_queue  command_queue,
                              cl_uint           num_events_in_wait_list,
                              const cl_event *  event_wait_list,
                              cl_event *        event);
-    static clEnqueueBarrierWithWaitList_t f;
-    if (f == null) { f = (clEnqueueBarrierWithWaitList_t)clBindFunction("clEnqueueBarrierWithWaitList"); }
+    static clEnqueueBarrierWithWaitList_t_ f;
+    if (f == null) { f = (clEnqueueBarrierWithWaitList_t_)clBindFunction("clEnqueueBarrierWithWaitList"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1554,7 +1576,7 @@ cl_int clEnqueueSVMFree(cl_command_queue  command_queue,
                  cl_uint           num_events_in_wait_list,
                  const cl_event *  event_wait_list,
                  cl_event *        event) {
-    typedef cl_int (*clEnqueueSVMFree_t)(cl_command_queue  command_queue,
+    typedef cl_int (*clEnqueueSVMFree_t_)(cl_command_queue  command_queue,
                  cl_uint           num_svm_pointers,
                  void *            svm_pointers[],
                  void (CL_CALLBACK * pfn_free_func)(cl_command_queue queue,
@@ -1565,8 +1587,8 @@ cl_int clEnqueueSVMFree(cl_command_queue  command_queue,
                  cl_uint           num_events_in_wait_list,
                  const cl_event *  event_wait_list,
                  cl_event *        event);
-    static clEnqueueSVMFree_t f;
-    if (f == null) { f = (clEnqueueSVMFree_t)clBindFunction("clEnqueueSVMFree"); }
+    static clEnqueueSVMFree_t_ f;
+    if (f == null) { f = (clEnqueueSVMFree_t_)clBindFunction("clEnqueueSVMFree"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, num_svm_pointers, svm_pointers, pfn_free_func, user_data, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1579,7 +1601,7 @@ cl_int clEnqueueSVMMemcpy(cl_command_queue  command_queue,
                    cl_uint           num_events_in_wait_list,
                    const cl_event *  event_wait_list,
                    cl_event *        event) {
-    typedef cl_int (*clEnqueueSVMMemcpy_t)(cl_command_queue  command_queue,
+    typedef cl_int (*clEnqueueSVMMemcpy_t_)(cl_command_queue  command_queue,
                    cl_bool           blocking_copy,
                    void *            dst_ptr,
                    const void *      src_ptr,
@@ -1587,8 +1609,8 @@ cl_int clEnqueueSVMMemcpy(cl_command_queue  command_queue,
                    cl_uint           num_events_in_wait_list,
                    const cl_event *  event_wait_list,
                    cl_event *        event);
-    static clEnqueueSVMMemcpy_t f;
-    if (f == null) { f = (clEnqueueSVMMemcpy_t)clBindFunction("clEnqueueSVMMemcpy"); }
+    static clEnqueueSVMMemcpy_t_ f;
+    if (f == null) { f = (clEnqueueSVMMemcpy_t_)clBindFunction("clEnqueueSVMMemcpy"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, blocking_copy, dst_ptr, src_ptr, size, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1601,7 +1623,7 @@ cl_int clEnqueueSVMMemFill(cl_command_queue  command_queue,
                     cl_uint           num_events_in_wait_list,
                     const cl_event *  event_wait_list,
                     cl_event *        event) {
-    typedef cl_int (*clEnqueueSVMMemFill_t)(cl_command_queue  command_queue,
+    typedef cl_int (*clEnqueueSVMMemFill_t_)(cl_command_queue  command_queue,
                     void *            svm_ptr,
                     const void *      pattern,
                     size_t            pattern_size,
@@ -1609,8 +1631,8 @@ cl_int clEnqueueSVMMemFill(cl_command_queue  command_queue,
                     cl_uint           num_events_in_wait_list,
                     const cl_event *  event_wait_list,
                     cl_event *        event);
-    static clEnqueueSVMMemFill_t f;
-    if (f == null) { f = (clEnqueueSVMMemFill_t)clBindFunction("clEnqueueSVMMemFill"); }
+    static clEnqueueSVMMemFill_t_ f;
+    if (f == null) { f = (clEnqueueSVMMemFill_t_)clBindFunction("clEnqueueSVMMemFill"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, svm_ptr, pattern, pattern_size, size, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1623,7 +1645,7 @@ cl_int clEnqueueSVMMap(cl_command_queue  command_queue,
                 cl_uint           num_events_in_wait_list,
                 const cl_event *  event_wait_list,
                 cl_event *        event) {
-    typedef cl_int (*clEnqueueSVMMap_t)(cl_command_queue  command_queue,
+    typedef cl_int (*clEnqueueSVMMap_t_)(cl_command_queue  command_queue,
                 cl_bool           blocking_map,
                 cl_map_flags      flags,
                 void *            svm_ptr,
@@ -1631,8 +1653,8 @@ cl_int clEnqueueSVMMap(cl_command_queue  command_queue,
                 cl_uint           num_events_in_wait_list,
                 const cl_event *  event_wait_list,
                 cl_event *        event);
-    static clEnqueueSVMMap_t f;
-    if (f == null) { f = (clEnqueueSVMMap_t)clBindFunction("clEnqueueSVMMap"); }
+    static clEnqueueSVMMap_t_ f;
+    if (f == null) { f = (clEnqueueSVMMap_t_)clBindFunction("clEnqueueSVMMap"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, blocking_map, flags, svm_ptr, size, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1642,13 +1664,13 @@ cl_int clEnqueueSVMUnmap(cl_command_queue  command_queue,
                   cl_uint           num_events_in_wait_list,
                   const cl_event *  event_wait_list,
                   cl_event *        event) {
-    typedef cl_int (*clEnqueueSVMUnmap_t)(cl_command_queue  command_queue,
+    typedef cl_int (*clEnqueueSVMUnmap_t_)(cl_command_queue  command_queue,
                   void *            svm_ptr,
                   cl_uint           num_events_in_wait_list,
                   const cl_event *  event_wait_list,
                   cl_event *        event);
-    static clEnqueueSVMUnmap_t f;
-    if (f == null) { f = (clEnqueueSVMUnmap_t)clBindFunction("clEnqueueSVMUnmap"); }
+    static clEnqueueSVMUnmap_t_ f;
+    if (f == null) { f = (clEnqueueSVMUnmap_t_)clBindFunction("clEnqueueSVMUnmap"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, svm_ptr, num_events_in_wait_list, event_wait_list, event);
 }
@@ -1661,7 +1683,7 @@ cl_int clEnqueueSVMMigrateMem(cl_command_queue         command_queue,
                        cl_uint                  num_events_in_wait_list,
                        const cl_event *         event_wait_list,
                        cl_event *               event) {
-    typedef cl_int (*clEnqueueSVMMigrateMem_t)(cl_command_queue         command_queue,
+    typedef cl_int (*clEnqueueSVMMigrateMem_t_)(cl_command_queue         command_queue,
                        cl_uint                  num_svm_pointers,
                        const void **            svm_pointers,
                        const size_t *           sizes,
@@ -1669,19 +1691,19 @@ cl_int clEnqueueSVMMigrateMem(cl_command_queue         command_queue,
                        cl_uint                  num_events_in_wait_list,
                        const cl_event *         event_wait_list,
                        cl_event *               event);
-    static clEnqueueSVMMigrateMem_t f;
-    if (f == null) { f = (clEnqueueSVMMigrateMem_t)clBindFunction("clEnqueueSVMMigrateMem"); }
+    static clEnqueueSVMMigrateMem_t_ f;
+    if (f == null) { f = (clEnqueueSVMMigrateMem_t_)clBindFunction("clEnqueueSVMMigrateMem"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, num_svm_pointers, svm_pointers, sizes, flags, num_events_in_wait_list, event_wait_list, event);
 }
 
 void * clGetExtensionFunctionAddressForPlatform(cl_platform_id platform,
                                          const char *   func_name) {
-    typedef void * (*clGetExtensionFunctionAddressForPlatform_t)(cl_platform_id platform,
+    typedef void * (*clGetExtensionFunctionAddressForPlatform_t_)(cl_platform_id platform,
                                          const char *   func_name);
-    static clGetExtensionFunctionAddressForPlatform_t f;
-    if (f == null) { f = (clGetExtensionFunctionAddressForPlatform_t)clBindFunction("clGetExtensionFunctionAddressForPlatform"); }
-    return f == null ? ((void*)0) :
+    static clGetExtensionFunctionAddressForPlatform_t_ f;
+    if (f == null) { f = (clGetExtensionFunctionAddressForPlatform_t_)clBindFunction("clGetExtensionFunctionAddressForPlatform"); }
+    return f == null ? (void *)null :
         f(platform, func_name);
 }
 
@@ -1689,13 +1711,2413 @@ cl_int clSetCommandQueueProperty(cl_command_queue              command_queue,
                               cl_command_queue_properties   properties,
                               cl_bool                       enable,
                               cl_command_queue_properties * old_properties) {
-    typedef cl_int (*clSetCommandQueueProperty_t)(cl_command_queue              command_queue,
+    typedef cl_int (*clSetCommandQueueProperty_t_)(cl_command_queue              command_queue,
                               cl_command_queue_properties   properties,
                               cl_bool                       enable,
                               cl_command_queue_properties * old_properties);
-    static clSetCommandQueueProperty_t f;
-    if (f == null) { f = (clSetCommandQueueProperty_t)clBindFunction("clSetCommandQueueProperty"); }
+    static clSetCommandQueueProperty_t_ f;
+    if (f == null) { f = (clSetCommandQueueProperty_t_)clBindFunction("clSetCommandQueueProperty"); }
     return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
         f(command_queue, properties, enable, old_properties);
 }
+
+cl_mem clCreateImage2D(cl_context              context,
+                cl_mem_flags            flags,
+                const cl_image_format * image_format,
+                size_t                  image_width,
+                size_t                  image_height,
+                size_t                  image_row_pitch,
+                void *                  host_ptr,
+                cl_int *                errcode_ret) {
+    typedef cl_mem (*clCreateImage2D_t_)(cl_context              context,
+                cl_mem_flags            flags,
+                const cl_image_format * image_format,
+                size_t                  image_width,
+                size_t                  image_height,
+                size_t                  image_row_pitch,
+                void *                  host_ptr,
+                cl_int *                errcode_ret);
+    static clCreateImage2D_t_ f;
+    if (f == null) { f = (clCreateImage2D_t_)clBindFunction("clCreateImage2D"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, image_format, image_width, image_height, image_row_pitch, host_ptr, errcode_ret);
+}
+
+cl_mem clCreateImage3D(cl_context              context,
+                cl_mem_flags            flags,
+                const cl_image_format * image_format,
+                size_t                  image_width,
+                size_t                  image_height,
+                size_t                  image_depth,
+                size_t                  image_row_pitch,
+                size_t                  image_slice_pitch,
+                void *                  host_ptr,
+                cl_int *                errcode_ret) {
+    typedef cl_mem (*clCreateImage3D_t_)(cl_context              context,
+                cl_mem_flags            flags,
+                const cl_image_format * image_format,
+                size_t                  image_width,
+                size_t                  image_height,
+                size_t                  image_depth,
+                size_t                  image_row_pitch,
+                size_t                  image_slice_pitch,
+                void *                  host_ptr,
+                cl_int *                errcode_ret);
+    static clCreateImage3D_t_ f;
+    if (f == null) { f = (clCreateImage3D_t_)clBindFunction("clCreateImage3D"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, image_format, image_width, image_height, image_depth, image_row_pitch, image_slice_pitch, host_ptr, errcode_ret);
+}
+
+cl_int clEnqueueMarker(cl_command_queue    command_queue,
+                cl_event *          event) {
+    typedef cl_int (*clEnqueueMarker_t_)(cl_command_queue    command_queue,
+                cl_event *          event);
+    static clEnqueueMarker_t_ f;
+    if (f == null) { f = (clEnqueueMarker_t_)clBindFunction("clEnqueueMarker"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, event);
+}
+
+cl_int clEnqueueWaitForEvents(cl_command_queue  command_queue,
+                        cl_uint          num_events,
+                        const cl_event * event_list) {
+    typedef cl_int (*clEnqueueWaitForEvents_t_)(cl_command_queue  command_queue,
+                        cl_uint          num_events,
+                        const cl_event * event_list);
+    static clEnqueueWaitForEvents_t_ f;
+    if (f == null) { f = (clEnqueueWaitForEvents_t_)clBindFunction("clEnqueueWaitForEvents"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_events, event_list);
+}
+
+cl_int clEnqueueBarrier(cl_command_queue command_queue) {
+    typedef cl_int (*clEnqueueBarrier_t_)(cl_command_queue command_queue);
+    static clEnqueueBarrier_t_ f;
+    if (f == null) { f = (clEnqueueBarrier_t_)clBindFunction("clEnqueueBarrier"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue);
+}
+
+cl_int clUnloadCompiler(void) {
+    typedef cl_int (*clUnloadCompiler_t_)(void);
+    static clUnloadCompiler_t_ f;
+    if (f == null) { f = (clUnloadCompiler_t_)clBindFunction("clUnloadCompiler"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f();
+}
+
+void * clGetExtensionFunctionAddress(const char * func_name) {
+    typedef void * (*clGetExtensionFunctionAddress_t_)(const char * func_name);
+    static clGetExtensionFunctionAddress_t_ f;
+    if (f == null) { f = (clGetExtensionFunctionAddress_t_)clBindFunction("clGetExtensionFunctionAddress"); }
+    return f == null ? (void *)null :
+        f(func_name);
+}
+
+cl_command_queue clCreateCommandQueue(cl_context                     context,
+                     cl_device_id                   device,
+                     cl_command_queue_properties    properties,
+                     cl_int *                       errcode_ret) {
+    typedef cl_command_queue (*clCreateCommandQueue_t_)(cl_context                     context,
+                     cl_device_id                   device,
+                     cl_command_queue_properties    properties,
+                     cl_int *                       errcode_ret);
+    static clCreateCommandQueue_t_ f;
+    if (f == null) { f = (clCreateCommandQueue_t_)clBindFunction("clCreateCommandQueue"); }
+    return f == null ? (cl_command_queue)null :
+        f(context, device, properties, errcode_ret);
+}
+
+cl_sampler clCreateSampler(cl_context          context,
+                cl_bool             normalized_coords,
+                cl_addressing_mode  addressing_mode,
+                cl_filter_mode      filter_mode,
+                cl_int *            errcode_ret) {
+    typedef cl_sampler (*clCreateSampler_t_)(cl_context          context,
+                cl_bool             normalized_coords,
+                cl_addressing_mode  addressing_mode,
+                cl_filter_mode      filter_mode,
+                cl_int *            errcode_ret);
+    static clCreateSampler_t_ f;
+    if (f == null) { f = (clCreateSampler_t_)clBindFunction("clCreateSampler"); }
+    return f == null ? (cl_sampler)null :
+        f(context, normalized_coords, addressing_mode, filter_mode, errcode_ret);
+}
+
+cl_int clEnqueueTask(cl_command_queue  command_queue,
+              cl_kernel         kernel,
+              cl_uint           num_events_in_wait_list,
+              const cl_event *  event_wait_list,
+              cl_event *        event) {
+    typedef cl_int (*clEnqueueTask_t_)(cl_command_queue  command_queue,
+              cl_kernel         kernel,
+              cl_uint           num_events_in_wait_list,
+              const cl_event *  event_wait_list,
+              cl_event *        event);
+    static clEnqueueTask_t_ f;
+    if (f == null) { f = (clEnqueueTask_t_)clBindFunction("clEnqueueTask"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, kernel, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clGetDeviceIDsFromD3D10KHR(
+    cl_platform_id platform,
+    cl_d3d10_device_source_khr d3d_device_source,
+    void* d3d_object,
+    cl_d3d10_device_set_khr d3d_device_set,
+    cl_uint num_entries,
+    cl_device_id* devices,
+    cl_uint* num_devices) {
+    typedef cl_int (*clGetDeviceIDsFromD3D10KHR_t_)(
+    cl_platform_id platform,
+    cl_d3d10_device_source_khr d3d_device_source,
+    void* d3d_object,
+    cl_d3d10_device_set_khr d3d_device_set,
+    cl_uint num_entries,
+    cl_device_id* devices,
+    cl_uint* num_devices);
+    static clGetDeviceIDsFromD3D10KHR_t_ f;
+    if (f == null) { f = (clGetDeviceIDsFromD3D10KHR_t_)clBindFunction("clGetDeviceIDsFromD3D10KHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(platform, d3d_device_source, d3d_object, d3d_device_set, num_entries, devices, num_devices);
+}
+
+cl_mem clCreateFromD3D10BufferKHR(
+    cl_context context,
+    cl_mem_flags flags,
+    ID3D10Buffer* resource,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateFromD3D10BufferKHR_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    ID3D10Buffer* resource,
+    cl_int* errcode_ret);
+    static clCreateFromD3D10BufferKHR_t_ f;
+    if (f == null) { f = (clCreateFromD3D10BufferKHR_t_)clBindFunction("clCreateFromD3D10BufferKHR"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, resource, errcode_ret);
+}
+
+cl_mem clCreateFromD3D10Texture2DKHR(
+    cl_context context,
+    cl_mem_flags flags,
+    ID3D10Texture2D* resource,
+    UINT subresource,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateFromD3D10Texture2DKHR_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    ID3D10Texture2D* resource,
+    UINT subresource,
+    cl_int* errcode_ret);
+    static clCreateFromD3D10Texture2DKHR_t_ f;
+    if (f == null) { f = (clCreateFromD3D10Texture2DKHR_t_)clBindFunction("clCreateFromD3D10Texture2DKHR"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, resource, subresource, errcode_ret);
+}
+
+cl_mem clCreateFromD3D10Texture3DKHR(
+    cl_context context,
+    cl_mem_flags flags,
+    ID3D10Texture3D* resource,
+    UINT subresource,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateFromD3D10Texture3DKHR_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    ID3D10Texture3D* resource,
+    UINT subresource,
+    cl_int* errcode_ret);
+    static clCreateFromD3D10Texture3DKHR_t_ f;
+    if (f == null) { f = (clCreateFromD3D10Texture3DKHR_t_)clBindFunction("clCreateFromD3D10Texture3DKHR"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, resource, subresource, errcode_ret);
+}
+
+cl_int clEnqueueAcquireD3D10ObjectsKHR(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueAcquireD3D10ObjectsKHR_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueAcquireD3D10ObjectsKHR_t_ f;
+    if (f == null) { f = (clEnqueueAcquireD3D10ObjectsKHR_t_)clBindFunction("clEnqueueAcquireD3D10ObjectsKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueReleaseD3D10ObjectsKHR(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueReleaseD3D10ObjectsKHR_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueReleaseD3D10ObjectsKHR_t_ f;
+    if (f == null) { f = (clEnqueueReleaseD3D10ObjectsKHR_t_)clBindFunction("clEnqueueReleaseD3D10ObjectsKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clGetSupportedD3D10TextureFormatsINTEL(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_mem_object_type image_type,
+    cl_uint num_entries,
+    DXGI_FORMAT* d3d10_formats,
+    cl_uint* num_texture_formats) {
+    typedef cl_int (*clGetSupportedD3D10TextureFormatsINTEL_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_mem_object_type image_type,
+    cl_uint num_entries,
+    DXGI_FORMAT* d3d10_formats,
+    cl_uint* num_texture_formats);
+    static clGetSupportedD3D10TextureFormatsINTEL_t_ f;
+    if (f == null) { f = (clGetSupportedD3D10TextureFormatsINTEL_t_)clBindFunction("clGetSupportedD3D10TextureFormatsINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(context, flags, image_type, num_entries, d3d10_formats, num_texture_formats);
+}
+
+cl_int clGetDeviceIDsFromD3D11KHR(
+    cl_platform_id platform,
+    cl_d3d11_device_source_khr d3d_device_source,
+    void* d3d_object,
+    cl_d3d11_device_set_khr d3d_device_set,
+    cl_uint num_entries,
+    cl_device_id* devices,
+    cl_uint* num_devices) {
+    typedef cl_int (*clGetDeviceIDsFromD3D11KHR_t_)(
+    cl_platform_id platform,
+    cl_d3d11_device_source_khr d3d_device_source,
+    void* d3d_object,
+    cl_d3d11_device_set_khr d3d_device_set,
+    cl_uint num_entries,
+    cl_device_id* devices,
+    cl_uint* num_devices);
+    static clGetDeviceIDsFromD3D11KHR_t_ f;
+    if (f == null) { f = (clGetDeviceIDsFromD3D11KHR_t_)clBindFunction("clGetDeviceIDsFromD3D11KHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(platform, d3d_device_source, d3d_object, d3d_device_set, num_entries, devices, num_devices);
+}
+
+cl_mem clCreateFromD3D11BufferKHR(
+    cl_context context,
+    cl_mem_flags flags,
+    ID3D11Buffer* resource,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateFromD3D11BufferKHR_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    ID3D11Buffer* resource,
+    cl_int* errcode_ret);
+    static clCreateFromD3D11BufferKHR_t_ f;
+    if (f == null) { f = (clCreateFromD3D11BufferKHR_t_)clBindFunction("clCreateFromD3D11BufferKHR"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, resource, errcode_ret);
+}
+
+cl_mem clCreateFromD3D11Texture2DKHR(
+    cl_context context,
+    cl_mem_flags flags,
+    ID3D11Texture2D* resource,
+    UINT subresource,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateFromD3D11Texture2DKHR_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    ID3D11Texture2D* resource,
+    UINT subresource,
+    cl_int* errcode_ret);
+    static clCreateFromD3D11Texture2DKHR_t_ f;
+    if (f == null) { f = (clCreateFromD3D11Texture2DKHR_t_)clBindFunction("clCreateFromD3D11Texture2DKHR"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, resource, subresource, errcode_ret);
+}
+
+cl_mem clCreateFromD3D11Texture3DKHR(
+    cl_context context,
+    cl_mem_flags flags,
+    ID3D11Texture3D* resource,
+    UINT subresource,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateFromD3D11Texture3DKHR_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    ID3D11Texture3D* resource,
+    UINT subresource,
+    cl_int* errcode_ret);
+    static clCreateFromD3D11Texture3DKHR_t_ f;
+    if (f == null) { f = (clCreateFromD3D11Texture3DKHR_t_)clBindFunction("clCreateFromD3D11Texture3DKHR"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, resource, subresource, errcode_ret);
+}
+
+cl_int clEnqueueAcquireD3D11ObjectsKHR(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueAcquireD3D11ObjectsKHR_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueAcquireD3D11ObjectsKHR_t_ f;
+    if (f == null) { f = (clEnqueueAcquireD3D11ObjectsKHR_t_)clBindFunction("clEnqueueAcquireD3D11ObjectsKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueReleaseD3D11ObjectsKHR(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueReleaseD3D11ObjectsKHR_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueReleaseD3D11ObjectsKHR_t_ f;
+    if (f == null) { f = (clEnqueueReleaseD3D11ObjectsKHR_t_)clBindFunction("clEnqueueReleaseD3D11ObjectsKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clGetSupportedD3D11TextureFormatsINTEL(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_mem_object_type image_type,
+    cl_uint plane,
+    cl_uint num_entries,
+    DXGI_FORMAT* d3d11_formats,
+    cl_uint* num_texture_formats) {
+    typedef cl_int (*clGetSupportedD3D11TextureFormatsINTEL_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_mem_object_type image_type,
+    cl_uint plane,
+    cl_uint num_entries,
+    DXGI_FORMAT* d3d11_formats,
+    cl_uint* num_texture_formats);
+    static clGetSupportedD3D11TextureFormatsINTEL_t_ f;
+    if (f == null) { f = (clGetSupportedD3D11TextureFormatsINTEL_t_)clBindFunction("clGetSupportedD3D11TextureFormatsINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(context, flags, image_type, plane, num_entries, d3d11_formats, num_texture_formats);
+}
+
+cl_int clGetDeviceIDsFromDX9MediaAdapterKHR(
+    cl_platform_id platform,
+    cl_uint num_media_adapters,
+    cl_dx9_media_adapter_type_khr* media_adapter_type,
+    void* media_adapters,
+    cl_dx9_media_adapter_set_khr media_adapter_set,
+    cl_uint num_entries,
+    cl_device_id* devices,
+    cl_uint* num_devices) {
+    typedef cl_int (*clGetDeviceIDsFromDX9MediaAdapterKHR_t_)(
+    cl_platform_id platform,
+    cl_uint num_media_adapters,
+    cl_dx9_media_adapter_type_khr* media_adapter_type,
+    void* media_adapters,
+    cl_dx9_media_adapter_set_khr media_adapter_set,
+    cl_uint num_entries,
+    cl_device_id* devices,
+    cl_uint* num_devices);
+    static clGetDeviceIDsFromDX9MediaAdapterKHR_t_ f;
+    if (f == null) { f = (clGetDeviceIDsFromDX9MediaAdapterKHR_t_)clBindFunction("clGetDeviceIDsFromDX9MediaAdapterKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(platform, num_media_adapters, media_adapter_type, media_adapters, media_adapter_set, num_entries, devices, num_devices);
+}
+
+cl_mem clCreateFromDX9MediaSurfaceKHR(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_dx9_media_adapter_type_khr adapter_type,
+    void* surface_info,
+    cl_uint plane,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateFromDX9MediaSurfaceKHR_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_dx9_media_adapter_type_khr adapter_type,
+    void* surface_info,
+    cl_uint plane,
+    cl_int* errcode_ret);
+    static clCreateFromDX9MediaSurfaceKHR_t_ f;
+    if (f == null) { f = (clCreateFromDX9MediaSurfaceKHR_t_)clBindFunction("clCreateFromDX9MediaSurfaceKHR"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, adapter_type, surface_info, plane, errcode_ret);
+}
+
+cl_int clEnqueueAcquireDX9MediaSurfacesKHR(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueAcquireDX9MediaSurfacesKHR_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueAcquireDX9MediaSurfacesKHR_t_ f;
+    if (f == null) { f = (clEnqueueAcquireDX9MediaSurfacesKHR_t_)clBindFunction("clEnqueueAcquireDX9MediaSurfacesKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueReleaseDX9MediaSurfacesKHR(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueReleaseDX9MediaSurfacesKHR_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueReleaseDX9MediaSurfacesKHR_t_ f;
+    if (f == null) { f = (clEnqueueReleaseDX9MediaSurfacesKHR_t_)clBindFunction("clEnqueueReleaseDX9MediaSurfacesKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clGetDeviceIDsFromDX9INTEL(
+    cl_platform_id platform,
+    cl_dx9_device_source_intel dx9_device_source,
+    void* dx9_object,
+    cl_dx9_device_set_intel dx9_device_set,
+    cl_uint num_entries,
+    cl_device_id* devices,
+    cl_uint* num_devices) {
+    typedef cl_int (*clGetDeviceIDsFromDX9INTEL_t_)(
+    cl_platform_id platform,
+    cl_dx9_device_source_intel dx9_device_source,
+    void* dx9_object,
+    cl_dx9_device_set_intel dx9_device_set,
+    cl_uint num_entries,
+    cl_device_id* devices,
+    cl_uint* num_devices);
+    static clGetDeviceIDsFromDX9INTEL_t_ f;
+    if (f == null) { f = (clGetDeviceIDsFromDX9INTEL_t_)clBindFunction("clGetDeviceIDsFromDX9INTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(platform, dx9_device_source, dx9_object, dx9_device_set, num_entries, devices, num_devices);
+}
+
+cl_mem clCreateFromDX9MediaSurfaceINTEL(
+    cl_context context,
+    cl_mem_flags flags,
+    IDirect3DSurface9* resource,
+    HANDLE sharedHandle,
+    UINT plane,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateFromDX9MediaSurfaceINTEL_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    IDirect3DSurface9* resource,
+    HANDLE sharedHandle,
+    UINT plane,
+    cl_int* errcode_ret);
+    static clCreateFromDX9MediaSurfaceINTEL_t_ f;
+    if (f == null) { f = (clCreateFromDX9MediaSurfaceINTEL_t_)clBindFunction("clCreateFromDX9MediaSurfaceINTEL"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, resource, sharedHandle, plane, errcode_ret);
+}
+
+cl_int clEnqueueAcquireDX9ObjectsINTEL(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueAcquireDX9ObjectsINTEL_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueAcquireDX9ObjectsINTEL_t_ f;
+    if (f == null) { f = (clEnqueueAcquireDX9ObjectsINTEL_t_)clBindFunction("clEnqueueAcquireDX9ObjectsINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueReleaseDX9ObjectsINTEL(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueReleaseDX9ObjectsINTEL_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueReleaseDX9ObjectsINTEL_t_ f;
+    if (f == null) { f = (clEnqueueReleaseDX9ObjectsINTEL_t_)clBindFunction("clEnqueueReleaseDX9ObjectsINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clGetSupportedDX9MediaSurfaceFormatsINTEL(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_mem_object_type image_type,
+    cl_uint plane,
+    cl_uint num_entries,
+    D3DFORMAT* dx9_formats,
+    cl_uint* num_surface_formats) {
+    typedef cl_int (*clGetSupportedDX9MediaSurfaceFormatsINTEL_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_mem_object_type image_type,
+    cl_uint plane,
+    cl_uint num_entries,
+    D3DFORMAT* dx9_formats,
+    cl_uint* num_surface_formats);
+    static clGetSupportedDX9MediaSurfaceFormatsINTEL_t_ f;
+    if (f == null) { f = (clGetSupportedDX9MediaSurfaceFormatsINTEL_t_)clBindFunction("clGetSupportedDX9MediaSurfaceFormatsINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(context, flags, image_type, plane, num_entries, dx9_formats, num_surface_formats);
+}
+
+cl_mem clCreateFromEGLImageKHR(
+    cl_context context,
+    CLeglDisplayKHR egldisplay,
+    CLeglImageKHR eglimage,
+    cl_mem_flags flags,
+    const cl_egl_image_properties_khr* properties,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateFromEGLImageKHR_t_)(
+    cl_context context,
+    CLeglDisplayKHR egldisplay,
+    CLeglImageKHR eglimage,
+    cl_mem_flags flags,
+    const cl_egl_image_properties_khr* properties,
+    cl_int* errcode_ret);
+    static clCreateFromEGLImageKHR_t_ f;
+    if (f == null) { f = (clCreateFromEGLImageKHR_t_)clBindFunction("clCreateFromEGLImageKHR"); }
+    return f == null ? (cl_mem)null :
+        f(context, egldisplay, eglimage, flags, properties, errcode_ret);
+}
+
+cl_int clEnqueueAcquireEGLObjectsKHR(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueAcquireEGLObjectsKHR_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueAcquireEGLObjectsKHR_t_ f;
+    if (f == null) { f = (clEnqueueAcquireEGLObjectsKHR_t_)clBindFunction("clEnqueueAcquireEGLObjectsKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueReleaseEGLObjectsKHR(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueReleaseEGLObjectsKHR_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueReleaseEGLObjectsKHR_t_ f;
+    if (f == null) { f = (clEnqueueReleaseEGLObjectsKHR_t_)clBindFunction("clEnqueueReleaseEGLObjectsKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_event clCreateEventFromEGLSyncKHR(
+    cl_context context,
+    CLeglSyncKHR sync,
+    CLeglDisplayKHR display,
+    cl_int* errcode_ret) {
+    typedef cl_event (*clCreateEventFromEGLSyncKHR_t_)(
+    cl_context context,
+    CLeglSyncKHR sync,
+    CLeglDisplayKHR display,
+    cl_int* errcode_ret);
+    static clCreateEventFromEGLSyncKHR_t_ f;
+    if (f == null) { f = (clCreateEventFromEGLSyncKHR_t_)clBindFunction("clCreateEventFromEGLSyncKHR"); }
+    return f == null ? (cl_event)null :
+        f(context, sync, display, errcode_ret);
+}
+
+cl_command_buffer_khr clCreateCommandBufferKHR(
+    cl_uint num_queues,
+    const cl_command_queue* queues,
+    const cl_command_buffer_properties_khr* properties,
+    cl_int* errcode_ret) {
+    typedef cl_command_buffer_khr (*clCreateCommandBufferKHR_t_)(
+    cl_uint num_queues,
+    const cl_command_queue* queues,
+    const cl_command_buffer_properties_khr* properties,
+    cl_int* errcode_ret);
+    static clCreateCommandBufferKHR_t_ f;
+    if (f == null) { f = (clCreateCommandBufferKHR_t_)clBindFunction("clCreateCommandBufferKHR"); }
+    return f == null ? (cl_command_buffer_khr)null :
+        f(num_queues, queues, properties, errcode_ret);
+}
+
+cl_int clFinalizeCommandBufferKHR(
+    cl_command_buffer_khr command_buffer) {
+    typedef cl_int (*clFinalizeCommandBufferKHR_t_)(
+    cl_command_buffer_khr command_buffer);
+    static clFinalizeCommandBufferKHR_t_ f;
+    if (f == null) { f = (clFinalizeCommandBufferKHR_t_)clBindFunction("clFinalizeCommandBufferKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_buffer);
+}
+
+cl_int clRetainCommandBufferKHR(
+    cl_command_buffer_khr command_buffer) {
+    typedef cl_int (*clRetainCommandBufferKHR_t_)(
+    cl_command_buffer_khr command_buffer);
+    static clRetainCommandBufferKHR_t_ f;
+    if (f == null) { f = (clRetainCommandBufferKHR_t_)clBindFunction("clRetainCommandBufferKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_buffer);
+}
+
+cl_int clReleaseCommandBufferKHR(
+    cl_command_buffer_khr command_buffer) {
+    typedef cl_int (*clReleaseCommandBufferKHR_t_)(
+    cl_command_buffer_khr command_buffer);
+    static clReleaseCommandBufferKHR_t_ f;
+    if (f == null) { f = (clReleaseCommandBufferKHR_t_)clBindFunction("clReleaseCommandBufferKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_buffer);
+}
+
+cl_int clEnqueueCommandBufferKHR(
+    cl_uint num_queues,
+    cl_command_queue* queues,
+    cl_command_buffer_khr command_buffer,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueCommandBufferKHR_t_)(
+    cl_uint num_queues,
+    cl_command_queue* queues,
+    cl_command_buffer_khr command_buffer,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueCommandBufferKHR_t_ f;
+    if (f == null) { f = (clEnqueueCommandBufferKHR_t_)clBindFunction("clEnqueueCommandBufferKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(num_queues, queues, command_buffer, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clCommandBarrierWithWaitListKHR(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle) {
+    typedef cl_int (*clCommandBarrierWithWaitListKHR_t_)(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle);
+    static clCommandBarrierWithWaitListKHR_t_ f;
+    if (f == null) { f = (clCommandBarrierWithWaitListKHR_t_)clBindFunction("clCommandBarrierWithWaitListKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_buffer, command_queue, num_sync_points_in_wait_list, sync_point_wait_list, sync_point, mutable_handle);
+}
+
+cl_int clCommandCopyBufferKHR(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_mem src_buffer,
+    cl_mem dst_buffer,
+    size_t src_offset,
+    size_t dst_offset,
+    size_t size,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle) {
+    typedef cl_int (*clCommandCopyBufferKHR_t_)(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_mem src_buffer,
+    cl_mem dst_buffer,
+    size_t src_offset,
+    size_t dst_offset,
+    size_t size,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle);
+    static clCommandCopyBufferKHR_t_ f;
+    if (f == null) { f = (clCommandCopyBufferKHR_t_)clBindFunction("clCommandCopyBufferKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_buffer, command_queue, src_buffer, dst_buffer, src_offset, dst_offset, size, num_sync_points_in_wait_list, sync_point_wait_list, sync_point, mutable_handle);
+}
+
+cl_int clCommandCopyBufferRectKHR(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_mem src_buffer,
+    cl_mem dst_buffer,
+    const size_t* src_origin,
+    const size_t* dst_origin,
+    const size_t* region,
+    size_t src_row_pitch,
+    size_t src_slice_pitch,
+    size_t dst_row_pitch,
+    size_t dst_slice_pitch,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle) {
+    typedef cl_int (*clCommandCopyBufferRectKHR_t_)(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_mem src_buffer,
+    cl_mem dst_buffer,
+    const size_t* src_origin,
+    const size_t* dst_origin,
+    const size_t* region,
+    size_t src_row_pitch,
+    size_t src_slice_pitch,
+    size_t dst_row_pitch,
+    size_t dst_slice_pitch,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle);
+    static clCommandCopyBufferRectKHR_t_ f;
+    if (f == null) { f = (clCommandCopyBufferRectKHR_t_)clBindFunction("clCommandCopyBufferRectKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_buffer, command_queue, src_buffer, dst_buffer, src_origin, dst_origin, region, src_row_pitch, src_slice_pitch, dst_row_pitch, dst_slice_pitch, num_sync_points_in_wait_list, sync_point_wait_list, sync_point, mutable_handle);
+}
+
+cl_int clCommandCopyBufferToImageKHR(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_mem src_buffer,
+    cl_mem dst_image,
+    size_t src_offset,
+    const size_t* dst_origin,
+    const size_t* region,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle) {
+    typedef cl_int (*clCommandCopyBufferToImageKHR_t_)(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_mem src_buffer,
+    cl_mem dst_image,
+    size_t src_offset,
+    const size_t* dst_origin,
+    const size_t* region,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle);
+    static clCommandCopyBufferToImageKHR_t_ f;
+    if (f == null) { f = (clCommandCopyBufferToImageKHR_t_)clBindFunction("clCommandCopyBufferToImageKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_buffer, command_queue, src_buffer, dst_image, src_offset, dst_origin, region, num_sync_points_in_wait_list, sync_point_wait_list, sync_point, mutable_handle);
+}
+
+cl_int clCommandCopyImageKHR(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_mem src_image,
+    cl_mem dst_image,
+    const size_t* src_origin,
+    const size_t* dst_origin,
+    const size_t* region,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle) {
+    typedef cl_int (*clCommandCopyImageKHR_t_)(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_mem src_image,
+    cl_mem dst_image,
+    const size_t* src_origin,
+    const size_t* dst_origin,
+    const size_t* region,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle);
+    static clCommandCopyImageKHR_t_ f;
+    if (f == null) { f = (clCommandCopyImageKHR_t_)clBindFunction("clCommandCopyImageKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_buffer, command_queue, src_image, dst_image, src_origin, dst_origin, region, num_sync_points_in_wait_list, sync_point_wait_list, sync_point, mutable_handle);
+}
+
+cl_int clCommandCopyImageToBufferKHR(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_mem src_image,
+    cl_mem dst_buffer,
+    const size_t* src_origin,
+    const size_t* region,
+    size_t dst_offset,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle) {
+    typedef cl_int (*clCommandCopyImageToBufferKHR_t_)(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_mem src_image,
+    cl_mem dst_buffer,
+    const size_t* src_origin,
+    const size_t* region,
+    size_t dst_offset,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle);
+    static clCommandCopyImageToBufferKHR_t_ f;
+    if (f == null) { f = (clCommandCopyImageToBufferKHR_t_)clBindFunction("clCommandCopyImageToBufferKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_buffer, command_queue, src_image, dst_buffer, src_origin, region, dst_offset, num_sync_points_in_wait_list, sync_point_wait_list, sync_point, mutable_handle);
+}
+
+cl_int clCommandFillBufferKHR(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_mem buffer,
+    const void* pattern,
+    size_t pattern_size,
+    size_t offset,
+    size_t size,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle) {
+    typedef cl_int (*clCommandFillBufferKHR_t_)(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_mem buffer,
+    const void* pattern,
+    size_t pattern_size,
+    size_t offset,
+    size_t size,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle);
+    static clCommandFillBufferKHR_t_ f;
+    if (f == null) { f = (clCommandFillBufferKHR_t_)clBindFunction("clCommandFillBufferKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_buffer, command_queue, buffer, pattern, pattern_size, offset, size, num_sync_points_in_wait_list, sync_point_wait_list, sync_point, mutable_handle);
+}
+
+cl_int clCommandFillImageKHR(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_mem image,
+    const void* fill_color,
+    const size_t* origin,
+    const size_t* region,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle) {
+    typedef cl_int (*clCommandFillImageKHR_t_)(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    cl_mem image,
+    const void* fill_color,
+    const size_t* origin,
+    const size_t* region,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle);
+    static clCommandFillImageKHR_t_ f;
+    if (f == null) { f = (clCommandFillImageKHR_t_)clBindFunction("clCommandFillImageKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_buffer, command_queue, image, fill_color, origin, region, num_sync_points_in_wait_list, sync_point_wait_list, sync_point, mutable_handle);
+}
+
+cl_int clCommandNDRangeKernelKHR(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    const cl_ndrange_kernel_command_properties_khr* properties,
+    cl_kernel kernel,
+    cl_uint work_dim,
+    const size_t* global_work_offset,
+    const size_t* global_work_size,
+    const size_t* local_work_size,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle) {
+    typedef cl_int (*clCommandNDRangeKernelKHR_t_)(
+    cl_command_buffer_khr command_buffer,
+    cl_command_queue command_queue,
+    const cl_ndrange_kernel_command_properties_khr* properties,
+    cl_kernel kernel,
+    cl_uint work_dim,
+    const size_t* global_work_offset,
+    const size_t* global_work_size,
+    const size_t* local_work_size,
+    cl_uint num_sync_points_in_wait_list,
+    const cl_sync_point_khr* sync_point_wait_list,
+    cl_sync_point_khr* sync_point,
+    cl_mutable_command_khr* mutable_handle);
+    static clCommandNDRangeKernelKHR_t_ f;
+    if (f == null) { f = (clCommandNDRangeKernelKHR_t_)clBindFunction("clCommandNDRangeKernelKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_buffer, command_queue, properties, kernel, work_dim, global_work_offset, global_work_size, local_work_size, num_sync_points_in_wait_list, sync_point_wait_list, sync_point, mutable_handle);
+}
+
+cl_int clGetCommandBufferInfoKHR(
+    cl_command_buffer_khr command_buffer,
+    cl_command_buffer_info_khr param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret) {
+    typedef cl_int (*clGetCommandBufferInfoKHR_t_)(
+    cl_command_buffer_khr command_buffer,
+    cl_command_buffer_info_khr param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret);
+    static clGetCommandBufferInfoKHR_t_ f;
+    if (f == null) { f = (clGetCommandBufferInfoKHR_t_)clBindFunction("clGetCommandBufferInfoKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_buffer, param_name, param_value_size, param_value, param_value_size_ret);
+}
+
+cl_command_buffer_khr clRemapCommandBufferKHR(
+    cl_command_buffer_khr command_buffer,
+    cl_bool automatic,
+    cl_uint num_queues,
+    const cl_command_queue* queues,
+    cl_uint num_handles,
+    const cl_mutable_command_khr* handles,
+    cl_mutable_command_khr* handles_ret,
+    cl_int* errcode_ret) {
+    typedef cl_command_buffer_khr (*clRemapCommandBufferKHR_t_)(
+    cl_command_buffer_khr command_buffer,
+    cl_bool automatic,
+    cl_uint num_queues,
+    const cl_command_queue* queues,
+    cl_uint num_handles,
+    const cl_mutable_command_khr* handles,
+    cl_mutable_command_khr* handles_ret,
+    cl_int* errcode_ret);
+    static clRemapCommandBufferKHR_t_ f;
+    if (f == null) { f = (clRemapCommandBufferKHR_t_)clBindFunction("clRemapCommandBufferKHR"); }
+    return f == null ? (cl_command_buffer_khr)null :
+        f(command_buffer, automatic, num_queues, queues, num_handles, handles, handles_ret, errcode_ret);
+}
+
+cl_int clUpdateMutableCommandsKHR(
+    cl_command_buffer_khr command_buffer,
+    const cl_mutable_base_config_khr* mutable_config) {
+    typedef cl_int (*clUpdateMutableCommandsKHR_t_)(
+    cl_command_buffer_khr command_buffer,
+    const cl_mutable_base_config_khr* mutable_config);
+    static clUpdateMutableCommandsKHR_t_ f;
+    if (f == null) { f = (clUpdateMutableCommandsKHR_t_)clBindFunction("clUpdateMutableCommandsKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_buffer, mutable_config);
+}
+
+cl_int clGetMutableCommandInfoKHR(
+    cl_mutable_command_khr command,
+    cl_mutable_command_info_khr param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret) {
+    typedef cl_int (*clGetMutableCommandInfoKHR_t_)(
+    cl_mutable_command_khr command,
+    cl_mutable_command_info_khr param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret);
+    static clGetMutableCommandInfoKHR_t_ f;
+    if (f == null) { f = (clGetMutableCommandInfoKHR_t_)clBindFunction("clGetMutableCommandInfoKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command, param_name, param_value_size, param_value, param_value_size_ret);
+}
+
+cl_int clSetMemObjectDestructorAPPLE(
+    cl_mem memobj,
+    void (CL_CALLBACK* pfn_notify)(cl_mem memobj, void* user_data),
+    void* user_data) {
+    typedef cl_int (*clSetMemObjectDestructorAPPLE_t_)(
+    cl_mem memobj,
+    void (CL_CALLBACK* pfn_notify)(cl_mem memobj, void* user_data),
+    void* user_data);
+    static clSetMemObjectDestructorAPPLE_t_ f;
+    if (f == null) { f = (clSetMemObjectDestructorAPPLE_t_)clBindFunction("clSetMemObjectDestructorAPPLE"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(memobj, pfn_notify, user_data);
+}
+
+void clLogMessagesToSystemLogAPPLE(
+    const char* errstr,
+    const void* private_info,
+    size_t cb,
+    void* user_data) {
+    typedef void (*clLogMessagesToSystemLogAPPLE_t_)(
+    const char* errstr,
+    const void* private_info,
+    size_t cb,
+    void* user_data);
+    static clLogMessagesToSystemLogAPPLE_t_ f;
+    if (f == null) { f = (clLogMessagesToSystemLogAPPLE_t_)clBindFunction("clLogMessagesToSystemLogAPPLE"); }
+    f(errstr, private_info, cb, user_data);
+}
+
+void clLogMessagesToStdoutAPPLE(
+    const char* errstr,
+    const void* private_info,
+    size_t cb,
+    void* user_data) {
+    typedef void (*clLogMessagesToStdoutAPPLE_t_)(
+    const char* errstr,
+    const void* private_info,
+    size_t cb,
+    void* user_data);
+    static clLogMessagesToStdoutAPPLE_t_ f;
+    if (f == null) { f = (clLogMessagesToStdoutAPPLE_t_)clBindFunction("clLogMessagesToStdoutAPPLE"); }
+    f(errstr, private_info, cb, user_data);
+}
+
+void clLogMessagesToStderrAPPLE(
+    const char* errstr,
+    const void* private_info,
+    size_t cb,
+    void* user_data) {
+    typedef void (*clLogMessagesToStderrAPPLE_t_)(
+    const char* errstr,
+    const void* private_info,
+    size_t cb,
+    void* user_data);
+    static clLogMessagesToStderrAPPLE_t_ f;
+    if (f == null) { f = (clLogMessagesToStderrAPPLE_t_)clBindFunction("clLogMessagesToStderrAPPLE"); }
+    f(errstr, private_info, cb, user_data);
+}
+
+cl_int clIcdGetPlatformIDsKHR(
+    cl_uint num_entries,
+    cl_platform_id* platforms,
+    cl_uint* num_platforms) {
+    typedef cl_int (*clIcdGetPlatformIDsKHR_t_)(
+    cl_uint num_entries,
+    cl_platform_id* platforms,
+    cl_uint* num_platforms);
+    static clIcdGetPlatformIDsKHR_t_ f;
+    if (f == null) { f = (clIcdGetPlatformIDsKHR_t_)clBindFunction("clIcdGetPlatformIDsKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(num_entries, platforms, num_platforms);
+}
+
+cl_program clCreateProgramWithILKHR(
+    cl_context context,
+    const void* il,
+    size_t length,
+    cl_int* errcode_ret) {
+    typedef cl_program (*clCreateProgramWithILKHR_t_)(
+    cl_context context,
+    const void* il,
+    size_t length,
+    cl_int* errcode_ret);
+    static clCreateProgramWithILKHR_t_ f;
+    if (f == null) { f = (clCreateProgramWithILKHR_t_)clBindFunction("clCreateProgramWithILKHR"); }
+    return f == null ? (cl_program)null :
+        f(context, il, length, errcode_ret);
+}
+
+cl_int clTerminateContextKHR(
+    cl_context context) {
+    typedef cl_int (*clTerminateContextKHR_t_)(
+    cl_context context);
+    static clTerminateContextKHR_t_ f;
+    if (f == null) { f = (clTerminateContextKHR_t_)clBindFunction("clTerminateContextKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(context);
+}
+
+cl_command_queue clCreateCommandQueueWithPropertiesKHR(
+    cl_context context,
+    cl_device_id device,
+    const cl_queue_properties_khr* properties,
+    cl_int* errcode_ret) {
+    typedef cl_command_queue (*clCreateCommandQueueWithPropertiesKHR_t_)(
+    cl_context context,
+    cl_device_id device,
+    const cl_queue_properties_khr* properties,
+    cl_int* errcode_ret);
+    static clCreateCommandQueueWithPropertiesKHR_t_ f;
+    if (f == null) { f = (clCreateCommandQueueWithPropertiesKHR_t_)clBindFunction("clCreateCommandQueueWithPropertiesKHR"); }
+    return f == null ? (cl_command_queue)null :
+        f(context, device, properties, errcode_ret);
+}
+
+cl_int clReleaseDeviceEXT(
+    cl_device_id device) {
+    typedef cl_int (*clReleaseDeviceEXT_t_)(
+    cl_device_id device);
+    static clReleaseDeviceEXT_t_ f;
+    if (f == null) { f = (clReleaseDeviceEXT_t_)clBindFunction("clReleaseDeviceEXT"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(device);
+}
+
+cl_int clRetainDeviceEXT(
+    cl_device_id device) {
+    typedef cl_int (*clRetainDeviceEXT_t_)(
+    cl_device_id device);
+    static clRetainDeviceEXT_t_ f;
+    if (f == null) { f = (clRetainDeviceEXT_t_)clBindFunction("clRetainDeviceEXT"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(device);
+}
+
+cl_int clCreateSubDevicesEXT(
+    cl_device_id in_device,
+    const cl_device_partition_property_ext* properties,
+    cl_uint num_entries,
+    cl_device_id* out_devices,
+    cl_uint* num_devices) {
+    typedef cl_int (*clCreateSubDevicesEXT_t_)(
+    cl_device_id in_device,
+    const cl_device_partition_property_ext* properties,
+    cl_uint num_entries,
+    cl_device_id* out_devices,
+    cl_uint* num_devices);
+    static clCreateSubDevicesEXT_t_ f;
+    if (f == null) { f = (clCreateSubDevicesEXT_t_)clBindFunction("clCreateSubDevicesEXT"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(in_device, properties, num_entries, out_devices, num_devices);
+}
+
+cl_int clEnqueueMigrateMemObjectEXT(
+    cl_command_queue command_queue,
+    cl_uint num_mem_objects,
+    const cl_mem* mem_objects,
+    cl_mem_migration_flags_ext flags,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueMigrateMemObjectEXT_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_mem_objects,
+    const cl_mem* mem_objects,
+    cl_mem_migration_flags_ext flags,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueMigrateMemObjectEXT_t_ f;
+    if (f == null) { f = (clEnqueueMigrateMemObjectEXT_t_)clBindFunction("clEnqueueMigrateMemObjectEXT"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_mem_objects, mem_objects, flags, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clGetDeviceImageInfoQCOM(
+    cl_device_id device,
+    size_t image_width,
+    size_t image_height,
+    const cl_image_format* image_format,
+    cl_image_pitch_info_qcom param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret) {
+    typedef cl_int (*clGetDeviceImageInfoQCOM_t_)(
+    cl_device_id device,
+    size_t image_width,
+    size_t image_height,
+    const cl_image_format* image_format,
+    cl_image_pitch_info_qcom param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret);
+    static clGetDeviceImageInfoQCOM_t_ f;
+    if (f == null) { f = (clGetDeviceImageInfoQCOM_t_)clBindFunction("clGetDeviceImageInfoQCOM"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(device, image_width, image_height, image_format, param_name, param_value_size, param_value, param_value_size_ret);
+}
+
+cl_int clEnqueueAcquireGrallocObjectsIMG(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueAcquireGrallocObjectsIMG_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueAcquireGrallocObjectsIMG_t_ f;
+    if (f == null) { f = (clEnqueueAcquireGrallocObjectsIMG_t_)clBindFunction("clEnqueueAcquireGrallocObjectsIMG"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueReleaseGrallocObjectsIMG(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueReleaseGrallocObjectsIMG_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueReleaseGrallocObjectsIMG_t_ f;
+    if (f == null) { f = (clEnqueueReleaseGrallocObjectsIMG_t_)clBindFunction("clEnqueueReleaseGrallocObjectsIMG"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueGenerateMipmapIMG(
+    cl_command_queue command_queue,
+    cl_mem src_image,
+    cl_mem dst_image,
+    cl_mipmap_filter_mode_img mipmap_filter_mode,
+    const size_t* array_region,
+    const size_t* mip_region,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueGenerateMipmapIMG_t_)(
+    cl_command_queue command_queue,
+    cl_mem src_image,
+    cl_mem dst_image,
+    cl_mipmap_filter_mode_img mipmap_filter_mode,
+    const size_t* array_region,
+    const size_t* mip_region,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueGenerateMipmapIMG_t_ f;
+    if (f == null) { f = (clEnqueueGenerateMipmapIMG_t_)clBindFunction("clEnqueueGenerateMipmapIMG"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, src_image, dst_image, mipmap_filter_mode, array_region, mip_region, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clGetKernelSubGroupInfoKHR(
+    cl_kernel in_kernel,
+    cl_device_id in_device,
+    cl_kernel_sub_group_info param_name,
+    size_t input_value_size,
+    const void* input_value,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret) {
+    typedef cl_int (*clGetKernelSubGroupInfoKHR_t_)(
+    cl_kernel in_kernel,
+    cl_device_id in_device,
+    cl_kernel_sub_group_info param_name,
+    size_t input_value_size,
+    const void* input_value,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret);
+    static clGetKernelSubGroupInfoKHR_t_ f;
+    if (f == null) { f = (clGetKernelSubGroupInfoKHR_t_)clBindFunction("clGetKernelSubGroupInfoKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(in_kernel, in_device, param_name, input_value_size, input_value, param_value_size, param_value, param_value_size_ret);
+}
+
+cl_int clGetKernelSuggestedLocalWorkSizeKHR(
+    cl_command_queue command_queue,
+    cl_kernel kernel,
+    cl_uint work_dim,
+    const size_t* global_work_offset,
+    const size_t* global_work_size,
+    size_t* suggested_local_work_size) {
+    typedef cl_int (*clGetKernelSuggestedLocalWorkSizeKHR_t_)(
+    cl_command_queue command_queue,
+    cl_kernel kernel,
+    cl_uint work_dim,
+    const size_t* global_work_offset,
+    const size_t* global_work_size,
+    size_t* suggested_local_work_size);
+    static clGetKernelSuggestedLocalWorkSizeKHR_t_ f;
+    if (f == null) { f = (clGetKernelSuggestedLocalWorkSizeKHR_t_)clBindFunction("clGetKernelSuggestedLocalWorkSizeKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, kernel, work_dim, global_work_offset, global_work_size, suggested_local_work_size);
+}
+
+cl_int clEnqueueAcquireExternalMemObjectsKHR(
+    cl_command_queue command_queue,
+    cl_uint num_mem_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueAcquireExternalMemObjectsKHR_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_mem_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueAcquireExternalMemObjectsKHR_t_ f;
+    if (f == null) { f = (clEnqueueAcquireExternalMemObjectsKHR_t_)clBindFunction("clEnqueueAcquireExternalMemObjectsKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_mem_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueReleaseExternalMemObjectsKHR(
+    cl_command_queue command_queue,
+    cl_uint num_mem_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueReleaseExternalMemObjectsKHR_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_mem_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueReleaseExternalMemObjectsKHR_t_ f;
+    if (f == null) { f = (clEnqueueReleaseExternalMemObjectsKHR_t_)clBindFunction("clEnqueueReleaseExternalMemObjectsKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_mem_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clGetSemaphoreHandleForTypeKHR(
+    cl_semaphore_khr sema_object,
+    cl_device_id device,
+    cl_external_semaphore_handle_type_khr handle_type,
+    size_t handle_size,
+    void* handle_ptr,
+    size_t* handle_size_ret) {
+    typedef cl_int (*clGetSemaphoreHandleForTypeKHR_t_)(
+    cl_semaphore_khr sema_object,
+    cl_device_id device,
+    cl_external_semaphore_handle_type_khr handle_type,
+    size_t handle_size,
+    void* handle_ptr,
+    size_t* handle_size_ret);
+    static clGetSemaphoreHandleForTypeKHR_t_ f;
+    if (f == null) { f = (clGetSemaphoreHandleForTypeKHR_t_)clBindFunction("clGetSemaphoreHandleForTypeKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(sema_object, device, handle_type, handle_size, handle_ptr, handle_size_ret);
+}
+
+cl_semaphore_khr clCreateSemaphoreWithPropertiesKHR(
+    cl_context context,
+    const cl_semaphore_properties_khr* sema_props,
+    cl_int* errcode_ret) {
+    typedef cl_semaphore_khr (*clCreateSemaphoreWithPropertiesKHR_t_)(
+    cl_context context,
+    const cl_semaphore_properties_khr* sema_props,
+    cl_int* errcode_ret);
+    static clCreateSemaphoreWithPropertiesKHR_t_ f;
+    if (f == null) { f = (clCreateSemaphoreWithPropertiesKHR_t_)clBindFunction("clCreateSemaphoreWithPropertiesKHR"); }
+    return f == null ? (cl_semaphore_khr)null :
+        f(context, sema_props, errcode_ret);
+}
+
+cl_int clEnqueueWaitSemaphoresKHR(
+    cl_command_queue command_queue,
+    cl_uint num_sema_objects,
+    const cl_semaphore_khr* sema_objects,
+    const cl_semaphore_payload_khr* sema_payload_list,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueWaitSemaphoresKHR_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_sema_objects,
+    const cl_semaphore_khr* sema_objects,
+    const cl_semaphore_payload_khr* sema_payload_list,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueWaitSemaphoresKHR_t_ f;
+    if (f == null) { f = (clEnqueueWaitSemaphoresKHR_t_)clBindFunction("clEnqueueWaitSemaphoresKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_sema_objects, sema_objects, sema_payload_list, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueSignalSemaphoresKHR(
+    cl_command_queue command_queue,
+    cl_uint num_sema_objects,
+    const cl_semaphore_khr* sema_objects,
+    const cl_semaphore_payload_khr* sema_payload_list,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueSignalSemaphoresKHR_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_sema_objects,
+    const cl_semaphore_khr* sema_objects,
+    const cl_semaphore_payload_khr* sema_payload_list,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueSignalSemaphoresKHR_t_ f;
+    if (f == null) { f = (clEnqueueSignalSemaphoresKHR_t_)clBindFunction("clEnqueueSignalSemaphoresKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_sema_objects, sema_objects, sema_payload_list, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clGetSemaphoreInfoKHR(
+    cl_semaphore_khr sema_object,
+    cl_semaphore_info_khr param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret) {
+    typedef cl_int (*clGetSemaphoreInfoKHR_t_)(
+    cl_semaphore_khr sema_object,
+    cl_semaphore_info_khr param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret);
+    static clGetSemaphoreInfoKHR_t_ f;
+    if (f == null) { f = (clGetSemaphoreInfoKHR_t_)clBindFunction("clGetSemaphoreInfoKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(sema_object, param_name, param_value_size, param_value, param_value_size_ret);
+}
+
+cl_int clReleaseSemaphoreKHR(
+    cl_semaphore_khr sema_object) {
+    typedef cl_int (*clReleaseSemaphoreKHR_t_)(
+    cl_semaphore_khr sema_object);
+    static clReleaseSemaphoreKHR_t_ f;
+    if (f == null) { f = (clReleaseSemaphoreKHR_t_)clBindFunction("clReleaseSemaphoreKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(sema_object);
+}
+
+cl_int clRetainSemaphoreKHR(
+    cl_semaphore_khr sema_object) {
+    typedef cl_int (*clRetainSemaphoreKHR_t_)(
+    cl_semaphore_khr sema_object);
+    static clRetainSemaphoreKHR_t_ f;
+    if (f == null) { f = (clRetainSemaphoreKHR_t_)clBindFunction("clRetainSemaphoreKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(sema_object);
+}
+
+cl_mem clImportMemoryARM(
+    cl_context context,
+    cl_mem_flags flags,
+    const cl_import_properties_arm* properties,
+    void* memory,
+    size_t size,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clImportMemoryARM_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    const cl_import_properties_arm* properties,
+    void* memory,
+    size_t size,
+    cl_int* errcode_ret);
+    static clImportMemoryARM_t_ f;
+    if (f == null) { f = (clImportMemoryARM_t_)clBindFunction("clImportMemoryARM"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, properties, memory, size, errcode_ret);
+}
+
+void* clSVMAllocARM(
+    cl_context context,
+    cl_svm_mem_flags_arm flags,
+    size_t size,
+    cl_uint alignment) {
+    typedef void* (*clSVMAllocARM_t_)(
+    cl_context context,
+    cl_svm_mem_flags_arm flags,
+    size_t size,
+    cl_uint alignment);
+    static clSVMAllocARM_t_ f;
+    if (f == null) { f = (clSVMAllocARM_t_)clBindFunction("clSVMAllocARM"); }
+    return f == null ? (void*)null :
+        f(context, flags, size, alignment);
+}
+
+void clSVMFreeARM(
+    cl_context context,
+    void* svm_pointer) {
+    typedef void (*clSVMFreeARM_t_)(
+    cl_context context,
+    void* svm_pointer);
+    static clSVMFreeARM_t_ f;
+    if (f == null) { f = (clSVMFreeARM_t_)clBindFunction("clSVMFreeARM"); }
+    f(context, svm_pointer);
+}
+
+cl_int clEnqueueSVMFreeARM(
+    cl_command_queue command_queue,
+    cl_uint num_svm_pointers,
+    void* svm_pointers[],
+    void (CL_CALLBACK* pfn_free_func)(cl_command_queue queue, cl_uint num_svm_pointers, void * svm_pointers[], void *user_data),
+    void* user_data,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueSVMFreeARM_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_svm_pointers,
+    void* svm_pointers[],
+    void (CL_CALLBACK* pfn_free_func)(cl_command_queue queue, cl_uint num_svm_pointers, void * svm_pointers[], void *user_data),
+    void* user_data,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueSVMFreeARM_t_ f;
+    if (f == null) { f = (clEnqueueSVMFreeARM_t_)clBindFunction("clEnqueueSVMFreeARM"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_svm_pointers, svm_pointers, pfn_free_func, user_data, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueSVMMemcpyARM(
+    cl_command_queue command_queue,
+    cl_bool blocking_copy,
+    void* dst_ptr,
+    const void* src_ptr,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueSVMMemcpyARM_t_)(
+    cl_command_queue command_queue,
+    cl_bool blocking_copy,
+    void* dst_ptr,
+    const void* src_ptr,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueSVMMemcpyARM_t_ f;
+    if (f == null) { f = (clEnqueueSVMMemcpyARM_t_)clBindFunction("clEnqueueSVMMemcpyARM"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, blocking_copy, dst_ptr, src_ptr, size, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueSVMMemFillARM(
+    cl_command_queue command_queue,
+    void* svm_ptr,
+    const void* pattern,
+    size_t pattern_size,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueSVMMemFillARM_t_)(
+    cl_command_queue command_queue,
+    void* svm_ptr,
+    const void* pattern,
+    size_t pattern_size,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueSVMMemFillARM_t_ f;
+    if (f == null) { f = (clEnqueueSVMMemFillARM_t_)clBindFunction("clEnqueueSVMMemFillARM"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, svm_ptr, pattern, pattern_size, size, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueSVMMapARM(
+    cl_command_queue command_queue,
+    cl_bool blocking_map,
+    cl_map_flags flags,
+    void* svm_ptr,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueSVMMapARM_t_)(
+    cl_command_queue command_queue,
+    cl_bool blocking_map,
+    cl_map_flags flags,
+    void* svm_ptr,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueSVMMapARM_t_ f;
+    if (f == null) { f = (clEnqueueSVMMapARM_t_)clBindFunction("clEnqueueSVMMapARM"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, blocking_map, flags, svm_ptr, size, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueSVMUnmapARM(
+    cl_command_queue command_queue,
+    void* svm_ptr,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueSVMUnmapARM_t_)(
+    cl_command_queue command_queue,
+    void* svm_ptr,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueSVMUnmapARM_t_ f;
+    if (f == null) { f = (clEnqueueSVMUnmapARM_t_)clBindFunction("clEnqueueSVMUnmapARM"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, svm_ptr, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clSetKernelArgSVMPointerARM(
+    cl_kernel kernel,
+    cl_uint arg_index,
+    const void* arg_value) {
+    typedef cl_int (*clSetKernelArgSVMPointerARM_t_)(
+    cl_kernel kernel,
+    cl_uint arg_index,
+    const void* arg_value);
+    static clSetKernelArgSVMPointerARM_t_ f;
+    if (f == null) { f = (clSetKernelArgSVMPointerARM_t_)clBindFunction("clSetKernelArgSVMPointerARM"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(kernel, arg_index, arg_value);
+}
+
+cl_int clSetKernelExecInfoARM(
+    cl_kernel kernel,
+    cl_kernel_exec_info_arm param_name,
+    size_t param_value_size,
+    const void* param_value) {
+    typedef cl_int (*clSetKernelExecInfoARM_t_)(
+    cl_kernel kernel,
+    cl_kernel_exec_info_arm param_name,
+    size_t param_value_size,
+    const void* param_value);
+    static clSetKernelExecInfoARM_t_ f;
+    if (f == null) { f = (clSetKernelExecInfoARM_t_)clBindFunction("clSetKernelExecInfoARM"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(kernel, param_name, param_value_size, param_value);
+}
+
+cl_accelerator_intel clCreateAcceleratorINTEL(
+    cl_context context,
+    cl_accelerator_type_intel accelerator_type,
+    size_t descriptor_size,
+    const void* descriptor,
+    cl_int* errcode_ret) {
+    typedef cl_accelerator_intel (*clCreateAcceleratorINTEL_t_)(
+    cl_context context,
+    cl_accelerator_type_intel accelerator_type,
+    size_t descriptor_size,
+    const void* descriptor,
+    cl_int* errcode_ret);
+    static clCreateAcceleratorINTEL_t_ f;
+    if (f == null) { f = (clCreateAcceleratorINTEL_t_)clBindFunction("clCreateAcceleratorINTEL"); }
+    return f == null ? (cl_accelerator_intel)null :
+        f(context, accelerator_type, descriptor_size, descriptor, errcode_ret);
+}
+
+cl_int clGetAcceleratorInfoINTEL(
+    cl_accelerator_intel accelerator,
+    cl_accelerator_info_intel param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret) {
+    typedef cl_int (*clGetAcceleratorInfoINTEL_t_)(
+    cl_accelerator_intel accelerator,
+    cl_accelerator_info_intel param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret);
+    static clGetAcceleratorInfoINTEL_t_ f;
+    if (f == null) { f = (clGetAcceleratorInfoINTEL_t_)clBindFunction("clGetAcceleratorInfoINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(accelerator, param_name, param_value_size, param_value, param_value_size_ret);
+}
+
+cl_int clRetainAcceleratorINTEL(
+    cl_accelerator_intel accelerator) {
+    typedef cl_int (*clRetainAcceleratorINTEL_t_)(
+    cl_accelerator_intel accelerator);
+    static clRetainAcceleratorINTEL_t_ f;
+    if (f == null) { f = (clRetainAcceleratorINTEL_t_)clBindFunction("clRetainAcceleratorINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(accelerator);
+}
+
+cl_int clReleaseAcceleratorINTEL(
+    cl_accelerator_intel accelerator) {
+    typedef cl_int (*clReleaseAcceleratorINTEL_t_)(
+    cl_accelerator_intel accelerator);
+    static clReleaseAcceleratorINTEL_t_ f;
+    if (f == null) { f = (clReleaseAcceleratorINTEL_t_)clBindFunction("clReleaseAcceleratorINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(accelerator);
+}
+
+void* clHostMemAllocINTEL(
+    cl_context context,
+    const cl_mem_properties_intel* properties,
+    size_t size,
+    cl_uint alignment,
+    cl_int* errcode_ret) {
+    typedef void* (*clHostMemAllocINTEL_t_)(
+    cl_context context,
+    const cl_mem_properties_intel* properties,
+    size_t size,
+    cl_uint alignment,
+    cl_int* errcode_ret);
+    static clHostMemAllocINTEL_t_ f;
+    if (f == null) { f = (clHostMemAllocINTEL_t_)clBindFunction("clHostMemAllocINTEL"); }
+    return f == null ? (void*)null :
+        f(context, properties, size, alignment, errcode_ret);
+}
+
+void* clDeviceMemAllocINTEL(
+    cl_context context,
+    cl_device_id device,
+    const cl_mem_properties_intel* properties,
+    size_t size,
+    cl_uint alignment,
+    cl_int* errcode_ret) {
+    typedef void* (*clDeviceMemAllocINTEL_t_)(
+    cl_context context,
+    cl_device_id device,
+    const cl_mem_properties_intel* properties,
+    size_t size,
+    cl_uint alignment,
+    cl_int* errcode_ret);
+    static clDeviceMemAllocINTEL_t_ f;
+    if (f == null) { f = (clDeviceMemAllocINTEL_t_)clBindFunction("clDeviceMemAllocINTEL"); }
+    return f == null ? (void*)null :
+        f(context, device, properties, size, alignment, errcode_ret);
+}
+
+void* clSharedMemAllocINTEL(
+    cl_context context,
+    cl_device_id device,
+    const cl_mem_properties_intel* properties,
+    size_t size,
+    cl_uint alignment,
+    cl_int* errcode_ret) {
+    typedef void* (*clSharedMemAllocINTEL_t_)(
+    cl_context context,
+    cl_device_id device,
+    const cl_mem_properties_intel* properties,
+    size_t size,
+    cl_uint alignment,
+    cl_int* errcode_ret);
+    static clSharedMemAllocINTEL_t_ f;
+    if (f == null) { f = (clSharedMemAllocINTEL_t_)clBindFunction("clSharedMemAllocINTEL"); }
+    return f == null ? (void*)null :
+        f(context, device, properties, size, alignment, errcode_ret);
+}
+
+cl_int clMemFreeINTEL(
+    cl_context context,
+    void* ptr) {
+    typedef cl_int (*clMemFreeINTEL_t_)(
+    cl_context context,
+    void* ptr);
+    static clMemFreeINTEL_t_ f;
+    if (f == null) { f = (clMemFreeINTEL_t_)clBindFunction("clMemFreeINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(context, ptr);
+}
+
+cl_int clMemBlockingFreeINTEL(
+    cl_context context,
+    void* ptr) {
+    typedef cl_int (*clMemBlockingFreeINTEL_t_)(
+    cl_context context,
+    void* ptr);
+    static clMemBlockingFreeINTEL_t_ f;
+    if (f == null) { f = (clMemBlockingFreeINTEL_t_)clBindFunction("clMemBlockingFreeINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(context, ptr);
+}
+
+cl_int clGetMemAllocInfoINTEL(
+    cl_context context,
+    const void* ptr,
+    cl_mem_info_intel param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret) {
+    typedef cl_int (*clGetMemAllocInfoINTEL_t_)(
+    cl_context context,
+    const void* ptr,
+    cl_mem_info_intel param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret);
+    static clGetMemAllocInfoINTEL_t_ f;
+    if (f == null) { f = (clGetMemAllocInfoINTEL_t_)clBindFunction("clGetMemAllocInfoINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(context, ptr, param_name, param_value_size, param_value, param_value_size_ret);
+}
+
+cl_int clSetKernelArgMemPointerINTEL(
+    cl_kernel kernel,
+    cl_uint arg_index,
+    const void* arg_value) {
+    typedef cl_int (*clSetKernelArgMemPointerINTEL_t_)(
+    cl_kernel kernel,
+    cl_uint arg_index,
+    const void* arg_value);
+    static clSetKernelArgMemPointerINTEL_t_ f;
+    if (f == null) { f = (clSetKernelArgMemPointerINTEL_t_)clBindFunction("clSetKernelArgMemPointerINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(kernel, arg_index, arg_value);
+}
+
+cl_int clEnqueueMemFillINTEL(
+    cl_command_queue command_queue,
+    void* dst_ptr,
+    const void* pattern,
+    size_t pattern_size,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueMemFillINTEL_t_)(
+    cl_command_queue command_queue,
+    void* dst_ptr,
+    const void* pattern,
+    size_t pattern_size,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueMemFillINTEL_t_ f;
+    if (f == null) { f = (clEnqueueMemFillINTEL_t_)clBindFunction("clEnqueueMemFillINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, dst_ptr, pattern, pattern_size, size, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueMemcpyINTEL(
+    cl_command_queue command_queue,
+    cl_bool blocking,
+    void* dst_ptr,
+    const void* src_ptr,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueMemcpyINTEL_t_)(
+    cl_command_queue command_queue,
+    cl_bool blocking,
+    void* dst_ptr,
+    const void* src_ptr,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueMemcpyINTEL_t_ f;
+    if (f == null) { f = (clEnqueueMemcpyINTEL_t_)clBindFunction("clEnqueueMemcpyINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, blocking, dst_ptr, src_ptr, size, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueMemAdviseINTEL(
+    cl_command_queue command_queue,
+    const void* ptr,
+    size_t size,
+    cl_mem_advice_intel advice,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueMemAdviseINTEL_t_)(
+    cl_command_queue command_queue,
+    const void* ptr,
+    size_t size,
+    cl_mem_advice_intel advice,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueMemAdviseINTEL_t_ f;
+    if (f == null) { f = (clEnqueueMemAdviseINTEL_t_)clBindFunction("clEnqueueMemAdviseINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, ptr, size, advice, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueMigrateMemINTEL(
+    cl_command_queue command_queue,
+    const void* ptr,
+    size_t size,
+    cl_mem_migration_flags flags,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueMigrateMemINTEL_t_)(
+    cl_command_queue command_queue,
+    const void* ptr,
+    size_t size,
+    cl_mem_migration_flags flags,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueMigrateMemINTEL_t_ f;
+    if (f == null) { f = (clEnqueueMigrateMemINTEL_t_)clBindFunction("clEnqueueMigrateMemINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, ptr, size, flags, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueMemsetINTEL(
+    cl_command_queue command_queue,
+    void* dst_ptr,
+    cl_int value,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueMemsetINTEL_t_)(
+    cl_command_queue command_queue,
+    void* dst_ptr,
+    cl_int value,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueMemsetINTEL_t_ f;
+    if (f == null) { f = (clEnqueueMemsetINTEL_t_)clBindFunction("clEnqueueMemsetINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, dst_ptr, value, size, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_mem clCreateBufferWithPropertiesINTEL(
+    cl_context context,
+    const cl_mem_properties_intel* properties,
+    cl_mem_flags flags,
+    size_t size,
+    void* host_ptr,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateBufferWithPropertiesINTEL_t_)(
+    cl_context context,
+    const cl_mem_properties_intel* properties,
+    cl_mem_flags flags,
+    size_t size,
+    void* host_ptr,
+    cl_int* errcode_ret);
+    static clCreateBufferWithPropertiesINTEL_t_ f;
+    if (f == null) { f = (clCreateBufferWithPropertiesINTEL_t_)clBindFunction("clCreateBufferWithPropertiesINTEL"); }
+    return f == null ? (cl_mem)null :
+        f(context, properties, flags, size, host_ptr, errcode_ret);
+}
+
+cl_int clEnqueueReadHostPipeINTEL(
+    cl_command_queue command_queue,
+    cl_program program,
+    const char* pipe_symbol,
+    cl_bool blocking_read,
+    void* ptr,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueReadHostPipeINTEL_t_)(
+    cl_command_queue command_queue,
+    cl_program program,
+    const char* pipe_symbol,
+    cl_bool blocking_read,
+    void* ptr,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueReadHostPipeINTEL_t_ f;
+    if (f == null) { f = (clEnqueueReadHostPipeINTEL_t_)clBindFunction("clEnqueueReadHostPipeINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, program, pipe_symbol, blocking_read, ptr, size, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueWriteHostPipeINTEL(
+    cl_command_queue command_queue,
+    cl_program program,
+    const char* pipe_symbol,
+    cl_bool blocking_write,
+    const void* ptr,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueWriteHostPipeINTEL_t_)(
+    cl_command_queue command_queue,
+    cl_program program,
+    const char* pipe_symbol,
+    cl_bool blocking_write,
+    const void* ptr,
+    size_t size,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueWriteHostPipeINTEL_t_ f;
+    if (f == null) { f = (clEnqueueWriteHostPipeINTEL_t_)clBindFunction("clEnqueueWriteHostPipeINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, program, pipe_symbol, blocking_write, ptr, size, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clGetImageRequirementsInfoEXT(
+    cl_context context,
+    const cl_mem_properties* properties,
+    cl_mem_flags flags,
+    const cl_image_format* image_format,
+    const cl_image_desc* image_desc,
+    cl_image_requirements_info_ext param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret) {
+    typedef cl_int (*clGetImageRequirementsInfoEXT_t_)(
+    cl_context context,
+    const cl_mem_properties* properties,
+    cl_mem_flags flags,
+    const cl_image_format* image_format,
+    const cl_image_desc* image_desc,
+    cl_image_requirements_info_ext param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret);
+    static clGetImageRequirementsInfoEXT_t_ f;
+    if (f == null) { f = (clGetImageRequirementsInfoEXT_t_)clBindFunction("clGetImageRequirementsInfoEXT"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(context, properties, flags, image_format, image_desc, param_name, param_value_size, param_value, param_value_size_ret);
+}
+
+cl_int clGetICDLoaderInfoOCLICD(
+    cl_icdl_info param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret) {
+    typedef cl_int (*clGetICDLoaderInfoOCLICD_t_)(
+    cl_icdl_info param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret);
+    static clGetICDLoaderInfoOCLICD_t_ f;
+    if (f == null) { f = (clGetICDLoaderInfoOCLICD_t_)clBindFunction("clGetICDLoaderInfoOCLICD"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(param_name, param_value_size, param_value, param_value_size_ret);
+}
+
+cl_int clSetContentSizeBufferPoCL(
+    cl_mem buffer,
+    cl_mem content_size_buffer) {
+    typedef cl_int (*clSetContentSizeBufferPoCL_t_)(
+    cl_mem buffer,
+    cl_mem content_size_buffer);
+    static clSetContentSizeBufferPoCL_t_ f;
+    if (f == null) { f = (clSetContentSizeBufferPoCL_t_)clBindFunction("clSetContentSizeBufferPoCL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(buffer, content_size_buffer);
+}
+
+cl_int clGetGLContextInfoKHR(
+    const cl_context_properties* properties,
+    cl_gl_context_info param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret) {
+    typedef cl_int (*clGetGLContextInfoKHR_t_)(
+    const cl_context_properties* properties,
+    cl_gl_context_info param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret);
+    static clGetGLContextInfoKHR_t_ f;
+    if (f == null) { f = (clGetGLContextInfoKHR_t_)clBindFunction("clGetGLContextInfoKHR"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(properties, param_name, param_value_size, param_value, param_value_size_ret);
+}
+
+cl_mem clCreateFromGLBuffer(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_GLuint bufobj,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateFromGLBuffer_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_GLuint bufobj,
+    cl_int* errcode_ret);
+    static clCreateFromGLBuffer_t_ f;
+    if (f == null) { f = (clCreateFromGLBuffer_t_)clBindFunction("clCreateFromGLBuffer"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, bufobj, errcode_ret);
+}
+
+cl_mem clCreateFromGLTexture(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_GLenum target,
+    cl_GLint miplevel,
+    cl_GLuint texture,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateFromGLTexture_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_GLenum target,
+    cl_GLint miplevel,
+    cl_GLuint texture,
+    cl_int* errcode_ret);
+    static clCreateFromGLTexture_t_ f;
+    if (f == null) { f = (clCreateFromGLTexture_t_)clBindFunction("clCreateFromGLTexture"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, target, miplevel, texture, errcode_ret);
+}
+
+cl_mem clCreateFromGLRenderbuffer(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_GLuint renderbuffer,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateFromGLRenderbuffer_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_GLuint renderbuffer,
+    cl_int* errcode_ret);
+    static clCreateFromGLRenderbuffer_t_ f;
+    if (f == null) { f = (clCreateFromGLRenderbuffer_t_)clBindFunction("clCreateFromGLRenderbuffer"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, renderbuffer, errcode_ret);
+}
+
+cl_int clGetGLObjectInfo(
+    cl_mem memobj,
+    cl_gl_object_type* gl_object_type,
+    cl_GLuint* gl_object_name) {
+    typedef cl_int (*clGetGLObjectInfo_t_)(
+    cl_mem memobj,
+    cl_gl_object_type* gl_object_type,
+    cl_GLuint* gl_object_name);
+    static clGetGLObjectInfo_t_ f;
+    if (f == null) { f = (clGetGLObjectInfo_t_)clBindFunction("clGetGLObjectInfo"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(memobj, gl_object_type, gl_object_name);
+}
+
+cl_int clGetGLTextureInfo(
+    cl_mem memobj,
+    cl_gl_texture_info param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret) {
+    typedef cl_int (*clGetGLTextureInfo_t_)(
+    cl_mem memobj,
+    cl_gl_texture_info param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret);
+    static clGetGLTextureInfo_t_ f;
+    if (f == null) { f = (clGetGLTextureInfo_t_)clBindFunction("clGetGLTextureInfo"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(memobj, param_name, param_value_size, param_value, param_value_size_ret);
+}
+
+cl_int clEnqueueAcquireGLObjects(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueAcquireGLObjects_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueAcquireGLObjects_t_ f;
+    if (f == null) { f = (clEnqueueAcquireGLObjects_t_)clBindFunction("clEnqueueAcquireGLObjects"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_int clEnqueueReleaseGLObjects(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) {
+    typedef cl_int (*clEnqueueReleaseGLObjects_t_)(
+    cl_command_queue command_queue,
+    cl_uint num_objects,
+    const cl_mem* mem_objects,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event);
+    static clEnqueueReleaseGLObjects_t_ f;
+    if (f == null) { f = (clEnqueueReleaseGLObjects_t_)clBindFunction("clEnqueueReleaseGLObjects"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event);
+}
+
+cl_mem clCreateFromGLTexture2D(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_GLenum target,
+    cl_GLint miplevel,
+    cl_GLuint texture,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateFromGLTexture2D_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_GLenum target,
+    cl_GLint miplevel,
+    cl_GLuint texture,
+    cl_int* errcode_ret);
+    static clCreateFromGLTexture2D_t_ f;
+    if (f == null) { f = (clCreateFromGLTexture2D_t_)clBindFunction("clCreateFromGLTexture2D"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, target, miplevel, texture, errcode_ret);
+}
+
+cl_mem clCreateFromGLTexture3D(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_GLenum target,
+    cl_GLint miplevel,
+    cl_GLuint texture,
+    cl_int* errcode_ret) {
+    typedef cl_mem (*clCreateFromGLTexture3D_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_GLenum target,
+    cl_GLint miplevel,
+    cl_GLuint texture,
+    cl_int* errcode_ret);
+    static clCreateFromGLTexture3D_t_ f;
+    if (f == null) { f = (clCreateFromGLTexture3D_t_)clBindFunction("clCreateFromGLTexture3D"); }
+    return f == null ? (cl_mem)null :
+        f(context, flags, target, miplevel, texture, errcode_ret);
+}
+
+cl_event clCreateEventFromGLsyncKHR(
+    cl_context context,
+    cl_GLsync sync,
+    cl_int* errcode_ret) {
+    typedef cl_event (*clCreateEventFromGLsyncKHR_t_)(
+    cl_context context,
+    cl_GLsync sync,
+    cl_int* errcode_ret);
+    static clCreateEventFromGLsyncKHR_t_ f;
+    if (f == null) { f = (clCreateEventFromGLsyncKHR_t_)clBindFunction("clCreateEventFromGLsyncKHR"); }
+    return f == null ? (cl_event)null :
+        f(context, sync, errcode_ret);
+}
+
+cl_int clGetSupportedGLTextureFormatsINTEL(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_mem_object_type image_type,
+    cl_uint num_entries,
+    cl_GLenum* gl_formats,
+    cl_uint* num_texture_formats) {
+    typedef cl_int (*clGetSupportedGLTextureFormatsINTEL_t_)(
+    cl_context context,
+    cl_mem_flags flags,
+    cl_mem_object_type image_type,
+    cl_uint num_entries,
+    cl_GLenum* gl_formats,
+    cl_uint* num_texture_formats);
+    static clGetSupportedGLTextureFormatsINTEL_t_ f;
+    if (f == null) { f = (clGetSupportedGLTextureFormatsINTEL_t_)clBindFunction("clGetSupportedGLTextureFormatsINTEL"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(context, flags, image_type, num_entries, gl_formats, num_texture_formats);
+}
+
+cl_int clGetLayerInfo(
+    cl_layer_info param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret) {
+    typedef cl_int (*clGetLayerInfo_t_)(
+    cl_layer_info param_name,
+    size_t param_value_size,
+    void* param_value,
+    size_t* param_value_size_ret);
+    static clGetLayerInfo_t_ f;
+    if (f == null) { f = (clGetLayerInfo_t_)clBindFunction("clGetLayerInfo"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(param_name, param_value_size, param_value, param_value_size_ret);
+}
+
+cl_int clInitLayer(
+    cl_uint num_entries,
+    const cl_icd_dispatch* target_dispatch,
+    cl_uint* num_entries_ret,
+    const cl_icd_dispatch** layer_dispatch_ret) {
+    typedef cl_int (*clInitLayer_t_)(
+    cl_uint num_entries,
+    const cl_icd_dispatch* target_dispatch,
+    cl_uint* num_entries_ret,
+    const cl_icd_dispatch** layer_dispatch_ret);
+    static clInitLayer_t_ f;
+    if (f == null) { f = (clInitLayer_t_)clBindFunction("clInitLayer"); }
+    return f == null ? CL_FUNCTION_NOT_IMPLEMENTED :
+        f(num_entries, target_dispatch, num_entries_ret, layer_dispatch_ret);
+}
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 

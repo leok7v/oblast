@@ -8,6 +8,9 @@
     <ClCompile Include="..\rt.c">
       <Filter>rt</Filter>
     </ClCompile>
+    <ClCompile Include="..\CL\cl_bind.c">
+      <Filter>CL</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\cl\cl.h">

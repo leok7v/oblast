@@ -43,6 +43,9 @@
     <ClCompile Include="..\blast.c" />
     <ClCompile Include="..\dot.c" />
     <ClCompile Include="..\blast_tests.c" />
+    <ClCompile Include="..\CL\cl_bind.c">
+      <Filter>CL</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\CL\cl_bind.inc">

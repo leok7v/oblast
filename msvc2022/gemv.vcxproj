@@ -162,6 +162,7 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\CL\cl_bind.c" />
     <ClCompile Include="..\dot.c" />
     <ClCompile Include="..\gemv.c" />
     <ClCompile Include="..\CL\ocl.c" />

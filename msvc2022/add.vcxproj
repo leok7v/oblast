@@ -155,6 +155,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\add.c" />
+    <ClCompile Include="..\CL\cl_bind.c" />
     <ClCompile Include="..\CL\ocl.c" />
     <ClCompile Include="..\rt.c" />
     <ClInclude Include="..\cl\cl.h" />

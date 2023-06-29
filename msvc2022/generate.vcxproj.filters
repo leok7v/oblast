@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\generate.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CL">
+      <UniqueIdentifier>{9bb8d2cc-e907-4e62-bb9a-b2a31ef1b1e9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\CL\cl_dx9_media_sharing_intel.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\cl_egl.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\cl_ext.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\cl_ext_intel.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\cl_function_types.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\cl_gl.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\cl_half.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\cl_icd.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\cl_layer.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\cl_platform.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\cl_va_api_media_sharing_intel.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\cl.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\cl_d3d10.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\cl_d3d11.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CL\cl_dx9_media_sharing.h">
+      <Filter>CL</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

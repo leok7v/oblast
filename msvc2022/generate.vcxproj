@@ -153,6 +153,24 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\generate.c" />
+    <ClCompile Include="..\rt.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\CL\cl.h" />
+    <ClInclude Include="..\CL\cl_d3d10.h" />
+    <ClInclude Include="..\CL\cl_d3d11.h" />
+    <ClInclude Include="..\CL\cl_dx9_media_sharing.h" />
+    <ClInclude Include="..\CL\cl_dx9_media_sharing_intel.h" />
+    <ClInclude Include="..\CL\cl_egl.h" />
+    <ClInclude Include="..\CL\cl_ext.h" />
+    <ClInclude Include="..\CL\cl_ext_intel.h" />
+    <ClInclude Include="..\CL\cl_function_types.h" />
+    <ClInclude Include="..\CL\cl_gl.h" />
+    <ClInclude Include="..\CL\cl_half.h" />
+    <ClInclude Include="..\CL\cl_icd.h" />
+    <ClInclude Include="..\CL\cl_layer.h" />
+    <ClInclude Include="..\CL\cl_platform.h" />
+    <ClInclude Include="..\CL\cl_va_api_media_sharing_intel.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

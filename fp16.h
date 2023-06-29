@@ -1,6 +1,10 @@
 #pragma once
 #include "rt.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // TODO: mf8_t  https://en.wikipedia.org/wiki/Minifloat
 
 // AVX512 support both fp16 and bf16 but only on three (server grade) processors so far
@@ -142,7 +146,8 @@ inline fp16_t fp32to16(fp32_t f32) {
         result = sign | (new_biased_exponent << 10) | new_mantissa;
     }
     assert(0 <= result && result <= UINT16_MAX);
-	return (fp16_t){ .bytes = (uint16_t)result };
+    fp16_t r = { .bytes = (uint16_t)result };
+	return r;
 }
 
 inline fp32_t fp16to32(fp16_t fp16) {
@@ -406,3 +411,7 @@ void fp16_test() {
 #endif // FP16_TESTS
 
 #endif // RT_IMPLEMENTATION
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

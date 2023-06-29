@@ -154,6 +154,7 @@
   <ItemGroup>
     <ClCompile Include="..\blast.c" />
     <ClCompile Include="..\blast_tests.c" />
+    <ClCompile Include="..\CL\cl_bind.c" />
     <ClCompile Include="..\CL\ocl.c" />
     <ClCompile Include="..\dot.c" />
     <ClCompile Include="..\rt.c" />

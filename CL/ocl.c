@@ -5,7 +5,7 @@
 // C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0\lib\x64\OpenCL.lib
 #pragma comment(lib, "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.0/lib/x64/OpenCL.lib")
 #else // dynamic bindings with OpenCL.dll on the path
-#include <CL/cl_bind.inc> // dynamically bind everything
+// #include <CL/cl_bind.inc> // dynamically bind everything
 #endif
 
 static_assert(ocl_fpp16 == 0 && ocl_fpp32 == 1 &&
@@ -752,38 +752,4 @@ ocl_if ocl = {
     .devices = ocl_devices
 };
 
-// C:\Windows\System32\OpenCL.dll
-// File description OpenCL Client DLL
-// Type Application extension
-// File version 3.0.3.0
-// Product name Khronos OpenCL ICD Loader
-// Product version 3.0.3.0
-// Copyright Copyright © The Khronos Group Inc 2016-2023
-// Date modified 1/20/2023 3:20 PM
-// Size: 1.41 MB (1,487,336 bytes)
-// Signed by
-// NVIDIA Sunday, January 15, 2023 11:18:06 AM
-// and
-// Microsoft Friday, January 20, 023 4:20:45 PM
-
-#define OpenCL_dll "C:/Windows/System32/OpenCL.dll"
-
-// TODO: alternatives for Intel only GPU and AMD GPU? Do we need them?
-// e.g.:
-// C:\Windows\system32\Intel_OpenCL_ICD64.dll
-// C:\Windows\System32\DriverStore\FileRepository\iigd_dch.inf_amd64_9eaeaf7bfb6c744b
-// #define OpenCL_dll "Intel_OpenCL_ICD64.dll"
-
-static void* ocl_dl; // OpenCL dynamic library
-
-void* clBindFunction(const char* name) {
-    static bool initialized;
-    if (!initialized) {
-        ocl_dl = load_dl(OpenCL_dll);
-        // if not found, try anywhere else on the path:
-        if (ocl_dl == null) { ocl_dl = load_dl(OpenCL_dll); }
-        initialized = true;
-    }
-    return ocl_dl != null ? find_symbol(ocl_dl, name) : null;
-}
 
